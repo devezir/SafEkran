@@ -13,6 +13,9 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -105,7 +108,6 @@ public class MainActivity extends Activity {
 
     private void onTileClicked(Tile tile, TileView tv) {
         if (workspaceView.isEditMode()) {
-            // Düzenleme modunda tıklama: Kutuyu taşımak için seç/bırak
             if (selectedMovingTile == null) {
                 selectedMovingTile = tile;
                 Toast.makeText(this, tile.label + " seçildi. Yön tuşlarıyla taşıyın, [OK] ile bırakın.", Toast.LENGTH_SHORT).show();
@@ -134,13 +136,11 @@ public class MainActivity extends Activity {
                 Toast.makeText(this, "Saat kutusu. Düzenle modunda taşınabilir.", Toast.LENGTH_SHORT).show();
                 break;
             case SPACER:
-                // Normal modda zaten görünmez ve tıklanamaz
                 break;
         }
     }
 
     private void onTileLongClicked(final Tile tile) {
-        // Uzun basma: Kutu seçenekleri (Boyut değiştir, Araya Boşluk Ekle, Sil)
         String[] options = new String[]{
                 "Kutuyu Büyüt (+%5)",
                 "Kutuyu Küçült (-%5)",
@@ -153,16 +153,16 @@ public class MainActivity extends Activity {
         builder.setItems(options, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                if (which == 0) { // Büyüt
+                if (which == 0) {
                     tile.widthPercent = Math.min(0.50f, tile.widthPercent + 0.05f);
                     tile.heightPercent = Math.min(0.50f, tile.heightPercent + 0.05f);
-                } else if (which == 1) { // Küçült
+                } else if (which == 1) {
                     tile.widthPercent = Math.max(0.05f, tile.widthPercent - 0.05f);
                     tile.heightPercent = Math.max(0.05f, tile.heightPercent - 0.05f);
-                } else if (which == 2) { // Boşluk ekle
+                } else if (which == 2) {
                     Tile spacer = new Tile(TileType.SPACER, "Boşluk", tile.xPercent + tile.widthPercent + config.gutterPercent, tile.yPercent, config.defaultTileWidth, config.defaultTileHeight);
                     config.tiles.add(spacer);
-                } else if (which == 3) { // Sil
+                } else if (which == 3) {
                     config.tiles.remove(tile);
                 }
                 WorkspaceStorage.saveWorkspace(MainActivity.this, config);
@@ -213,49 +213,112 @@ public class MainActivity extends Activity {
         }
     }
 
+    // ==========================================
+    // KAPSAMLI BAŞLATICI AYARLARI MENÜSÜ
+    // ==========================================
+
     private void openLauncherSettingsDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle(getString(R.string.app_signature_title));
+        builder.setTitle("Saf Ekran — Başlatıcı Ayarları");
 
         ScrollView scroll = new ScrollView(this);
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setPadding(32, 24, 32, 24);
 
+        // 1. İmza & Sürüm Başlığı
         TextView authorText = new TextView(this);
-        authorText.setText(getString(R.string.app_signature_dev) + " | " + getString(R.string.app_version_label));
-        authorText.setTextColor(Color.WHITE);
-        authorText.setTextSize(14);
+        authorText.setText("Geliştirici: Vezir | Sürüm: 1.0.2 (Resmi İmzalı)");
+        authorText.setTextColor(Color.parseColor("#4CAF50"));
+        authorText.setTextSize(13);
+        authorText.setPadding(0, 0, 0, 16);
         layout.addView(authorText);
 
-        addSafeMarginSlider(layout, "Üst Güvenli Alan (%):", config.safeArea.top, new MarginCallback() {
-            @Override
-            public void onMarginChanged(float val) {
-                config.safeArea.top = val;
-                workspaceView.requestLayout();
+        // 2. Güvenli Alan Başlığı ve Kaydırıcıları
+        addSectionHeader(layout, "1. GÜVENLİ ALAN KENARLARI (OVERSCAN)");
+        addPercentSlider(layout, "Üst Güvenli Alan", config.safeArea.top, 0, 20, new ValueCallback() {
+            @Override public void onValueChanged(float val) { config.safeArea.top = val; workspaceView.requestLayout(); }
+        });
+        addPercentSlider(layout, "Alt Güvenli Alan", config.safeArea.bottom, 0, 20, new ValueCallback() {
+            @Override public void onValueChanged(float val) { config.safeArea.bottom = val; workspaceView.requestLayout(); }
+        });
+        addPercentSlider(layout, "Sol Güvenli Alan", config.safeArea.left, 0, 20, new ValueCallback() {
+            @Override public void onValueChanged(float val) { config.safeArea.left = val; workspaceView.requestLayout(); }
+        });
+        addPercentSlider(layout, "Sağ Güvenli Alan", config.safeArea.right, 0, 20, new ValueCallback() {
+            @Override public void onValueChanged(float val) { config.safeArea.right = val; workspaceView.requestLayout(); }
+        });
+
+        // 3. Izgara ve Kutu Boyutları
+        addSectionHeader(layout, "2. KUTU VE IZGARA BOYUTLARI");
+        addPercentSlider(layout, "Kutular Arası Boşluk (Gutter)", config.gutterPercent, 0, 5, new ValueCallback() {
+            @Override public void onValueChanged(float val) { config.gutterPercent = val; }
+        });
+        addPercentSlider(layout, "Varsayılan Kutu Genişliği", config.defaultTileWidth, 5, 25, new ValueCallback() {
+            @Override public void onValueChanged(float val) { config.defaultTileWidth = val; }
+        });
+        addPercentSlider(layout, "Varsayılan Kutu Yüksekliği", config.defaultTileHeight, 5, 25, new ValueCallback() {
+            @Override public void onValueChanged(float val) { config.defaultTileHeight = val; }
+        });
+
+        // 4. Odaklanma Genişleme Değeri (Satır 40)
+        addSectionHeader(layout, "3. ODAK VE ETKİLEŞİM");
+        float currentFocusPercent = (config.focusScale - 1.0f);
+        addPercentSlider(layout, "Odaklanınca Büyüme Oranı", currentFocusPercent, 0, 15, new ValueCallback() {
+            @Override public void onValueChanged(float val) { config.focusScale = 1.0f + val; }
+        });
+
+        // 5. Tema Seçimi (Satır 4)
+        addSectionHeader(layout, "4. TEMA MODU");
+        LinearLayout themeRow = new LinearLayout(this);
+        themeRow.setOrientation(LinearLayout.HORIZONTAL);
+        addThemeButton(themeRow, "Saf Siyah", "BLACK");
+        addThemeButton(themeRow, "Koyu Gri", "DARK_GRAY");
+        addThemeButton(themeRow, "Aydınlık", "LIGHT");
+        layout.addView(themeRow);
+
+        // 6. Saat & Tarih Ayarları
+        addSectionHeader(layout, "5. SAAT & TARİH");
+        CheckBox cb24 = new CheckBox(this);
+        cb24.setText("24 Saat Formatı (Örn: 22:30)");
+        cb24.setTextColor(Color.WHITE);
+        cb24.setChecked(config.is24Hour);
+        cb24.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                config.is24Hour = isChecked;
             }
         });
-        addSafeMarginSlider(layout, "Alt Güvenli Alan (%):", config.safeArea.bottom, new MarginCallback() {
-            @Override
-            public void onMarginChanged(float val) {
-                config.safeArea.bottom = val;
-                workspaceView.requestLayout();
+        layout.addView(cb24);
+
+        CheckBox cbDate = new CheckBox(this);
+        cbDate.setText("Tarih Gösterilsin");
+        cbDate.setTextColor(Color.WHITE);
+        cbDate.setChecked(config.showDate);
+        cbDate.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                config.showDate = isChecked;
             }
         });
-        addSafeMarginSlider(layout, "Sol Güvenli Alan (%):", config.safeArea.left, new MarginCallback() {
+        layout.addView(cbDate);
+
+        // 7. Sihirli Düzen Butonu: "Düzeni Yağ Gibi Akıt"
+        addSectionHeader(layout, "6. DÜZEN İŞLEMLERİ");
+        Button reflowBtn = new Button(this);
+        reflowBtn.setText("⚡ Düzeni Yağ Gibi Akıt (Boşluksuz Yeniden Diz)");
+        reflowBtn.setBackgroundColor(Color.parseColor("#1B5E20"));
+        reflowBtn.setTextColor(Color.WHITE);
+        reflowBtn.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onMarginChanged(float val) {
-                config.safeArea.left = val;
-                workspaceView.requestLayout();
+            public void onClick(View v) {
+                List<AppInfo> apps = AppScanner.scanAllApps(MainActivity.this);
+                WorkspaceStorage.reflowContinuousTiles(config, apps);
+                WorkspaceStorage.saveWorkspace(MainActivity.this, config);
+                workspaceView.rebuildViews();
+                setupTileClickListeners();
+                Toast.makeText(MainActivity.this, "Tüm ekran boşluksuz ve kesintisiz akışla dizildi!", Toast.LENGTH_SHORT).show();
             }
         });
-        addSafeMarginSlider(layout, "Sağ Güvenli Alan (%):", config.safeArea.right, new MarginCallback() {
-            @Override
-            public void onMarginChanged(float val) {
-                config.safeArea.right = val;
-                workspaceView.requestLayout();
-            }
-        });
+        layout.addView(reflowBtn);
 
         scroll.addView(layout);
         builder.setView(scroll);
@@ -290,26 +353,55 @@ public class MainActivity extends Activity {
         builder.show();
     }
 
-    private interface MarginCallback {
-        void onMarginChanged(float val);
+    private void addSectionHeader(LinearLayout layout, String title) {
+        TextView header = new TextView(this);
+        header.setText(title);
+        header.setTextColor(Color.parseColor("#80D8FF"));
+        header.setTextSize(12);
+        header.setPadding(0, 20, 0, 6);
+        layout.addView(header);
     }
 
-    private void addSafeMarginSlider(LinearLayout layout, String label, float initialVal, final MarginCallback callback) {
+    private void addThemeButton(LinearLayout row, String text, final String mode) {
+        Button btn = new Button(this);
+        btn.setText(text);
+        btn.setTextSize(11);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        params.setMargins(4, 4, 4, 4);
+        btn.setLayoutParams(params);
+        btn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                config.themeMode = mode;
+                workspaceView.rebuildViews();
+                Toast.makeText(MainActivity.this, "Tema: " + mode, Toast.LENGTH_SHORT).show();
+            }
+        });
+        row.addView(btn);
+    }
+
+    private interface ValueCallback {
+        void onValueChanged(float val);
+    }
+
+    private void addPercentSlider(LinearLayout layout, final String label, float initialVal, final int min, final int max, final ValueCallback callback) {
         final TextView labelView = new TextView(this);
-        int percent = (int) (initialVal * 100);
-        labelView.setText(label + " %" + percent);
+        int percent = Math.round(initialVal * 100);
+        labelView.setText(label + ": %" + percent);
         labelView.setTextColor(Color.parseColor("#CCCCCC"));
-        labelView.setPadding(0, 16, 0, 4);
+        labelView.setTextSize(12);
+        labelView.setPadding(0, 10, 0, 2);
         layout.addView(labelView);
 
         SeekBar seekBar = new SeekBar(this);
-        seekBar.setMax(20); // %0 ile %20 arası
-        seekBar.setProgress(percent);
+        seekBar.setMax(max - min);
+        seekBar.setProgress(Math.max(0, percent - min));
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar sb, int progress, boolean fromUser) {
-                labelView.setText(labelView.getText().toString().split(":")[0] + ": %" + progress);
-                callback.onMarginChanged(progress / 100f);
+                int actualVal = min + progress;
+                labelView.setText(label + ": %" + actualVal);
+                callback.onValueChanged(actualVal / 100f);
             }
             @Override public void onStartTrackingTouch(SeekBar sb) {}
             @Override public void onStopTrackingTouch(SeekBar sb) {}
@@ -356,7 +448,6 @@ public class MainActivity extends Activity {
                 return true;
             }
 
-            // Eğer bir kutu taşınmak için seçildiyse D-Pad tuşlarıyla %1 kaydır
             if (selectedMovingTile != null) {
                 float step = 0.01f;
                 if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
@@ -383,13 +474,11 @@ public class MainActivity extends Activity {
                 }
             }
         } else {
-            // Normal modda kumandanın MENU tuşuna basılırsa doğrudan düzenleme moduna geç!
             if (keyCode == KeyEvent.KEYCODE_MENU) {
                 toggleEditMode();
                 return true;
             }
             if (keyCode == KeyEvent.KEYCODE_BACK) {
-                // Ana ekranda geri tuşuna basıldığında başlatıcı kapanmaz
                 return true;
             }
         }

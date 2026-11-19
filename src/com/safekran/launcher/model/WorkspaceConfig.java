@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class WorkspaceConfig {
-    public int schemaVersion = 1;
+    public int schemaVersion = 2;
     public String appName = "Saf Ekran";
     public String developer = "Vezir";
 
@@ -15,8 +15,13 @@ public class WorkspaceConfig {
     public float gutterPercent = 0.01f;     // Varsayılan %1
     public float defaultTileWidth = 0.10f;   // Varsayılan %10
     public float defaultTileHeight = 0.10f;  // Varsayılan %10
+    public float focusScale = 1.06f;         // Varsayılan %6 büyüme
 
-    public List<Tile> tiles = new ArrayList<>();
+    public String themeMode = "BLACK";       // "BLACK", "DARK_GRAY", "LIGHT"
+    public boolean is24Hour = true;
+    public boolean showDate = true;
+
+    public List<Tile> tiles = new ArrayList<Tile>();
 
     public JSONObject toJson() throws JSONException {
         JSONObject root = new JSONObject();
@@ -27,6 +32,10 @@ public class WorkspaceConfig {
         root.put("gutterPercent", (double) gutterPercent);
         root.put("defaultTileWidth", (double) defaultTileWidth);
         root.put("defaultTileHeight", (double) defaultTileHeight);
+        root.put("focusScale", (double) focusScale);
+        root.put("themeMode", themeMode);
+        root.put("is24Hour", is24Hour);
+        root.put("showDate", showDate);
 
         JSONArray arr = new JSONArray();
         for (Tile t : tiles) {
@@ -40,7 +49,7 @@ public class WorkspaceConfig {
         WorkspaceConfig config = new WorkspaceConfig();
         if (root == null) return config;
 
-        config.schemaVersion = root.optInt("schemaVersion", 1);
+        config.schemaVersion = root.optInt("schemaVersion", 2);
         config.appName = root.optString("appName", "Saf Ekran");
         config.developer = root.optString("developer", "Vezir");
 
@@ -52,9 +61,13 @@ public class WorkspaceConfig {
         config.gutterPercent = (float) root.optDouble("gutterPercent", 0.01);
         config.defaultTileWidth = (float) root.optDouble("defaultTileWidth", 0.10);
         config.defaultTileHeight = (float) root.optDouble("defaultTileHeight", 0.10);
+        config.focusScale = (float) root.optDouble("focusScale", 1.06);
+        config.themeMode = root.optString("themeMode", "BLACK");
+        config.is24Hour = root.optBoolean("is24Hour", true);
+        config.showDate = root.optBoolean("showDate", true);
 
         JSONArray arr = root.optJSONArray("tiles");
-        config.tiles = new ArrayList<>();
+        config.tiles = new ArrayList<Tile>();
         if (arr != null) {
             for (int i = 0; i < arr.length(); i++) {
                 JSONObject tObj = arr.optJSONObject(i);

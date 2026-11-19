@@ -117,11 +117,21 @@ public class WorkspaceView extends ViewGroup {
 
         for (Tile t : config.tiles) {
             Drawable icon = iconCache.get(t.packageName);
-            TileView tv = new TileView(getContext(), t, isEditMode, icon);
+            TileView tv = new TileView(getContext(), t, config, isEditMode, icon);
             addView(tv);
         }
         requestLayout();
         invalidate();
+    }
+
+    private int getThemeBgColor() {
+        if (config == null) return Color.BLACK;
+        if ("LIGHT".equals(config.themeMode)) {
+            return Color.parseColor("#EFEFEF");
+        } else if ("DARK_GRAY".equals(config.themeMode)) {
+            return Color.parseColor("#141414");
+        }
+        return Color.BLACK;
     }
 
     @Override
@@ -140,7 +150,6 @@ public class WorkspaceView extends ViewGroup {
                 if (child instanceof TileView) {
                     Tile t = ((TileView) child).getTile();
 
-                    // Seçenek B: Serbest Yüzde (%10x%10 esnek kutu hesabı)
                     int childWidth = Math.max(10, (int) (usableWidth * t.widthPercent));
                     int childHeight = Math.max(10, (int) (usableHeight * t.heightPercent));
 
@@ -176,7 +185,6 @@ public class WorkspaceView extends ViewGroup {
             if (child instanceof TileView) {
                 Tile tile = ((TileView) child).getTile();
 
-                // Seçenek B: Serbest Yüzde koordinat yerleşimi
                 int childLeft = leftOffset + (int) (usableWidth * tile.xPercent);
                 int childTop = topOffset + (int) (usableHeight * tile.yPercent);
                 int childRight = childLeft + child.getMeasuredWidth();
@@ -190,11 +198,9 @@ public class WorkspaceView extends ViewGroup {
             }
         }
 
-        // Toplam içerik yüksekliğine göre maksimum kaydırma mesafesini hesapla
         int bottomPadding = (int) (screenHeight * sa.bottom);
         maxScrollY = Math.max(0, (maxBottom + bottomPadding) - screenHeight);
 
-        // Ekran boyutu değiştiğinde scroll limitini aşmamak için denetle
         if (getScrollY() > maxScrollY) {
             scrollTo(0, maxScrollY);
         }
@@ -229,13 +235,12 @@ public class WorkspaceView extends ViewGroup {
                 float dy = Math.abs(y - initialDownY);
                 float dx = Math.abs(ev.getX() - initialDownX);
 
-                // Dikey hareket touchSlop'u aşarsa ve yataydan fazlaysa dokunmayı yakala
                 if (dy > touchSlop && dy > dx) {
                     isBeingDragged = true;
                     lastTouchY = y;
                     initVelocityTrackerIfNotExists();
                     velocityTracker.addMovement(ev);
-                    // Alt elemanların tıklama odağını iptal et
+
                     MotionEvent cancelEvent = MotionEvent.obtain(ev);
                     cancelEvent.setAction(MotionEvent.ACTION_CANCEL);
                     super.dispatchTouchEvent(cancelEvent);
@@ -273,7 +278,6 @@ public class WorkspaceView extends ViewGroup {
                 }
 
                 if (isBeingDragged) {
-                    // Kaydırma sınırları içinde pürüzsüz kaydır
                     int currentScrollY = getScrollY();
                     int newScrollY = (int) (currentScrollY + deltaY);
 
@@ -294,7 +298,6 @@ public class WorkspaceView extends ViewGroup {
                     float yVelocity = velocityTracker.getYVelocity();
 
                     if (Math.abs(yVelocity) > minFlingVelocity) {
-                        // Fiziksel ivmeli kaydırma (Fling)
                         scroller.fling(0, getScrollY(), 0, (int) -yVelocity, 0, 0, 0, maxScrollY);
                         postInvalidateOnAnimation();
                     }
@@ -330,7 +333,6 @@ public class WorkspaceView extends ViewGroup {
         super.requestChildFocus(child, focused);
 
         if (focused != null && config != null) {
-            // Kumanda ile odaklanan kutucuk ekran sınırlarının dışındaysa otomatik kaydır
             int childTop = child.getTop();
             int childBottom = child.getBottom();
             int currentScrollY = getScrollY();
@@ -378,8 +380,8 @@ public class WorkspaceView extends ViewGroup {
 
     @Override
     protected void dispatchDraw(Canvas canvas) {
-        // 1. Zemin: Saf Siyah (#000000)
-        canvas.drawColor(Color.BLACK);
+        // Zemin Rengi (Saf Siyah / Koyu Gri / Aydınlık Mod)
+        canvas.drawColor(getThemeBgColor());
 
         super.dispatchDraw(canvas);
 
@@ -406,10 +408,8 @@ public class WorkspaceView extends ViewGroup {
             int right = w - (int) (w * sa.right);
             int bottom = (h - (int) (h * sa.bottom)) + scrollY;
 
-            // Güvenli alan sınır çizgisi
             canvas.drawRect(left, top, right, bottom, safeAreaPaint);
 
-            // Kılavuz ızgara çizgileri (Yüzde 10'luk adımlarla)
             int usableW = right - left;
             int usableH = (bottom - top);
             for (int i = 1; i <= 9; i++) {
@@ -421,7 +421,6 @@ public class WorkspaceView extends ViewGroup {
                 canvas.drawLine(left, gy, right, gy, guidelinePaint);
             }
 
-            // TV Ergonomisi için Sağ Üstte Büyük Okunaklı Bilgi Kartı (HUD)
             String hudText1 = "DÜZENLEME MODU | Güvenli Alan: %" + (int) ((1f - sa.left - sa.right) * 100) + " x %" + (int) ((1f - sa.top - sa.bottom) * 100);
             String hudText2 = "Kutu Sayısı: " + config.tiles.size() + " | [OK/Dokun]: Taşı | [Geri]: Çık";
 

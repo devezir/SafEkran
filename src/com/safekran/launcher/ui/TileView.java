@@ -7,7 +7,6 @@ import android.graphics.drawable.Drawable;
 import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -17,19 +16,22 @@ import android.widget.TextView;
 import com.safekran.launcher.R;
 import com.safekran.launcher.model.Tile;
 import com.safekran.launcher.model.TileType;
+import com.safekran.launcher.model.WorkspaceConfig;
 
 public class TileView extends FrameLayout {
 
     private final Tile tile;
+    private final WorkspaceConfig config;
     private final boolean isEditMode;
     private ImageView iconView;
     private TextView labelView;
     private TextClock clockView;
-    private TextView dateView;
+    private TextClock dateClock;
 
-    public TileView(Context context, Tile tile, boolean isEditMode, Drawable appIcon) {
+    public TileView(Context context, Tile tile, WorkspaceConfig config, boolean isEditMode, Drawable appIcon) {
         super(context);
         this.tile = tile;
+        this.config = config;
         this.isEditMode = isEditMode;
         init(context, appIcon);
     }
@@ -51,12 +53,10 @@ public class TileView extends FrameLayout {
 
     private void initSpacerTile(Context context) {
         if (!isEditMode) {
-            // Normal Modda: Saf siyah, tamamen görünmez ve kumanda odağını almaz!
             setVisibility(View.INVISIBLE);
             setFocusable(false);
             setClickable(false);
         } else {
-            // Düzenleme Modunda: Kesik çizgili görünür, kumanda odağını alır
             setVisibility(View.VISIBLE);
             setFocusable(true);
             setClickable(true);
@@ -68,13 +68,13 @@ public class TileView extends FrameLayout {
 
             iconView = new ImageView(context);
             iconView.setImageResource(R.drawable.ic_spacer);
-            int iconSize = dpToPx(context, 28);
+            int iconSize = dpToPx(context, 26);
             container.addView(iconView, new LinearLayout.LayoutParams(iconSize, iconSize));
 
             labelView = new TextView(context);
             labelView.setText(context.getString(R.string.tile_spacer));
             labelView.setTextColor(Color.parseColor("#888888"));
-            labelView.setTextSize(11);
+            labelView.setTextSize(10);
             labelView.setGravity(Gravity.CENTER);
             container.addView(labelView);
 
@@ -92,27 +92,27 @@ public class TileView extends FrameLayout {
         container.setOrientation(LinearLayout.VERTICAL);
         container.setGravity(Gravity.CENTER);
 
+        boolean is24 = (config != null) ? config.is24Hour : true;
+        boolean showDate = (config != null) ? config.showDate : true;
+
         clockView = new TextClock(context);
-        clockView.setFormat24Hour("HH:mm");
+        clockView.setFormat24Hour(is24 ? "HH:mm" : "hh:mm a");
         clockView.setFormat12Hour("hh:mm a");
-        clockView.setTextColor(Color.WHITE);
+        clockView.setTextColor(getTextColor());
         clockView.setTextSize(22);
         clockView.setTypeface(Typeface.DEFAULT_BOLD);
         clockView.setGravity(Gravity.CENTER);
         container.addView(clockView);
 
-        dateView = new TextView(context);
-        dateView.setTextColor(Color.parseColor("#AAAAAA"));
-        dateView.setTextSize(11);
-        dateView.setGravity(Gravity.CENTER);
-        // Basit tarih formatı TextClock ile de verilebilir
-        TextClock dateClock = new TextClock(context);
-        dateClock.setFormat24Hour("d MMMM EEEE");
-        dateClock.setFormat12Hour("d MMMM EEEE");
-        dateClock.setTextColor(Color.parseColor("#AAAAAA"));
-        dateClock.setTextSize(10);
-        dateClock.setGravity(Gravity.CENTER);
-        container.addView(dateClock);
+        if (showDate) {
+            dateClock = new TextClock(context);
+            dateClock.setFormat24Hour("d MMMM EEEE");
+            dateClock.setFormat12Hour("d MMMM EEEE");
+            dateClock.setTextColor(Color.parseColor("#AAAAAA"));
+            dateClock.setTextSize(10);
+            dateClock.setGravity(Gravity.CENTER);
+            container.addView(dateClock);
+        }
 
         addView(container, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT, Gravity.CENTER));
     }
@@ -128,7 +128,7 @@ public class TileView extends FrameLayout {
         container.setGravity(Gravity.CENTER);
 
         iconView = new ImageView(context);
-        int iconSize = dpToPx(context, 36);
+        int iconSize = dpToPx(context, 34);
         LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(iconSize, iconSize);
         iconParams.bottomMargin = dpToPx(context, 2);
 
@@ -149,7 +149,7 @@ public class TileView extends FrameLayout {
 
         labelView = new TextView(context);
         labelView.setText(tile.label);
-        labelView.setTextColor(Color.WHITE);
+        labelView.setTextColor(getTextColor());
         labelView.setTextSize(11);
         labelView.setSingleLine(true);
         labelView.setEllipsize(TextUtils.TruncateAt.END);
@@ -159,13 +159,20 @@ public class TileView extends FrameLayout {
         addView(container, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT, Gravity.CENTER));
     }
 
+    private int getTextColor() {
+        if (config != null && "LIGHT".equals(config.themeMode)) {
+            return Color.parseColor("#111111");
+        }
+        return Color.WHITE;
+    }
+
     private void setupFocusBehavior() {
         setOnFocusChangeListener(new OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean hasFocus) {
+                float targetScale = (config != null) ? config.focusScale : 1.06f;
                 if (hasFocus) {
-                    // TV Kumandasında akıcı, net odak hissi
-                    animate().scaleX(1.06f).scaleY(1.06f).setDuration(120).start();
+                    animate().scaleX(targetScale).scaleY(targetScale).setDuration(120).start();
                     bringToFront();
                 } else {
                     animate().scaleX(1.0f).scaleY(1.0f).setDuration(120).start();

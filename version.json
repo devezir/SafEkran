@@ -1,12 +1,12 @@
 {
   "appName": "Saf Ekran",
   "packageName": "com.safekran.launcher",
-  "versionCode": 2,
-  "versionName": "1.0.1",
+  "versionCode": 3,
+  "versionName": "1.1.0",
   "developer": "Vezir",
   "schemaVersion": 1,
   "createdDate": "2026-11-19",
-  "apkName": "SafEkran_v1.0.1_vc2.apk",
+  "apkName": "SafEkran_v1.1.0_vc3.apk",
   "history": [
     {
       "versionCode": 1,
@@ -19,6 +19,12 @@
       "versionName": "1.0.1",
       "date": "2026-11-19",
       "description": "Dokunmatik dikey kaydırma (touch scroll/fling), TV D-Pad oto-kaydırma ve yeni özel minimalist Saf Ekran simgesi"
+    },
+    {
+      "versionCode": 3,
+      "versionName": "1.1.0",
+      "date": "2026-11-19",
+      "description": "Üst satır boşluğunu gideren kesintisiz akış, kapsamlı ayarlar menüsü (Gutter, Kutu boyutu, Odaklama, Tema, Saat)"
     }
   ]
 }

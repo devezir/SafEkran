@@ -37,7 +37,17 @@ public class WorkspaceStorage {
             fis.close();
 
             JSONObject root = new JSONObject(sb.toString());
-            return WorkspaceConfig.fromJson(root);
+            WorkspaceConfig config = WorkspaceConfig.fromJson(root);
+
+            // Sürüm 2 Göçü (Üst satırdaki boşluğu giderip her şeyi kesintisiz akışa bağlama)
+            if (config.schemaVersion < 2) {
+                List<AppInfo> apps = AppScanner.scanAllApps(context);
+                reflowContinuousTiles(config, apps);
+                config.schemaVersion = 2;
+                saveWorkspace(context, config);
+            }
+
+            return config;
         } catch (Exception e) {
             e.printStackTrace();
             return generateDefaultWorkspace(context);
@@ -61,39 +71,60 @@ public class WorkspaceStorage {
 
     public static WorkspaceConfig generateDefaultWorkspace(Context context) {
         WorkspaceConfig config = new WorkspaceConfig();
+        config.schemaVersion = 2;
         config.safeArea = new SafeArea(0.03f, 0.03f, 0.03f, 0.03f); // %3 Optimum güvenli alan
         config.gutterPercent = 0.01f;     // %1 Gutter
         config.defaultTileWidth = 0.10f;   // %10 Seçenek B: Serbest Yüzde
         config.defaultTileHeight = 0.10f;  // %10 Seçenek B: Serbest Yüzde
+        config.focusScale = 1.06f;
+        config.themeMode = "BLACK";
 
-        // 1. Üst Satır Aksiyon Kutucukları
-        // Saat ve Tarih Kutusu (Genişlik: %21, Yükseklik: %10)
-        Tile clockTile = new Tile(TileType.CLOCK, "Saat & Tarih", 0.0f, 0.0f, 0.21f, 0.10f);
-        config.tiles.add(clockTile);
-
-        // Düzenleme Modu Kutusu
-        Tile editTile = new Tile(TileType.EDIT_MODE, "Düzenle", 0.22f, 0.0f, 0.10f, 0.10f);
-        config.tiles.add(editTile);
-
-        // Başlatıcı Ayarları Kutusu
-        Tile settingsTile = new Tile(TileType.LAUNCHER_SETTINGS, "Başlatıcı Ayarları", 0.33f, 0.0f, 0.10f, 0.10f);
-        config.tiles.add(settingsTile);
-
-        // Android Sistem Ayarları Kutusu
-        Tile sysSettingsTile = new Tile(TileType.SYSTEM_SETTINGS, "Sistem Ayarları", 0.44f, 0.0f, 0.10f, 0.10f);
-        config.tiles.add(sysSettingsTile);
-
-        // 2. Yüklü Uygulamaları Sırala (İlk Açılış Otomatik Düzeni)
         List<AppInfo> apps = AppScanner.scanAllApps(context);
-        float currentX = 0.0f;
-        float currentY = 0.12f; // Aksiyon çubuğunun altından başla
+        reflowContinuousTiles(config, apps);
+
+        saveWorkspace(context, config);
+        return config;
+    }
+
+    /**
+     * Tüm kutucukları (Saat, Düzenle, Ayarlar, Sistem Ayarları ve tüm Uygulamaları)
+     * en üst satırın sağında hiçbir boşluk bırakmadan, satır satır kesintisiz bir akışla dizer.
+     */
+    public static void reflowContinuousTiles(WorkspaceConfig config, List<AppInfo> apps) {
+        config.tiles.clear();
+
         float tileW = config.defaultTileWidth;
         float tileH = config.defaultTileHeight;
         float gutter = config.gutterPercent;
 
+        float currentX = 0.0f;
+        float currentY = 0.0f;
+
+        // 1. Saat ve Tarih Kutusu (2 birim genişlik: tileW * 2 + gutter)
+        float clockW = (tileW * 2f) + gutter;
+        Tile clockTile = new Tile(TileType.CLOCK, "Saat & Tarih", currentX, currentY, clockW, tileH);
+        config.tiles.add(clockTile);
+        currentX += clockW + gutter;
+
+        // 2. Düzenleme Modu Kutusu
+        Tile editTile = new Tile(TileType.EDIT_MODE, "Düzenle", currentX, currentY, tileW, tileH);
+        config.tiles.add(editTile);
+        currentX += tileW + gutter;
+
+        // 3. Başlatıcı Ayarları Kutusu
+        Tile settingsTile = new Tile(TileType.LAUNCHER_SETTINGS, "Başlatıcı Ayarları", currentX, currentY, tileW, tileH);
+        config.tiles.add(settingsTile);
+        currentX += tileW + gutter;
+
+        // 4. Sistem Ayarları Kutusu
+        Tile sysSettingsTile = new Tile(TileType.SYSTEM_SETTINGS, "Sistem Ayarları", currentX, currentY, tileW, tileH);
+        config.tiles.add(sysSettingsTile);
+        currentX += tileW + gutter;
+
+        // 5. Yüklü Uygulamalar — HİÇ BOŞLUK BIRAKMADAN AYNI SATIRDAN DEVAM EDER!
         for (AppInfo app : apps) {
+            // Eğer sıradaki kutucuk bu satıra sığmıyorsa alt satıra geç
             if (currentX + tileW > 1.001f) {
-                // Satır taştı, bir alt satıra geç
                 currentX = 0.0f;
                 currentY += tileH + gutter;
             }
@@ -105,9 +136,6 @@ public class WorkspaceStorage {
 
             currentX += tileW + gutter;
         }
-
-        saveWorkspace(context, config);
-        return config;
     }
 
     public static String exportToJsonString(WorkspaceConfig config) {
