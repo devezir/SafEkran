@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="pure_black">#000000</color>
+    <color name="tile_surface">#121212</color>
+    <color name="tile_surface_focus">#242424</color>
+    <color name="tile_border_normal">#202020</color>
+    <color name="tile_border_focus">#FFFFFF</color>
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#999999</color>
+    <color name="spacer_edit_border">#555555</color>
+    <color name="hud_background">#E60A0A0A</color>
+    <color name="accent_guideline">#26FFFFFF</color>
+    <color name="accent_safe_area">#4DFF5722</color>
+</resources>

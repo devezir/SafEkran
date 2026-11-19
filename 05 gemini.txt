@@ -1,0 +1,187 @@
+**Mimari Analizi + Tamamlanmış Öneriler**
+
+### 1. Genel Mimari Özeti (Güncel)
+
+**Temel Prensipler:**
+- Saf siyah arka plan
+- Hiçbir sabit üst bar / dock yok
+- Her şey **Tile** (uygulama, saat, tarih, spacer, ayarlar, düzenleme modu, sistem ayarları…)
+- Konum ve boyut **yüzde tabanlı** (0.0 – 1.0 normalize)
+- Güvenli alan (safe area) sol / sağ / üst / alt **bağımsız** ayarlanabilir
+- Spacer’lar da tile’dır → normalde görünmez, edit modunda görünür
+- Çerçevesiz (saf View sistemi) tercih
+
+**Ana Bileşenler:**
+
+1. **WorkspaceView** (Custom ViewGroup)  
+   Tüm tile’ları absolute (yüzdeye göre) yerleştirir.
+
+2. **Tile Modeli**  
+   Tek bir veri sınıfı her şeyi temsil eder.
+
+3. **WorkspaceConfig**  
+   Güvenli alan, varsayılan boyutlar, gutter vb. global ayarlar.
+
+4. **Edit Mode**  
+   Spacer’lar görünür + cetvel + sürükle-bırak + yeniden boyutlandırma.
+
+5. **Backup / Restore**  
+   Tüm workspace durumunu JSON olarak dışa/içe aktarma.
+
+---
+
+### 2. Boyutlandırma ve Güvenli Alan (Netleşmiş)
+
+**Önerilen Varsayılanlar:**
+
+- Güvenli alan: Sol %3, Sağ %3, Üst %3, Alt %3 (Optimum)
+- Kullanıcı her birini ayrı ayrı değiştirebilir (0% – 15% arası makul)
+- Güvenli alan **içinde** varsayılan gutter (kutucuklar arası boşluk): %1
+- Varsayılan kutu boyutu: Genişlik %10, Yükseklik %10
+
+İçeride her şey 0.0–1.0 arasında tutulur.  
+Ekran boyutu değişince (farklı TV, telefon, 4K vs) otomatik olarak orantılı kalır.
+
+Edit modunda cetvel hem **yüzde** hem **piksel** göstersin (çok kullanışlı olur).
+
+---
+
+### 3. Yedekleme (Backup / Restore) – Tam Liste
+
+Senin yazdıkların + eksikler:
+
+**Mutlaka yedeklenmesi gerekenler:**
+
+1. **Güvenli Alan (Safe Area)**
+   - Left %
+   - Right %
+   - Top %
+   - Bottom %
+
+2. **Gutter / Varsayılan Boşluk**
+   - Default gap (yüzde)
+
+3. **Varsayılan Tile Boyutu**
+   - Default width %
+   - Default height %
+
+4. **Tile Listesi (en kritik kısım)**
+   - Her tile için:
+     - id
+     - type (APP, CLOCK, DATE, SPACER, LAUNCHER_SETTINGS, EDIT_MODE, SYSTEM_SETTINGS…)
+     - packageName (uygulama ise)
+     - x, y, width, height (yüzde)
+     - zIndex
+     - label (özel isim verdiyse)
+     - ekstra ayarlar (saat formatı, renk vs. ileride)
+
+5. **Uygulama Sırası / Görünürlük**
+   - Hangi uygulamaların ana ekranda olduğu
+   - Gizlenen uygulamalar (varsa)
+
+6. **Genel Ayarlar**
+   - Arka plan rengi (şimdilik siyah ama ileride değişebilir)
+   - Animasyon açık/kapalı
+   - Icon boyutu / label görünürlüğü gibi küçük tercihler
+
+7. **Versiyon bilgisi**
+   - Backup format versiyonu (ileride format değişirse uyumluluk için)
+
+**Öneri:**  
+Tek bir JSON dosyası olarak dışa aktar.  
+Hem “Dosyaya Kaydet” hem “Panoya Kopyala” hem de ileride “Bulut / QR” seçenekleri düşünülebilir.  
+Geri yüklerken “Mevcut düzenin üzerine yaz” / “Birleştir” seçenekleri sunmak iyi olur.
+
+---
+
+### 4. İsim Önerileri
+
+Temiz, kısa, akılda kalıcı ve “launcher” kelimesini zorunlu tutmayan isimler:
+
+**En çok yakışanlar:**
+- **Void** — Saf siyah + boşluk temasına çok uyuyor
+- **Null** — Minimalist ve teknik
+- **Canvas** — Her şeyi serbest yerleştirdiğin bir tuval
+- **Gridless** — Grid zorunluluğu olmadığını vurgular
+- **Aether** — Hafif ve boşluk hissi
+- **Plain** — Saf ve temiz
+- **Frame** — (tersine) çerçevesiz olduğu için ironik olabilir
+- **Orbit** — Kutucukların serbest dolaşımı
+- **Blackbox**
+- **Minimal**
+- **Pure**
+- **Zero**
+
+**Daha launcher tarzı:**
+- Void Launcher
+- Canvas Launcher
+- Plain Home
+- Null Home
+- Aether TV
+
+Kişisel favorim: **Void** veya **Canvas**.  
+İstersen “Void” üzerine gidip ikon ve tema de ona göre düşünülebilir (saf siyah + ince beyaz/gri vurgular).
+
+---
+
+### 5. Mimari Seçenekler ve Tavsiye
+
+| Konu                    | Seçenek A (Önerilen)              | Seçenek B                     | Tavsiye      |
+|-------------------------|-----------------------------------|-------------------------------|--------------|
+| UI Teknolojisi          | Saf View + Custom ViewGroup       | Jetpack Compose               | **A**        |
+| Konum/Boyut Birimi      | Yüzde (0–1 normalize)             | Saf piksel                    | **A**        |
+| Boşluk Yönetimi         | Spacer Tile                       | Sadece margin/gap hesabı      | **A**        |
+| Ayarlar & Sistem Ayarları | Tile olarak                       | Sabit menü                    | **A**        |
+| Yedekleme               | Tek JSON                          | Room + dosya                  | **A**        |
+| Focus Yönetimi          | Kendi FocusFinder’ın              | Compose focus                 | **A**        |
+
+**Neden Saf View?**  
+- En hafif
+- Android 5’ten itibaren sorunsuz
+- Hiçbir “çerçeve” yok
+- Absolute positioning + yüzde hesabı çok net kontrol sağlar
+- Edit mode + cetvel + resize handle’ları tamamen senin elinde olur
+
+---
+
+### 6. Kısa Yol Haritası Önerisi
+
+**Faz 1 – Temel İskelet**
+- WorkspaceView + Tile modeli
+- Güvenli alan + yüzde yerleştirme
+- Uygulama listesini çekme ve varsayılan %10×%10 yerleştirme
+- Saf siyah arka plan
+
+**Faz 2 – Etkileşim**
+- Edit mode
+- Sürükle-bırak + yeniden boyutlandırma
+- Spacer ekleme/silme
+- Cetvel
+
+**Faz 3 – Özel Tile’lar**
+- Saat & Tarih tile’ı
+- Launcher Ayarları tile’ı
+- Sistem Ayarları tile’ı
+- Düzenleme Moduna Geç tile’ı
+
+**Faz 4 – Kalıcılık**
+- Kaydet / Yükle
+- Yedekle / Geri Yükle (JSON)
+
+---
+
+**Şu an için netleşen kararlar:**
+- Arka plan: Saf siyah
+- Birim: Yüzde (normalize)
+- Güvenli alan: 4 yön bağımsız
+- Boşluk: Spacer tile
+- Her şey tile
+- Çerçevesiz (saf View)
+
+İstersen bir sonraki mesajda şunlardan birini detaylı yazayım:
+
+1. Tile + WorkspaceConfig + Backup JSON yapısının net kod iskeleti
+2. WorkspaceView’ın onLayout mantığı (yüzde → piksel dönüşümü)
+3. İsim + ikon + görsel dil önerisi (Void / Canvas vb.)
+
+Hangisinden gidelim?

@@ -1,0 +1,18 @@
+{
+  "appName": "Saf Ekran",
+  "packageName": "com.safekran.launcher",
+  "versionCode": 1,
+  "versionName": "1.0.0",
+  "developer": "Vezir",
+  "schemaVersion": 1,
+  "createdDate": "2026-11-19",
+  "apkName": "SafEkran_v1.0.0_vc1.apk",
+  "history": [
+    {
+      "versionCode": 1,
+      "versionName": "1.0.0",
+      "date": "2026-11-19",
+      "description": "Saf Ekran Başlatıcı ilk sürüm: Saf siyah zemin, 4 yönlü güvenli alan, Serbest Yüzde (%10x%10 esnek), SpacerTile mimarisi, TV+Telefon tüm uygulamaları listeleme, Sistem Ayarları ve Saat kutucukları, D-Pad navigasyonu ve JSON yedekleme desteği."
+    }
+  ]
+}

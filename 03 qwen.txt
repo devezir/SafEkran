@@ -1,0 +1,571 @@
+Mükemmel! Artık oldukça net bir spesifikasyon var. Tüm gereksinimleri derleyip, eksikleri tamamlayıp, isim önerileri sunarak kapsamlı bir mimari analiz yapalım.
+
+---
+
+## 1. Proje Özeti ve Netleştirilmiş Gereksinimler
+
+### Temel Özellikler
+| Özellik | Değer | Notlar |
+|---------|-------|--------|
+| **Arka Plan** | Saf Siyah (#000000) | OLED TV'ler için ideal, enerji tasarruflu |
+| **Platform** | Android 5 (API 21) - Android 17 (API 36) | Tüm TV ve telefonlar |
+| **Teknoloji** | %100 Native Kotlin | Saf, temiz, çerçevesiz |
+| **Birim Tipi** | Yüzde (%) | Varsayılan, orantısal |
+| **Düzen Tipi** | Serbest Form (Free-form) | Izgara zorunluluğu yok |
+
+### Güvenli Alan Sistemi (4 Yönlü)
+```kotlin
+data class SafeAreaSettings(
+    val top: Float = 3.0f,    // Üstten %3
+    val bottom: Float = 3.0f, // Alttan %3
+    val left: Float = 3.0f,   // Soldan %3
+    val right: Float = 3.0f   // Sağdan %3
+)
+```
+
+**Neden 4 ayrı ayar?**
+- Bazı TV'lerde alt kısımda ses çubuğu var
+- Bazı TV'lerde üst kısımda kamera/sensör var
+- Kenarlarda farklı overscan değerleri olabilir
+- Kullanıcı asimetrik düzenler yapabilir
+
+### Varsayılan Değerler
+| Parametre | Varsayılan | Açıklama |
+|-----------|------------|----------|
+| **Güvenli Alan** | %3 (4 yön) | Ekran kenarlarından içeride |
+| **Guttersize** | %1 | Kutucuklar arası minimum boşluk |
+| **Kutu Genişliği** | %10 | Varsayılan uygulama kutusu |
+| **Kutu Yüksekliği** | %10 | Varsayılan uygulama kutusu |
+
+---
+
+## 2. Guttersize Mantığı - Kritik Açıklama
+
+**Soru:** Serbest formda "kutucuklar arası boşluk" nasıl çalışacak?
+
+**Çözüm:** Guttersize iki şekilde kullanılacak:
+
+### A. İlk Açılışta (Otomatik Grid)
+Tüm uygulamalar sıralanırken aralarına otomatik %1 boşluk bırakılır:
+```
+[Kutu1] %1 [Kutu2] %1 [Kutu3]
+  ↓        ↓        ↓
+ %10     %10      %10
+```
+
+### B. Düzenleme Modunda
+Kullanıcı bir kutucuğu hareket ettirdiğinde:
+- Eğer başka bir kutucuğa %1'den daha yakın bırakırsa → Otomatik olarak itilir
+- Eğer %1'den fazla boşluk bırakırsa → O boşluk otomatik olarak `SPACER` widget'a dönüşür
+
+```kotlin
+fun handleWidgetMove(movedWidget: WidgetEntity, allWidgets: List<WidgetEntity>) {
+    allWidgets.forEach { other ->
+        val distance = calculateDistance(movedWidget, other)
+        
+        if (distance < settings.guttersize) {
+            // Çok yakın, otomatik it
+            pushAway(movedWidget, other)
+        } else if (distance > settings.guttersize * 2) {
+            // Çok uzak, araya SPACER ekle
+            insertSpacerBetween(movedWidget, other)
+        }
+    }
+}
+```
+
+---
+
+## 3. Yedekleme ve Geri Yükleme Sistemi
+
+### Yedeklenecek Veriler
+
+#### A. Temel Ayarlar
+```kotlin
+data class BackupData(
+    val version: String = "1.0",
+    val timestamp: Long = System.currentTimeMillis(),
+    val deviceInfo: DeviceInfo,
+    
+    // Ayarlar
+    val safeArea: SafeAreaSettings,
+    val guttersize: Float,
+    val defaultWidgetWidth: Float,
+    val defaultWidgetHeight: Float,
+    val unitType: UnitType,
+    
+    // Widget'lar
+    val widgets: List<WidgetEntity>,
+    
+    // Özel ayarlar (eklediklerim)
+    val theme: ThemeSettings,
+    val animationSettings: AnimationSettings,
+    val behaviorSettings: BehaviorSettings
+)
+```
+
+#### B. Ek Önerdiğim Ayarlar
+
+**1. Tema Ayarları:**
+```kotlin
+data class ThemeSettings(
+    val backgroundColor: String = "#000000",  // Saf siyah
+    val widgetBackgroundColor: String = "#1A1A1A",  // Koyu gri
+    val widgetBorderColor: String = "#333333",
+    val textColor: String = "#FFFFFF",
+    val focusHighlightColor: String = "#2196F3",  // Mavi
+    val spacerColor: String = "#33FFFFFF",  // Şeffaf beyaz
+    val iconStyle: IconStyle = IconStyle.DEFAULT  // DEFAULT, ROUNDED, SQUARE
+)
+```
+
+**2. Animasyon Ayarları:**
+```kotlin
+data class AnimationSettings(
+    val enableAnimations: Boolean = true,
+    val animationSpeed: Float = 1.0f,  // 0.5x, 1.0x, 1.5x, 2.0x
+    val focusAnimation: FocusAnimation = FocusAnimation.SCALE,  // SCALE, GLOW, BORDER
+    val moveAnimation: MoveAnimation = MoveAnimation.SMOOTH  // SMOOTH, INSTANT
+)
+```
+
+**3. Davranış Ayarları:**
+```kotlin
+data class BehaviorSettings(
+    val autoSortOnFirstRun: Boolean = true,  // İlk açılışta otomatik sırala
+    val showSpacerInEditMode: Boolean = true,  // Düzenleme modunda spacer göster
+    val enableRulersInEditMode: Boolean = true,  // Cetvelleri göster
+    val snapToGrid: Boolean = false,  // Izgaraya yapış (serbest formda opsiyonel)
+    val gridSize: Float = 5.0f,  // Izgara boyutu (%5)
+    val confirmDelete: Boolean = true,  // Silme onayı
+    val maxWidgetsPerScreen: Int = 100  // Maksimum widget sayısı
+)
+```
+
+### Yedekleme Formatı (JSON)
+
+```json
+{
+  "version": "1.0",
+  "timestamp": 1700000000000,
+  "deviceInfo": {
+    "manufacturer": "Samsung",
+    "model": "QN90A",
+    "screenWidth": 3840,
+    "screenHeight": 2160
+  },
+  "safeArea": {
+    "top": 3.0,
+    "bottom": 3.0,
+    "left": 3.0,
+    "right": 3.0
+  },
+  "guttersize": 1.0,
+  "defaultWidgetWidth": 10.0,
+  "defaultWidgetHeight": 10.0,
+  "unitType": "PERCENT",
+  "theme": {
+    "backgroundColor": "#000000",
+    "widgetBackgroundColor": "#1A1A1A",
+    "textColor": "#FFFFFF"
+  },
+  "widgets": [
+    {
+      "id": "uuid-1",
+      "type": "CLOCK",
+      "xValue": 5.0,
+      "yValue": 5.0,
+      "widthValue": 15.0,
+      "heightValue": 5.0,
+      "unitType": "PERCENT",
+      "zIndex": 0
+    },
+    {
+      "id": "uuid-2",
+      "type": "APP",
+      "packageName": "com.netflix.ninja",
+      "xValue": 5.0,
+      "yValue": 15.0,
+      "widthValue": 10.0,
+      "heightValue": 10.0,
+      "unitType": "PERCENT",
+      "zIndex": 1
+    }
+  ]
+}
+```
+
+### Yedekleme Mekanizmaları
+
+**1. Harici Depolama (SD Card / USB):**
+```kotlin
+fun exportBackup(context: Context): File {
+    val backupData = gatherAllData()
+    val json = Gson().toJson(backupData)
+    
+    val file = File(
+        Environment.getExternalStorageDirectory(),
+        "LauncherBackup_${System.currentTimeMillis()}.json"
+    )
+    file.writeText(json)
+    return file
+}
+
+fun importBackup(context: Context, file: File) {
+    val json = file.readText()
+    val backupData = Gson().fromJson(json, BackupData::class.java)
+    restoreData(backupData)
+}
+```
+
+**2. Paylaşım (Share Intent):**
+```kotlin
+fun shareBackup(context: Context, file: File) {
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = "application/json"
+        putExtra(Intent.EXTRA_STREAM, FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            file
+        ))
+    }
+    context.startActivity(Intent.createChooser(intent, "Yedeği Paylaş"))
+}
+```
+
+**3. Bulut Yedekleme (Opsiyonel - Google Drive):**
+```kotlin
+// Google Drive API ile
+fun backupToCloud(context: Context) {
+    val backupData = gatherAllData()
+    val json = Gson().toJson(backupData)
+    
+    // Google Drive'a yükle
+    driveService.createFile("LauncherBackup.json", json)
+}
+```
+
+---
+
+## 4. İsim Önerileri
+
+### A. Temel Konsept Odaklı İsimler
+
+| İsim | Anlam | Avantaj |
+|------|-------|---------|
+| **Canvas Launcher** | Tuval başlatıcı | Serbest formu vurgular |
+| **FreeForm Launcher** | Serbest form | Net ve açıklayıcı |
+| **OpenCanvas** | Açık tuval | Özgürlük hissi |
+| **Gridless** | Izgarasız | Farklılığını vurgular |
+| **Absolute Launcher** | Mutlak başlatıcı | Tam kontrol hissi |
+
+### B. Görsel Tasarım Odaklı İsimler
+
+| İsim | Anlam | Avantaj |
+|------|-------|---------|
+| **Noir Launcher** | Siyah (Fransızca) | Şık ve minimal |
+| **Void Launcher** | Boşluk | Saf siyah arka plan |
+| **Obsidian** | Obsidyen (siyah taş) | Premium his |
+| **Eclipse Launcher** | Tutulma | Dramatik ve güçlü |
+| **Shadow Launcher** | Gölge | Minimal ve temiz |
+
+### C. Türkçe İsimler
+
+| İsim | Anlam | Avantaj |
+|------|-------|---------|
+| **Tuval** | Canvas | Türkçe ve anlamlı |
+| **Serbest** | Free | Basit ve net |
+| **Karanlık** | Dark | Arka plana gönderme |
+| **Boşluk** | Space/Gap | Spacer mantığına gönderme |
+| **Çerçevesiz** | Frameless | Minimal tasarım |
+
+### D. Benim Önerilerim
+
+**1. "Canvas Launcher"** ⭐⭐⭐⭐⭐
+- Uluslararası geçerli
+- Serbest form konseptini mükemmel yansıtıyor
+- Akılda kalıcı
+- Play Store'da benzer isim az
+
+**2. "Noir Launcher"** ⭐⭐⭐⭐
+- Şık ve premium his
+- Saf siyah arka plana gönderme
+- Fransızca olduğu için egzotik
+- Kısa ve akılda kalıcı
+
+**3. "Tuval"** ⭐⭐⭐⭐
+- Türkçe ve özgün
+- Anlamlı (serbest form tuvali)
+- Yerel pazarda farklı
+- Uluslararası pazar için "Canvas" olarak da kullanılabilir
+
+**4. "Absolute Launcher"** ⭐⭐⭐
+- Tam kontrol hissi veriyor
+- Profesyonel tınlıyor
+- Biraz uzun ama güçlü
+
+---
+
+## 5. Güncellenmiş Mimari
+
+### A. Veri Katmanı (Data Layer)
+
+```kotlin
+// Room Database Entities
+@Entity(tableName = "widgets")
+data class WidgetEntity(
+    @PrimaryKey val id: String,
+    val type: WidgetType,
+    val packageName: String?,
+    val xValue: Float,
+    val yValue: Float,
+    val widthValue: Float,
+    val heightValue: Float,
+    val unitType: UnitType,
+    val zIndex: Int,
+    val customIcon: String?,
+    val label: String?
+)
+
+@Entity(tableName = "settings")
+data class SettingsEntity(
+    @PrimaryKey val id: String = "main",
+    val safeAreaTop: Float,
+    val safeAreaBottom: Float,
+    val safeAreaLeft: Float,
+    val safeAreaRight: Float,
+    val guttersize: Float,
+    val defaultWidgetWidth: Float,
+    val defaultWidgetHeight: Float,
+    val unitType: UnitType,
+    val backgroundColor: String,
+    val enableAnimations: Boolean,
+    val animationSpeed: Float
+)
+
+enum class WidgetType {
+    APP, SPACER, CLOCK, DATE,
+    LAUNCHER_SETTINGS, EDIT_MODE_TOGGLE, SYSTEM_SETTINGS, SHORTCUT
+}
+
+enum class UnitType {
+    PERCENT, DP
+}
+```
+
+### B. Render Motoru
+
+```kotlin
+class LauncherCanvasView(context: Context) : ViewGroup(context) {
+    
+    override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+        val screenWidth = r - l
+        val screenHeight = b - t
+        
+        // 4 yönlü güvenli alan
+        val paddingTop = (settings.safeAreaTop / 100f * screenHeight).toInt()
+        val paddingBottom = (settings.safeAreaBottom / 100f * screenHeight).toInt()
+        val paddingLeft = (settings.safeAreaLeft / 100f * screenWidth).toInt()
+        val paddingRight = (settings.safeAreaRight / 100f * screenWidth).toInt()
+        
+        // Her widget'ı yerleştir
+        widgets.forEach { widget ->
+            val bounds = calculateWidgetBounds(widget, screenWidth, screenHeight)
+            val view = findViewByWidgetId(widget.id)
+            
+            view.layout(
+                bounds.left + paddingLeft,
+                bounds.top + paddingTop,
+                bounds.right + paddingLeft,
+                bounds.bottom + paddingTop
+            )
+            
+            // Spacer'ları düzenleme modunda göster/gizle
+            if (widget.type == WidgetType.SPACER) {
+                view.visibility = if (isEditMode) View.VISIBLE else View.GONE
+            }
+        }
+    }
+    
+    override fun dispatchDraw(canvas: Canvas) {
+        // Saf siyah arka plan
+        canvas.drawColor(Color.BLACK)
+        
+        super.dispatchDraw(canvas)
+        
+        if (isEditMode) {
+            drawRulers(canvas)
+            drawSafeAreaBounds(canvas)
+        }
+    }
+}
+```
+
+### C. İlk Açılış Mantığı
+
+```kotlin
+class FirstRunSetup {
+    fun setupDefaultLayout(context: Context, apps: List<AppInfo>) {
+        val settings = SettingsEntity(
+            safeAreaTop = 3.0f,
+            safeAreaBottom = 3.0f,
+            safeAreaLeft = 3.0f,
+            safeAreaRight = 3.0f,
+            guttersize = 1.0f,
+            defaultWidgetWidth = 10.0f,
+            defaultWidgetHeight = 10.0f,
+            unitType = UnitType.PERCENT,
+            backgroundColor = "#000000",
+            enableAnimations = true,
+            animationSpeed = 1.0f
+        )
+        
+        // Saat widget'ı (sol üst)
+        val clockWidget = WidgetEntity(
+            id = UUID.randomUUID().toString(),
+            type = WidgetType.CLOCK,
+            xValue = 5.0f,
+            yValue = 5.0f,
+            widthValue = 15.0f,
+            heightValue = 5.0f,
+            unitType = UnitType.PERCENT,
+            zIndex = 0
+        )
+        
+        // Uygulamaları grid şeklinde yerleştir (guttersize ile)
+        var currentX = 5.0f
+        var currentY = 15.0f
+        var columnCount = 0
+        val maxColumns = 8  // 8 kutu yan yana
+        
+        apps.forEach { app ->
+            val widget = WidgetEntity(
+                id = UUID.randomUUID().toString(),
+                type = WidgetType.APP,
+                packageName = app.packageName,
+                xValue = currentX,
+                yValue = currentY,
+                widthValue = settings.defaultWidgetWidth,
+                heightValue = settings.defaultWidgetHeight,
+                unitType = settings.unitType,
+                zIndex = 1
+            )
+            
+            // Sonraki pozisyon (guttersize ile)
+            currentX += settings.defaultWidgetWidth + settings.guttersize
+            columnCount++
+            
+            if (columnCount >= maxColumns) {
+                currentX = 5.0f
+                currentY += settings.defaultWidgetHeight + settings.guttersize
+                columnCount = 0
+            }
+        }
+        
+        // "Düzenleme Modu" butonu (sağ üst)
+        val editModeWidget = WidgetEntity(
+            id = UUID.randomUUID().toString(),
+            type = WidgetType.EDIT_MODE_TOGGLE,
+            xValue = 85.0f,
+            yValue = 5.0f,
+            widthValue = 10.0f,
+            heightValue = 5.0f,
+            unitType = UnitType.PERCENT,
+            zIndex = 10
+        )
+        
+        // "Başlatıcı Ayarları" butonu
+        val settingsWidget = WidgetEntity(
+            id = UUID.randomUUID().toString(),
+            type = WidgetType.LAUNCHER_SETTINGS,
+            xValue = 73.0f,
+            yValue = 5.0f,
+            widthValue = 10.0f,
+            heightValue = 5.0f,
+            unitType = UnitType.PERCENT,
+            zIndex = 10
+        )
+        
+        // Veritabanına kaydet
+        saveToDatabase(settings, clockWidget, editModeWidget, settingsWidget, ...)
+    }
+}
+```
+
+---
+
+## 6. Düzenleme Modu ve Cetveller
+
+```kotlin
+class EditModeOverlay(context: Context) : View(context) {
+    
+    override fun onDraw(canvas: Canvas) {
+        val screenWidth = width.toFloat()
+        val screenHeight = height.toFloat()
+        
+        // Üst cetvel
+        for (i in 0..100 step 5) {
+            val x = (i / 100f * screenWidth)
+            canvas.drawLine(x, 0f, x, 20f, tickPaint)
+            canvas.drawText("$i%", x, 40f, textPaint)
+        }
+        
+        // Sol cetvel
+        for (i in 0..100 step 5) {
+            val y = (i / 100f * screenHeight)
+            canvas.drawLine(0f, y, 20f, y, tickPaint)
+            canvas.drawText("$i%", 30f, y, textPaint)
+        }
+        
+        // Güvenli alan sınırları (kesikli kırmızı çizgi)
+        val safeAreaLeft = (settings.safeAreaLeft / 100f * screenWidth)
+        val safeAreaRight = screenWidth - (settings.safeAreaRight / 100f * screenWidth)
+        val safeAreaTop = (settings.safeAreaTop / 100f * screenHeight)
+        val safeAreaBottom = screenHeight - (settings.safeAreaBottom / 100f * screenHeight)
+        
+        canvas.drawRect(
+            safeAreaLeft, safeAreaTop,
+            safeAreaRight, safeAreaBottom,
+            dashedPaint
+        )
+        
+        // Spacer'ları göster
+        widgets.filter { it.type == WidgetType.SPACER }.forEach { spacer ->
+            val bounds = calculateWidgetBounds(spacer)
+            canvas.drawRect(bounds, spacerPaint)
+            canvas.drawText("SPACER", bounds.centerX(), bounds.centerY(), textPaint)
+        }
+    }
+}
+```
+
+---
+
+## 7. Özet ve Son Tavsiyeler
+
+### ✅ Yapılması Gerekenler:
+1. **Saf siyah arka plan** (#000000) - OLED için ideal
+2. **4 yönlü güvenli alan** - Esneklik için şart
+3. **Guttersize %1** - İlk düzen ve otomatik boşluk yönetimi
+4. **Yedekleme sistemi** - JSON formatında, harici depolama + paylaşım
+5. **Tema/animasyon/davranış ayarları** - Eksiksiz özelleştirme
+6. **Cetveller** - Düzenleme modunda yüzde gösterimi
+
+### 🎯 İsim Önerim:
+**"Canvas Launcher"** - En güçlü, uluslararası ve anlamlı
+
+### 📦 Yedekleme İçin Eklenmesi Gerekenler:
+1. Tema ayarları (renkler, ikon stilleri)
+2. Animasyon ayarları (hız, stil)
+3. Davranış ayarları (otomatik sıralama, onay diyaloğu)
+4. Cihaz bilgisi (uyumluluk kontrolü için)
+5. Versiyon bilgisi (gelecek güncellemeler için)
+
+### 🚀 Geliştirme Öncelikleri:
+1. **Faz 1:** Temel tuval + güvenli alan + widget render (1-2 hafta)
+2. **Faz 2:** Düzenleme modu + cetveller + spacer mantığı (2-3 hafta)
+3. **Faz 3:** Yedekleme/geri yükleme sistemi (1 hafta)
+4. **Faz 4:** TV uyumluluğu + D-Pad odak yönetimi (1-2 hafta)
+5. **Faz 5:** Tema/animasyon ayarları (1 hafta)
+
+Bu mimari ile hem profesyonel hem de kullanıcı dostu bir başlatıcı oluşturabilirsiniz. **"Canvas Launcher"** ismiyle Play Store'da yayınlayabilirsiniz!

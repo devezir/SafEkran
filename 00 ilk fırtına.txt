@@ -1,0 +1,71 @@
+TV de ve telefonda çalışacak başlatıcı projesi 
+
+Öncelikle arka plan saf siyah 
+aydınlık ve karanlık mod kutucuğuda olsun ama sıfırdan çok iyi yazılsın. hatta bu konuda referans varsa ordan kopya
+
+Ekranın köşelerinden yüzdelik birim ile içeri doğru güvenli alan ayırmak güvenli ayar belirlemek Bu da ayarlardan seçilebilecek varsayılan olarak Optimum bir şey olacak kullanıcı ayarlara girip sınırları zorlayacak ya da daha da çok boşluk bırakacak 
+Hatta üstten soldan sağdan alttan farklı boşluk bırakabilecek varsayılan hepsi eşit ama.
+
+Güvenli alan içinde de önce kutucuklar arası boşluklar mesela standart %1
+
+ Uygulama kutuları sıralanacak varsayılan olarak
+ varsayılan kutu genişliği %10 
+varsayılan kutu yüksekliği %10
+mesela
+Seçenek B (Serbest Yüzde): Sizin yazdığınız gibi ekrana göre %10x%10 esner (TV'de dikdörtgen olur).
+
+
+
+
+
+Başlatıcı ilk açıldığında tüm uygulamalar ana ekranda varsayılan boyutta sıralansin kullanı isterse sıralamayı değiştirebilir 
+
+
+Mesela düzenleme modunda güvenli alan kaç piksel diye dikeyde ve yatayda da bir cetvel çıksın mı acaba
+
+Her uygulama kutucuğu özel boyutta ayarlanabilir 
+
+Her kutucuk yanyana olmak zorunda değildir araya boşluk bırakılabilir 
+.
+
+Kutucuklar arası boşlukları da yine kutucuk olarak tasarlayacağız ama normalde gözükmeyecek düzenleme aşamasında boşluk olarak gözükecek düzenleme bittiği zaman orada hiçbir şey gözükmeyecek yine aslında o da bir kutucuk olacak yani 
+
+Telefonda çalışmasını istememin nedeni şu hani bazı uygulamalar yani bazı başlatıcılar telefon uygulamalarına göstermiyor sadece TV uygulamalarını gösteriyor falan bir şeyler var ya hepsini göstersin bir ayrım yapmasın bir de telefonda kullanmayı düşünmüyorum sadece telefonda da test edebileyim 
+
+Bir de mümkün olabildiğince tüm televizyonlarda kullanıyorum sanırım Android 5'ten Android 17'ye kadar desteklese yeter 
+
+Bir de saf ve temiz olsun istiyorum mümkünse çerçeve kullanmak istemiyorum ama mecbursa kullanırız 
+
+
+bir de hangi kutucuk üzerinde olduğumuzu gösteren kutucuk var ya,, o kutucuk üstündeki kutucuğu mesela içine alacak ya.. o kutucuk büyüyecek yani.. o kutucuğun genişleme değeri de varsayılan % 1 olsun mesela kutucuk %10 ise dış kutucuk da %11 gibi yani buy da varsfayılan olsun bu da ayarlanabilsin.
+
+
+Başlatıcı ayarları, düzenli moduna geç, gibi kutucuklarda olacak yine bu kutucukları kullanıcı istediği gibi düzenleyebilecek 
+Android sistem ayarları, gibi kutucuklu olacak çünkü bazı TV'ler sistem ayarlarına gizliyorlar
+
+En üstte tarih vs saat yok
+
+Tarih ve saat ye kutucuk şeklindedir. Boyut ve sıralaması bizim elimizdedir yani
+
+Ayarları yedekle geri yükle
+Yedeklenecke ayarları kendimce sıralıyom ama eksikse sen de ekle ve bana anlat
+Güvenli alan kırpması soldan sağdan üstten alttan
+Guttersize
+Uygulama sırası 
+Başka
+
+
+tv kumdanası tabii ki çok önemli, kumanda boşluklara doğpru gitmez. mesela
+
+bir de kırmızı buton kutucuğu da olsun. ona basarak bişeler yapabilelim. hem de kumandadaki kırmızı ile eşlensin. ayn ı şekil diğer 3 renk
+
+
+Proje ismi "Saf Ekran"
+Böyle bişe yaptık mecburen çok dilli olacak ama, merkez dil=tr olacak . ing bile tr den çevrilecek
+endüstri standardından mesela afrikalı biri kendi diline nasıl çevirir? bunu da konuşalım
+
+
+Mimarimizi analiz et
+Seçenekler ve önerilerde bulun 
+
+

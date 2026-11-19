@@ -1,0 +1,201 @@
+Harika, vizyon netleşiyor. Bu iterasyonda eklediğin **saf siyah arka plan**, **kenar başına ayrı yüzdelik güvenli alan**, **%1 gutter**, **%10×%10 varsayılan kutu** ve **yedekle/geri yükle** gereksinimleri, mimariyi hem basitleştiriyor hem de birkaç kritik kararı netleştiriyor. Aşağıda güncel analiz, eksik gördüğüm yedekleme kalemleri ve isim önerileri var.
+
+---
+
+### 🏗️ Mimari Analiz (Güncel)
+
+#### 1. Saf Siyah Arka Plan — Sadece estetik değil, stratejik
+Siyah arka plan üç şeyi aynı anda çözüyor:
+- **OLED yanma/tüketim:** TV'lerde ve modern telefonlarda siyah pikseller kapalıdır → daha az güç, daha az yanma riski.
+- **Overscan gizleme:** TV'lerin kenarlarını kırpan overscan sorununu, siyah zeminde görsel olarak "yok" gibi gösterir.
+- **Kutucuk özgürlüğü:** Renkli/gradient zeminler serbest yerleşimde görsel kaos yaratır; siyah, kutucukları öne çıkarır.
+
+> Öneri: Arka planı **sabit siyah (#000000)** yap ama yedekleme dosyasında `background` alanını **ileride renk değiştirme açık kapı olarak** sakla. Bugün tek seçenek siyah olsun, yarın istersen "siyah + hafif desen" gibi seçenekler eklenebilir.
+
+#### 2. Yüzdelik Güvenli Alan — Kenar Başına Ayrı, Varsayılan Eşit
+Bu doğru karar. Model şöyle olmalı:
+
+```
+safeInsetTop    : float (0..1)  // varsayılan 0.03
+safeInsetBottom : float (0..1)  // varsayılan 0.03
+safeInsetLeft   : float (0..1)  // varsayılan 0.03
+safeInsetRight  : float (0..1)  // varsayılan 0.03
+```
+
+- **Neden yüzde?** Farklı TV'lerde (720p, 1080p, 4K) aynı oranı korur; kullanıcı "kenardan %5 boşluk" dediğinde bu her cihazda aynı *göreli* sonucu verir.
+- **Neden kenar başına ayrı?** TV'lerde overscan çoğu zaman simetrik değildir (özellikle alt kenar). Kullanıcıya bu esnekliği ver.
+- **Varsayılan 3 mü, 5 mi?** Android TV kılavuzu yatayda %5, dikeyde %5 önerir; ancak senin "optimum" fikrin için **%3 başlangıç** makul (çoğu modern TV'de overscan yok veya çok az). Kullanıcı "sınırları zorlayabilir" (0'a kadar) veya "daha çok boşluk" isteyebilir (%10'a kadar).
+
+#### 3. İç Yerleşim: Gutter ve Varsayılan Kutu Boyutları
+```
+gutterPercent      : float  // varsayılan 0.01  → SpacerTile genişliği
+defaultTileWidth   : float  // varsayılan 0.10
+defaultTileHeight  : float  // varsayılan 0.10
+```
+
+⚠️ **Kritik uyarı — en-boy oranı:** %10 genişlik + %10 yükseklik, 16:9 TV'de **kare** görünür; 20:9 telefonda **dikey dikdörtgen** görünür. Bu senin istediğin şey mi, yoksa "her zaman kare kutu" mu? İki seçenek:
+
+- **A) Bağımsız genişlik/yükseklik** (senin tarifin): Kullanıcı isterse kare, isterse dikdörtgen yapar. Varsayılan %10×%10 olsun. Daha özgür ama ilk açılışta cihaza göre şekil değişir.
+- **B) Oran korumalı varsayılan:** Varsayılan olarak `width = %10`, `height = width * (ekranGenişliği/ekranYüksekliği)`. Yani her zaman kare. Kullanıcı yine de tek tek bozabilir.
+
+> **Önerim: B'yi varsayılan yap, A'yı "Gelişmiş" olarak sun.** İlk izlenim önemli; kullanıcı ilk açılışta kare kutucuklar görsün, sonra isterse tek tek genişletip daraltsın.
+
+#### 4. Yüzde → Piksel Dönüşümü (Tek Doğruluk Kaynağı)
+Tüm yüzdeleri **tek bir yerde** piksele çevir:
+
+```kotlin
+fun percentToPx(percent: Float, dimensionPx: Int): Int =
+    (percent * dimensionPx).roundToInt()
+
+// Güvenli alan:
+left   = percentToPx(safeInsetLeft,   width)
+right  = width - percentToPx(safeInsetRight, width)
+top    = percentToPx(safeInsetTop,    height)
+bottom = height - percentToPx(safeInsetBottom, height)
+
+// Kutucuklar bu dikdörtgen içinde konumlanır
+```
+
+Bu, cetvelin, sürükle-bırağın ve yedeklemenin tutarlı olmasını sağlar.
+
+#### 5. SpacerTile = Boşluk = Kutucuk (Fikrin doğru, bir adım ileri)
+Boşlukları da `SpacerTile` olarak modellemek, mimariyi sadeleştiriyor. Ancak bir incelik var:
+
+- **"Gutter" (otomatik boşluk) ile "SpacerTile" (elle konan boşluk) aynı şey değil.**
+- **Gutter:** Yerleşim motorunun kutu aralarına otomatik eklediği boşluktur (%1). Kullanıcı bunu global ayardan değiştirir.
+- **SpacerTile:** Kullanıcının "şuraya 2 kutu genişliğinde boşluk koy" dediği, elle yerleştirilen görünmez kutudur.
+
+> Öneri: İkisini de `SpacerTile` olarak temsil et ama bir `isAutoGutter` bayrağıyla ayır. Düzenleme modunda auto-gutter'lar **açık gri kesikli çerçeve**, elle konanlar **daha koyu/taralı** görünsün. Bu, kullanıcının "bu boşluk otomatik mi, ben mi koydum?" ayrımını netleştirir.
+
+#### 6. Düzenleme Modu Cetveli
+Fikrin çok iyi. Şunu öneririm:
+
+- Cetvel sadece güvenli alan sınırlarını değil, **içerideki yerleşim ızgarasını** da göstersin (örn. %1'lik ince çizgiler, %10'luk kalın çizgiler).
+- Kullanıcı bir kutucuğu sürüklerken **canlı koordinat balonu** ("x: %23.4, y: %41.2") göstersin — hem yüzde hem piksel olarak.
+- Cetvel **aç/kapat** edilebilir olsun (ayarlarda).
+
+#### 7. D-pad Odağı (TV için kritik — tekrar hatırlatma)
+Serbest yerleşimde Android'in varsayılan `focusSearch`'ü yetersiz kalır. `ViewGroup.focusSearch()`'ü override edip **yön bazlı en yakın komşu** algoritması yazmalısın. Aksi hâlde TV'de kullanıcı yön tuşuna bastığında odak rastgele zıplar.
+
+#### 8. Uygulama Listeleme
+`PackageManager.MATCH_ALL` + Android 11+ için `<queries>` veya `QUERY_ALL_PACKAGES` izni. Telefon/TV ayrımı yapma — tüm launcher-aktiviteleri listelensin.
+
+#### 9. API 21 → 35+ Uyumluluk
+- `WindowInsetsCompat` kullan (API 21'de çalışır).
+- Saf View sistemi (Compose değil) — senin "çerçeve istemiyorum" tercihinle zaten uyumlu.
+- Sadece `androidx.core` ve `androidx.appcompat` gibi minimum bağımlılıklar. `PagedDragDropGrid` gibi projeler API 8'den beri çalışıyor → API 21'de sürükle-bırak sorunsuz.
+
+---
+
+### 💾 Yedekle/geri yükle — Eksik Kalemler ve Tam Liste
+
+Senin listelediğin ("Güvenli alan kırpması, guttersize, uygulama sırası, başka") iyi bir başlangıç ama **serbest yerleşimde "uygulama sırası" yetersiz** — çünkü her kutucuğun **konumu ve boyutu** da var. Eksik kalemleri ekleyerek tam liste:
+
+#### A. Yerleşim (Layout) — en kritik
+1. `safeInsetTop / Bottom / Left / Right` (yüzde)
+2. `gutterPercent`
+3. `defaultTileWidth / Height` (yüzde)
+4. **Her kutucuk için ayrı kayıt** (bunu "uygulama sırası" yerine koy):
+   - `packageName` (veya `tileId` — Spacer/DateTime/Settings için)
+   - `tileType` (APP / SPACER / DATETIME / SETTINGS / SYSTEM_SETTINGS)
+   - `xPercent, yPercent, widthPercent, heightPercent`
+   - `isAutoGutter` (SpacerTile için)
+5. **Kutucuk z-sırası** (üst üste binme olursa)
+
+#### B. Görünüm
+6. `backgroundColor` (bugün #000000 sabit, ileri için sakla)
+7. `iconScale` (kutucuk içinde ikonun oranı, örn. 0.6)
+8. `showLabels` (uygulama adı görünsün mü)
+9. `labelFontSize` (sp veya yüzde)
+10. `labelColor`
+
+#### C. Davranış
+11. `snapToGrid` (aç/kapat) + `gridSizePercent`
+12. `showRulerInEditMode`
+13. `longPressAction` (düzenleme moduna geç / uygulama bilgisi)
+14. `doubleTapAction`
+15. `dpadFocusMode` (auto / custom)
+
+#### D. Tarih/Saat Kutucuğu
+16. `dateTimeFormat` (örn. "HH:mm", "dd MMMM yyyy EEEE")
+17. `dateTimeLocale`
+18. **DateTime tile'ın kendi konum/boyutu** (A.4'te zaten tile olarak kayıtlı)
+
+#### E. Uygulama Filtresi
+19. `excludedPackages` (kullanıcı bazı uygulamaları gizlediyse)
+20. `showHiddenApps`
+
+#### F. Genel
+21. `schemaVersion` (ileride format değişirse geriye uyumluluk için şart)
+22. `launcherVersion` (yedek alınan sürüm)
+23. `exportDate` (ISO 8601)
+24. `deviceProfile` (opsiyonel: "TV 1080p" / "Phone" — geri yüklerken oran uyarısı için)
+
+> **Format önerisi:** JSON (insan okunabilir, `org.json` Android'de hazır, ek kütüphane gerekmez). Dosya adı: `launcher-backup-YYYYMMDD-HHmm.json`.
+>
+> **Dosya konumu:** Kullanıcı isterse `Downloads` klasörüne, isterse SAF (Storage Access Framework) ile seçtiği yere. Android 10+ için SAF şart.
+
+> **Geri yükleme uyarısı:** Yedek başka bir cihazdan geliyorsa ve `deviceProfile` farklıysa ("TV'den telefona"), "oranlar korunacak ama kutucuklar farklı görünebilir" uyarısı göster. Yüzde sistemi bunu büyük ölçüde çözer ama kullanıcıyı bilgilendirmek iyi olur.
+
+---
+
+### 🏷️ İsim Önerileri
+
+İsim, projenin karakterini yansıtmalı: **siyah zemin + özgür kutucuklar + sade**. Kategorilere ayırdım:
+
+#### Türkçe, kısa ve akılda kalıcı (benim favorilerim)
+| İsim | Neden |
+|------|-------|
+| **Tuval** | "Boş tuval, canının istediği gibi yerleştir" — özgürlüğü ve siyah zeminin boşluğunu anlatır. Kısa, telaffuzu kolay, Türkçe. |
+| **Kara Tahta** | Siyah arka planla birebir uyumlu; tebeşirle istediğin yere yazma hissi. Biraz uzun ama çok akılda kalıcı. |
+| **Pano** | Kısa, "her şeyi tutan yüzey" anlamı. Sade. |
+| **Izgara** | Grid fikrini çağırır ama serbest yerleşimle ironik/şık. |
+| **Mozaik** | Kutucukların birleşimi, serbest parçalar. Görsel olarak da uygun. |
+| **Vitrin** | Uygulamalarını istediğin gibi sergile. |
+| **Serbest** | Doğrudan vizyonu anlatır; logoda "Serbest" yazısı güzel durur. |
+
+#### Hibrit / teknik
+| İsim | Neden |
+|------|-------|
+| **Kubik** | Kutu + modern. Kısa, marka olabilir. |
+| **Blok** | Basit, güçlü. |
+| **TileBlack / BlackTile** | Siyah zemin + tile. Biraz jenerik. |
+| **FreeGrid** | Özgür grid. Anlaşılır ama İngilizce. |
+
+#### Konsept / atmosferik
+| İsim | Neden |
+|------|-------|
+| **Zemin** | Siyah zemin + "temel" anlamı. |
+| **Kanvas** | Tuval'in İngilizcesi, ama Tuval daha öz Türkçe. |
+| **Sahne** | Uygulamalar sahneye çıkıyor. |
+| **Perde** | Siyah perde. Biraz tiyatro. |
+| **Zifir** | "Zifiri karanlık" — siyah arka plana çok uygun, akılda kalıcı, tek kelime. |
+
+#### Benim top 3'üm
+1. **Tuval** — özgürlük + sadelik + siyah boşluk. Paket adı: `com.seninadın.tuval`
+2. **Kara Tahta** — siyah zemin + yaratıcılık. Paket: `com.seninadın.karatahta`
+3. **Mozaik** — kutucuk felsefesi + görsel çağrışım. Paket: `com.seninadın.mozaik`
+
+> İstersen isim + slogan kombinasyonu: **"Tuval — Ekranın senin."** / **"Mozaik — Her kutucuk bir parça."**
+
+---
+
+### 💡 Ek Öneriler (küçük ama etkili)
+
+1. **İlk açılışta otomatik yerleşim:** Tüm uygulamaları `defaultTileWidth/Height` + `gutterPercent` ile **satır satır** diz. Sığmayanları bir sonraki satıra geçir. Kullanıcı düzenleme modunda istediği gibi dağıtır. Bu "boş ekran şoku"nu engeller.
+
+2. **"Sıfırla" ve "Varsayılana dön" ayrı olsun:** Sıfırla = boş ekran (sadece düzenleme kutucukları), Varsayılana dön = otomatik grid.
+
+3. **Uzun basma = düzenleme moduna geç** varsayılan olsun (telefonda çok doğal). TV'de ise bir "Düzenle" kutucuğu şart (senin dediğin gibi).
+
+4. **Sistem Ayarları kutucuğu:** Önce `Settings.ACTION_SETTINGS` dene, başarısız olursa bilinen TV üreticisi activity'lerini sırayla dene (`com.android.tv.settings.MainSettings`, `com.google.android.tvlauncher.settings`, vs.). Son çare: kullanıcıya "Ayarlar açılamadı, ADB ile şu komutu dene" bilgisi göster.
+
+5. **Cetvel ve koordinat balonu sadece düzenleme modunda** görünsün; normal kullanımda hiçbir UI kirliliği olmasın.
+
+6. **Yedek dosyasına "okunabilir özet" ekle:** JSON'un başına yorum olarak "12 uygulama, 4 boşluk, 3 ayar kutucuğu, güvenli alan %3" gibi — ileride kullanıcı hangi yedeğin ne olduğunu anlasın.
+
+7. **Sürüm geçişi:** `schemaVersion` alanını **ilk günden** koy. Format değişince eski yedekleri migrate edebilirsin.
+
+---
+
+İstersen bir sonraki adımda **`Tile` veri modelini (JSON şeması)** veya **`TileCanvasViewGroup`'un `onMeasure`/`onLayout` iskeletini** birlikte yazabiliriz. Hangi ismi seçtiğini söylersen, paket adı ve marka yönünü de netleştirebiliriz.

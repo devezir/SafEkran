@@ -1,0 +1,135 @@
+Harika ve çok net hedefleri olan bir proje! Hem TV'lerde (Android TV / Google TV / Android box'lar) hem de telefonlarda çalışan, saf siyah (OLED dostu), gereksiz hiçbir süsü olmayan, ultra özelleştirilebilir bir **Minimalist Grid Başlatıcı (Launcher)** kurguluyorsunuz.
+
+Bu projeyi teknik, kullanıcı deneyimi (UX) ve mimari açıdan baştan sona masaya yatıralım:
+
+---
+
+### 1. Mimari Analiz ve Teknoloji Seçimi
+
+#### A. Çerçeve (Framework) Seçimi: Native Kotlin (View Tabanlı) vs Compose
+*   **Android 5.0 (API 21) - Android 17:** Bu çok geniş bir aralık. Android 5.0 ve eski TV Box'lar (1 GB RAM, eski Mali GPU'lar) göz önüne alındığında, **Jetpack Compose yerine Klasik Android View (Kotlin + Custom ViewGroup / Canvas)** kullanmak en mantıklısıdır.
+    *   *Neden?* Compose API 21'de çalışsa da düşük donanımlı Android TV'lerde ilk açılış (cold start) ve bellek tüketimi yüksek olabilir. Saf Android View hiyerarşisi ise 1 GB RAM'li cihazlarda bile yağ gibi akar, anında açılır.
+    *   Eğer sıfırdan "çerçevesiz, saf ve temiz" istiyorsak: Minimal bağımlılık (zero heavy dependencies), saf Kotlin ve AndroidX Core kütüphaneleri ile tüy kadar hafif bir APK (~2-3 MB) elde edebiliriz.
+
+#### B. TV Kumandası (D-Pad) Odak Navigasyonu (En Kritik Konu!)
+*   Dokunmatik ekranda herhangi bir yere basılabilir; fakat TV'de **Yukarı, Aşağı, Sol, Sağ ve OK (Center)** tuşları vardır.
+*   Kutuların arasına boşluk bırakılabildiği, farklı boyutlarda kutucukların olduğu bir ızgarada standart Android odak mekanizması (`focusSearch`) bazen yönü şaşırabilir veya takılabilir.
+*   **Çözüm:** Kendi özel 2D matris odak motorumuzu (Custom Focus Navigator) yazacağız. Görünmez boşluk kutucukları normal modda `isFocusable = false` olacak, böylece kumanda boşluğun üzerinden otomatik atlayıp bir sonraki gerçek kutuya geçecek.
+
+#### C. Tüm Uygulamaları Gösterme (TV + Telefon Ayrımı Yapmadan)
+*   Standart TV başlatıcıları sadece `CATEGORY_LEANBACK_LAUNCHER` filtresine bakar, bu yüzden telefondan yüklenen (sideload) APK'lar ana ekranda görünmez.
+*   Biz `PackageManager` üzerinden iki kategoriyi de sorgulayacağız:
+    1.  `Intent.CATEGORY_LEANBACK_LAUNCHER` (TV optimize uygulamalar)
+    2.  `Intent.CATEGORY_LAUNCHER` (Standart telefon/dokunmatik uygulamalar)
+    *   Bu iki listeyi birleştirip paket adı tekrarını (duplicate) temizlediğimizde **istisnasız yüklü olan tüm uygulamalar** ana ekranda listelenir.
+*   *Önemli İzin (Android 11+):* Android 11 (API 30) ve sonrasında tüm uygulamaları görebilmek için manifest dosyasında `<uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"/>` bulunması şarttır.
+
+---
+
+### 2. Izgara (Grid) ve Boyutlandırma Matematiği
+
+Kullanıcı "Genişlik %10, Yükseklik %10" dediğinde teknik olarak karşımıza bir **En-Boy Oranı (Aspect Ratio)** gerçeği çıkar:
+*   TV ekranları çoğunlukla **16:9** (1920x1080 veya 3840x2160) formatındadır.
+*   Genişliğin %10'u = 192 pikseldir.
+*   Yüksekliğin %10'u = 108 pikseldir.
+*   Yani doğrudan saf yüzdelik girilirse kutucuk kare değil, **16:9 dikdörtgen** olur. Telefonda (genelde 19.5:9 veya 20:9 dikey) ise durum tam tersi dikey dikdörtgen olur.
+
+**Öneri:**
+*   **Sanal Modüler Izgara (Örn: 20x20 veya 100x100 Hücre Sistemi):**
+    *   Kullanıcıya isterseniz kare kilitli mod (Square Aspect Lock) veya serbest orantı (Free Ratio) seçeneği sunabiliriz.
+    *   Varsayılan kutucuk boyutu örneğin 2x2 birim (hücre) olur, kullanıcı bunu 4x2 (dikdörtgen), 1x1 (küçük ikon) veya 4x4 (büyük kutu) yapabilir.
+
+---
+
+### 3. Boşluklar (Spacers) ve Düzenleme Modu & Cetvel Analizi
+
+#### Boşluk Kutucukları (Spacer Tiles)
+*   **Normal Mod:** `visibility = INVISIBLE` (veya hiç çizilmez), odaklanamaz (`focusable = false`). Kullanıcı sadece saf siyah boşluk görür.
+*   **Düzenleme Modu:** Kesik çizgili (dashed border), yarı saydam veya soluk gri hatlarla belirir. Kumanda ile seçilebilir, boyutu değiştirilebilir, silinebilir veya araya yeni boşluk eklenebilir. Bu mimari, layout'un dağılmasını önleyen çok akıllıca bir yöntemdir!
+
+#### "Düzenleme modunda piksel/yüzde cetveli çıksın mı?"
+*   **TV Gerçeği:** TV'ye 3 metre uzaktan bakıldığında küçük piksel sayılarını okumak zordur.
+*   **Önerimiz:**
+    *   Klasik piksel cetveli yerine ekranda yarı saydam **Kılavuz Çizgileri (Snap Grid Overlay)** ve köşede temiz bir bilgi kartı (HUD) çıkması çok daha kullanışlı olur:
+    *   *Örnek Bilgi Kartı:*
+        `Güvenli Alan: 1728 x 972 px (%90) | Seçili Kutu: X: 4, Y: 2 [Boyut: 200 x 200 px]`
+    *   İstenirse ayarlardan "Gelişmiş Cetvel Görünümü" bir anahtarla (toggle) açılıp kapatılabilir.
+
+---
+
+### 4. "Her Şey Bir Kutucuktur" (Universal Tile Mimarisi)
+
+Sistemde tek tip bir widget hiyerarşisi kuralım:
+
+```
+                      BaseTile (X, Y, Genişlik, Yükseklik, Sıra)
+                                     │
+     ┌───────────────────────┬───────┴───────────────┬───────────────────────┐
+     ▼                       ▼                       ▼                       ▼
+ AppTile                SpacerTile               WidgetTile              ActionTile
+(Uygulama)              (Boşluk)               (Tarih / Saat)         (Özel Kısayollar)
+ - Package Name          - Boş alan              - 24s/12s formatı      - Başlatıcı Ayarları
+ - Activity Name                                 - Yazı boyutu          - Düzenleme Modu
+ - Özel İkon/İsim                                - Hizalama             - Android TV Sistem Ayarları
+                                                                        - Güç / Uyku
+```
+
+*   **Tarih ve Saat:** Sabit bir üst bar olmak yerine tıpkı bir uygulama gibi boyutlandırılıp istenen yere (örneğin sağ üste, tam ortaya veya sol alta) taşınabilen bir `ClockTile` olacak.
+*   **Sistem Ayarları Kutusu:** Birçok Android TV kutusu yerel Android ayarlarını gizler. `android.provider.Settings.ACTION_SETTINGS` intent'ini tetikleyen hazır bir kutucuk hayat kurtarır.
+
+---
+
+### 5. Yedeklenecek Ayarlar (Tam Liste)
+
+Senin listene eklemeler yaparak profesyonel bir JSON yedekleme şeması oluşturalım:
+
+1.  **Güvenli Alan (Safe Area / Overscan):**
+    *   `paddingTop`, `paddingBottom`, `paddingLeft`, `paddingRight` (Yüzdelik veya Piksel).
+2.  **Boşluklar ve Izgara (Grid & Gutters):**
+    *   `gutterSize` (Kutular arası boşluk yüzdesi).
+    *   `columnCount`, `rowCount` (Varsayılan hücre yoğunluğu).
+    *   `aspectRatioLock` (Kare mi kalsın, ekrana göre esnesin mi?).
+3.  **Kutucuk Dizilimi ve Konfigürasyonu (Tile Map):**
+    *   Her kutucuğun: ID'si, Tipi (`APP`, `SPACER`, `CLOCK`, `SETTINGS`), Pozisyonu (`x`, `y`), Boyutu (`spanX`, `spanY`), Gizli/Görünür durumu.
+4.  **Uygulama Özelleştirmeleri:**
+    *   Uygulama başlığını yeniden adlandırma (Örn: "Netflix" yerine sadece "Dizi").
+    *   Özel ikon / minimal metin modu (Kutu içinde sadece ikon mu, sadece metin mi, ikisi birden mi?).
+    *   Gizlenen (kara listeye alınan) uygulamalar.
+5.  **Görsel ve Odak Ayarları:**
+    *   Kumanda ile üzerine gelindiğinde (Focus): Kenarlık rengi (saf beyaz çizgi, neon vb.), büyüme oranı (örn: 1.05x zoom).
+    *   Kenar yumuşatma (Corner radius: 0px keskin köşe vs yuvarlatılmış köşe).
+6.  **Tarih / Saat Formatı:**
+    *   Saat formatı (`HH:mm`, `hh:mm a`), Tarih gösterilsin mi (`EEE, d MMM`), yazı tipi boyutu.
+7.  **Sistem Davranışları:**
+    *   Cihaz açıldığında otomatik başlama, düzenleme modunu PIN/şifre ile kilitleme (çocukların veya evdekilerin düzeni bozmaması için harika bir TV özelliği).
+
+---
+
+### 6. İsim Önerileri
+
+Projenin ruhu: **Saf Siyah, Minimalist, Kararlı, TV & Telefon, Vezir Dokunuşu**.
+
+#### Türkçe ve Güçlü İsimler:
+1.  **Vezir TV / Vezir Launcher** (Doğrudan imzanız, net ve otoriter).
+2.  **KARA Launcher** (Saf siyah arka planı ve tavizsiz sadeliği temsil eder).
+3.  **Saf Ekran (SafTV)** (Tertemiz, çerçevesiz, dikkat dağıtmayan).
+4.  **KareTV / Matris** (Kutucuk ve ızgara mimarisine gönderme).
+
+#### Minimalist & Global İsimler:
+5.  **VoidTV / Void Launcher** (Uzay boşluğu, saf siyah, OLED siyahı).
+6.  **Onyx Launcher** (Kusursuz, parlak siyah taş metaforu).
+7.  **Monolith Launcher** (Yekpare, sade, çerçevesiz blok).
+8.  **GridBlack** (Doğrudan işlev: Siyah zemin üzerinde ızgara).
+9.  **ZenTV** (Minimalizm ve dinginlik).
+
+---
+
+### 7. Sonraki Adımlar ve Başlangıç
+
+Bu mimariyi onaylarsanız hemen adım adım inşa edebiliriz:
+1.  **Boş bir Android Projesi Kurulumu** (Android 5.0 Lollipop API 21 hedefli, Android 15/16/17 uyumlu).
+2.  **Overscan / Güvenli Alan Yönetimi** (Saf siyah ekran üzerine yüzde hesabı yapan özel container).
+3.  **App Scanner Servisi** (Hem Mobile hem Leanback uygulamalarını getiren motor).
+4.  **D-Pad Navigasyonlu Izgara Motoru** (Boşlukları atlayan, kumanda dostu odak sistemi).
+
+Hangi isim üzerinde duralım ve doğrudan kodlama yapısına geçelim mi?

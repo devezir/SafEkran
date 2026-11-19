@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Saf Ekran</string>
+    <string name="tile_clock">Saat &amp; Tarih</string>
+    <string name="tile_edit_mode">Düzenle</string>
+    <string name="tile_launcher_settings">Başlatıcı Ayarları</string>
+    <string name="tile_system_settings">Sistem Ayarları</string>
+    <string name="tile_spacer">Boşluk</string>
+    <string name="app_signature_title">Saf Ekran — Hakkında &amp; İmza</string>
+    <string name="app_signature_dev">Geliştirici: Vezir</string>
+    <string name="app_version_label">Sürüm: 1.0.0 (Resmi İmzalı)</string>
+    <string name="action_save">Kaydet</string>
+    <string name="action_cancel">İptal</string>
+    <string name="action_reset">Varsayılana Dön</string>
+    <string name="action_backup">Yedekle (JSON)</string>
+    <string name="action_restore">Geri Yükle</string>
+</resources>

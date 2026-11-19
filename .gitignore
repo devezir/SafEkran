@@ -1,0 +1,19 @@
+# Derleme çıktıları ve geçici klasörler
+/bin/
+/obj/
+/gen/
+/out/
+/releases/
+/.temp/
+/__pycache__/
+*.pyc
+
+# IDE / Editör
+.idea/
+.vscode/
+*.iml
+
+# Android derleme artıkları
+compiled_res.zip
+*.apk
+!*.jks
