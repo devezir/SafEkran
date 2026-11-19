@@ -1,12 +1,12 @@
 {
   "appName": "Saf Ekran",
   "packageName": "com.safekran.launcher",
-  "versionCode": 6,
-  "versionName": "2.2.0",
+  "versionCode": 7,
+  "versionName": "2.2.1",
   "developer": "Vezir",
   "schemaVersion": 1,
   "createdDate": "2026-11-19",
-  "apkName": "SafEkran_v2.2.0_vc6.apk",
+  "apkName": "SafEkran_v2.2.1_vc7.apk",
   "history": [
     {
       "versionCode": 1,
@@ -43,6 +43,12 @@
       "versionName": "2.2.0",
       "date": "2026-11-19",
       "description": "Kesintisiz Otomatik Paketleme (Auto-Flow): Butonların üst üste binmesi kökten engellendi, tam dinamik akış"
+    },
+    {
+      "versionCode": 7,
+      "versionName": "2.2.1",
+      "date": "2026-11-19",
+      "description": "Fix: Alt güvenli alan fiziksel ekran camının tabanına kilitlendi (Hardware Clip & Locked Viewport)"
     }
   ]
 }

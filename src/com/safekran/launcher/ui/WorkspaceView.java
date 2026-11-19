@@ -21,10 +21,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Saf Ekran Kesintisiz Akış Motoru (Continuous Auto-Flow Engine).
- * Sütun sayısı ve hücre konumları dinamik olarak hesaplanır.
- * Kutular asla üst üste binemez (Koleksiyon bazlı otomatik akış).
- * Ayar değiştiğinde veya ekran döndüğünde düzen kendini otomatik onarır.
+ * Saf Ekran Kilitli Pencere Izgara Motoru (Locked Viewport Grid Engine).
+ * Güvenli Alan (Overscan Inset) fiziksel ekran camının 4 kenarına mıh gibi çakılıdır.
+ * İçerik kaydırılsa dahi alt güvenli alan listenin kuyruğuna değil, ekranın altına kilitlidir.
+ * Güvenli alanın dışındaki kör bölgeler saf siyah kalır ve içerik oraya asla taşamaz (Hardware Clip).
  */
 public class WorkspaceView extends ViewGroup {
 
@@ -45,14 +45,19 @@ public class WorkspaceView extends ViewGroup {
     private boolean isBeingDragged = false;
     private int maxScrollY = 0;
 
-    // Matematiksel Olarak Türetilen Hücre Ölçüleri
+    // Matematiksel Olarak Türetilen Hücre ve Pencere Ölçüleri
     private int calculatedCols = 8;
     private int cellWidth = 0;
     private int cellHeight = 0;
     private int gutterXPx = 0;
     private int gutterYPx = 0;
+
+    // Ekrana Çakılı Güvenli Alan Sınırları (Piksel cinsinden)
+    private int safeLeft = 0;
+    private int safeRight = 0;
+    private int safeTop = 0;
+    private int safeBottom = 0;
     private int startLeft = 0;
-    private int topOffset = 0;
     private int maxRow = 0;
 
     // Çizim fırçaları
@@ -72,8 +77,8 @@ public class WorkspaceView extends ViewGroup {
 
         initPaints();
         setBackgroundColor(Color.BLACK);
-        setClipChildren(false);
-        setClipToPadding(false);
+        setClipChildren(true);
+        setClipToPadding(true);
     }
 
     private void initPaints() {
@@ -154,9 +159,8 @@ public class WorkspaceView extends ViewGroup {
     }
 
     /**
-     * KÖK NEDEN ÇÖZÜMÜ: Otomatik Akış ve Paketleme Algoritması (Auto-Flow Packing).
-     * Kutuları mevcut sütun sayısına göre sırayla ve boşluksuz paketler.
-     * Üst üste binme matematiksel olarak imkansız hale gelir.
+     * Otomatik Paketleme Algoritması (Auto-Flow):
+     * Kutuları sütun sınırına göre sıralar; asla üst üste binme olamaz.
      */
     private void packTilesAutomatically() {
         int curCol = 0;
@@ -170,7 +174,6 @@ public class WorkspaceView extends ViewGroup {
                 Tile t = ((TileView) child).getTile();
                 int span = Math.min(cols, t.colSpan);
 
-                // Eğer kutu mevcut satırın kalanına sığmıyorsa alt satıra geç
                 if (curCol + span > cols) {
                     curCol = 0;
                     curRow++;
@@ -195,37 +198,36 @@ public class WorkspaceView extends ViewGroup {
 
         if (config != null) {
             SafeArea sa = config.safeArea;
-            int leftOff = (int) (width * sa.left);
-            int rightOff = (int) (width * sa.right);
-            topOffset = (int) (height * sa.top);
-            int bottomOff = (int) (height * sa.bottom);
+            safeLeft = (int) (width * sa.left);
+            safeRight = (int) (width * sa.right);
+            safeTop = (int) (height * sa.top);
+            safeBottom = (int) (height * sa.bottom);
 
-            int usableWidth = Math.max(100, width - leftOff - rightOff);
-            int usableHeight = Math.max(100, height - topOffset - bottomOff);
+            // Fiziksel Ekran Camına Kilitli Kullanılabilir Alan
+            int usableWidth = Math.max(100, width - safeLeft - safeRight);
+            int usableHeight = Math.max(100, height - safeTop - safeBottom);
 
-            // Referans Boyut: Ekranın en uzun kenarı
             int refDim = Math.max(width, height);
             int targetTileW = Math.max(60, (int) (refDim * config.tileScale));
 
             gutterXPx = Math.max(0, (int) (usableWidth * config.gutterPercent));
             gutterYPx = Math.max(0, (int) (usableHeight * config.gutterPercent));
 
-            // TÜRETİLEN SÜTUN SAYISI: (usableWidth + gutter) / (targetTileW + gutter)
+            // Türetilen Sütun Sayısı
             calculatedCols = Math.max(1, (usableWidth + gutterXPx) / (targetTileW + gutterXPx));
 
-            // Hücre Genişliği (Kalan artık pikselleri tam yayan formül)
+            // Hücre Genişliği
             int totalGuttersW = (calculatedCols - 1) * gutterXPx;
             cellWidth = Math.max(10, (usableWidth - totalGuttersW) / calculatedCols);
 
-            // Hücre Yüksekliği (%75 En-Boy Oranı = TV Kartı)
+            // Hücre Yüksekliği
             cellHeight = Math.max(10, (int) (cellWidth * config.tileHeightRatio));
 
-            // Izgarayı ekranda tam ortalama
+            // Kalan artığı yatayda tam ortalama
             int totalContentW = calculatedCols * cellWidth + totalGuttersW;
             int extraMarginX = Math.max(0, (usableWidth - totalContentW) / 2);
-            startLeft = leftOff + extraMarginX;
+            startLeft = safeLeft + extraMarginX;
 
-            // Her ölçümde kutuları güncel sütun sayısına göre boşluksuz ve çakışmasız paketle
             packTilesAutomatically();
 
             int childCount = getChildCount();
@@ -254,7 +256,7 @@ public class WorkspaceView extends ViewGroup {
         if (config == null) return;
 
         int screenHeight = b - t;
-        int maxBottom = screenHeight;
+        int maxBottom = 0;
         maxRow = 0;
 
         int childCount = getChildCount();
@@ -264,7 +266,7 @@ public class WorkspaceView extends ViewGroup {
                 Tile tile = ((TileView) child).getTile();
 
                 int childLeft = startLeft + tile.col * (cellWidth + gutterXPx);
-                int childTop = topOffset + tile.row * (cellHeight + gutterYPx);
+                int childTop = safeTop + tile.row * (cellHeight + gutterYPx);
                 int childRight = childLeft + child.getMeasuredWidth();
                 int childBottom = childTop + child.getMeasuredHeight();
 
@@ -279,8 +281,11 @@ public class WorkspaceView extends ViewGroup {
             }
         }
 
-        int bottomPadding = (int) (screenHeight * config.safeArea.bottom);
-        maxScrollY = Math.max(0, (maxBottom + bottomPadding) - screenHeight);
+        // KİLİTLİ PENCERE FORMÜLÜ:
+        // Alt Güvenli Alan ekranın fiziksel camının altına kilitlidir.
+        // Kaydırma (Scroll) sınırının bittiği yer = En alttaki kutunun tabanı - (Ekran Yüksekliği - Alt Güvenli Payı)
+        int visibleWindowBottom = screenHeight - safeBottom;
+        maxScrollY = Math.max(0, maxBottom - visibleWindowBottom);
 
         if (getScrollY() > maxScrollY) {
             scrollTo(0, maxScrollY);
@@ -419,14 +424,13 @@ public class WorkspaceView extends ViewGroup {
             int currentScrollY = getScrollY();
             int viewH = getHeight();
 
-            int topMargin = (int) (viewH * config.safeArea.top) + 20;
-            int bottomMargin = (int) (viewH * config.safeArea.bottom) + 20;
+            int visibleWindowBottom = viewH - safeBottom;
 
-            if (childBottom > currentScrollY + viewH - bottomMargin) {
-                int targetY = Math.min(maxScrollY, childBottom - viewH + bottomMargin);
+            if (childBottom - currentScrollY > visibleWindowBottom) {
+                int targetY = Math.min(maxScrollY, childBottom - visibleWindowBottom);
                 smoothScrollTo(targetY);
-            } else if (childTop < currentScrollY + topMargin) {
-                int targetY = Math.max(0, childTop - topMargin);
+            } else if (childTop - currentScrollY < safeTop) {
+                int targetY = Math.max(0, childTop - safeTop);
                 smoothScrollTo(targetY);
             }
         }
@@ -461,52 +465,58 @@ public class WorkspaceView extends ViewGroup {
 
     @Override
     protected void dispatchDraw(Canvas canvas) {
-        canvas.drawColor(getThemeBgColor());
-
-        super.dispatchDraw(canvas);
-
         int w = getWidth();
         int h = getHeight();
         int scrollY = getScrollY();
 
-        // Minimalist Scrollbar
-        if (maxScrollY > 0) {
-            float totalH = h + maxScrollY;
-            float barH = Math.max(40f, (h / totalH) * h);
-            float barY = scrollY + ((float) scrollY / maxScrollY) * (h - barH);
-            float barW = 6f;
-            float barRight = w - 8f;
+        // 1. Zemin: Saf Siyah (#000000)
+        canvas.drawColor(getThemeBgColor());
+
+        // 2. KİLİTLİ GÜVENLİ ALAN PENCERESİNE KIRP (HARDWARE CLIP)
+        // Kutucuklar sadece bu kilitli pencerenin içinde akar;
+        // Alt, üst, sol ve sağ güvenli alan kör bölgelerine ASLA taşamaz!
+        int saveCount = canvas.save();
+        canvas.clipRect(safeLeft, safeTop + scrollY, w - safeRight, (h - safeBottom) + scrollY);
+
+        super.dispatchDraw(canvas);
+
+        canvas.restoreToCount(saveCount);
+
+        // 3. Minimalist Scrollbar (Kilitli Güvenli Alan Sınırları İçinde)
+        int visibleWindowH = (h - safeBottom) - safeTop;
+        if (maxScrollY > 0 && visibleWindowH > 0) {
+            float totalContentH = visibleWindowH + maxScrollY;
+            float barH = Math.max(30f, ((float) visibleWindowH / totalContentH) * visibleWindowH);
+            float barY = safeTop + scrollY + ((float) scrollY / maxScrollY) * (visibleWindowH - barH);
+            float barW = 5f;
+            float barRight = (w - safeRight) - 2f;
             canvas.drawRect(barRight - barW, barY, barRight, barY + barH, scrollbarPaint);
         }
 
-        // Düzenleme Modu: Otomatik Türetilen Hücre Izgarası & HUD
+        // 4. DÜZENLEME MODU: CAMA ÇAKILI KILAVUZ ÇİZGİLERİ VE HUD
         if (isEditMode && config != null) {
-            SafeArea sa = config.safeArea;
-            int left = (int) (w * sa.left);
-            int top = (int) (h * sa.top) + scrollY;
-            int right = w - (int) (w * sa.right);
-            int bottom = (h - (int) (h * sa.bottom)) + scrollY;
+            // DİKKAT: Kırmızı çerçeve ekran camına çakılıdır (scrollY EKLENMEZ!)
+            canvas.drawRect(safeLeft, safeTop + scrollY, w - safeRight, (h - safeBottom) + scrollY, safeAreaPaint);
 
-            canvas.drawRect(left, top, right, bottom, safeAreaPaint);
-
+            // Kılavuz Hücre Çizgileri
             int rowsToDraw = Math.max(10, maxRow + 2);
-
             for (int rIndex = 0; rIndex < rowsToDraw; rIndex++) {
-                int cellTop = (top - scrollY) + rIndex * (cellHeight + gutterYPx);
+                int cellTop = safeTop + rIndex * (cellHeight + gutterYPx);
                 for (int cIndex = 0; cIndex < calculatedCols; cIndex++) {
                     int cLeft = startLeft + cIndex * (cellWidth + gutterXPx);
                     canvas.drawRect(cLeft, cellTop, cLeft + cellWidth, cellTop + cellHeight, cellGridPaint);
                 }
             }
 
-            String hudText1 = "DÜZENLEME MODU | Otomatik Akış: " + calculatedCols + " Sütun";
-            String hudText2 = "Hücre: " + cellWidth + "x" + cellHeight + " px | [Yön Tuşu]: Sıra Değiştir | [OK]: Bırak";
+            // TV Ergonomisi HUD
+            String hudText1 = "DÜZENLEME MODU | Kilitli Pencere: " + calculatedCols + " Sütun";
+            String hudText2 = "Alt Güvenlik: %" + (int)(config.safeArea.bottom * 100) + " | Cam Tabanına Çakılı";
 
             float cardW = 760f;
             float cardH = 90f;
-            float cardRight = right - 10f;
+            float cardRight = (w - safeRight) - 10f;
             float cardLeft = cardRight - cardW;
-            float cardTop = top + 10f;
+            float cardTop = safeTop + scrollY + 10f;
             float cardBottom = cardTop + cardH;
 
             canvas.drawRect(cardLeft, cardTop, cardRight, cardBottom, hudBgPaint);
