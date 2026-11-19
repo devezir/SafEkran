@@ -128,7 +128,20 @@ public class TileView extends FrameLayout {
         setVisibility(View.VISIBLE);
         setFocusable(true);
         setClickable(true);
-        setBackgroundResource(isLightMode() ? R.drawable.bg_tile_selector_light : R.drawable.bg_tile_selector);
+
+        int bgRes;
+        if (tile.type == TileType.COLOR_RED) {
+            bgRes = isLightMode() ? R.drawable.bg_tile_red_light : R.drawable.bg_tile_red;
+        } else if (tile.type == TileType.COLOR_GREEN) {
+            bgRes = isLightMode() ? R.drawable.bg_tile_green_light : R.drawable.bg_tile_green;
+        } else if (tile.type == TileType.COLOR_YELLOW) {
+            bgRes = isLightMode() ? R.drawable.bg_tile_yellow_light : R.drawable.bg_tile_yellow;
+        } else if (tile.type == TileType.COLOR_BLUE) {
+            bgRes = isLightMode() ? R.drawable.bg_tile_blue_light : R.drawable.bg_tile_blue;
+        } else {
+            bgRes = isLightMode() ? R.drawable.bg_tile_selector_light : R.drawable.bg_tile_selector;
+        }
+        setBackgroundResource(bgRes);
 
         LinearLayout container = new LinearLayout(context);
         container.setOrientation(LinearLayout.VERTICAL);
@@ -153,6 +166,30 @@ public class TileView extends FrameLayout {
             iconView.setImageResource(R.drawable.ic_system);
             if (isLightMode()) {
                 iconView.setColorFilter(Color.parseColor("#111111"));
+            }
+        } else if (tile.type == TileType.COLOR_RED) {
+            if ("APP".equals(tile.actionType) && appIcon != null) {
+                iconView.setImageDrawable(appIcon);
+            } else {
+                iconView.setImageResource(R.drawable.ic_color_red);
+            }
+        } else if (tile.type == TileType.COLOR_GREEN) {
+            if ("APP".equals(tile.actionType) && appIcon != null) {
+                iconView.setImageDrawable(appIcon);
+            } else {
+                iconView.setImageResource(R.drawable.ic_color_green);
+            }
+        } else if (tile.type == TileType.COLOR_YELLOW) {
+            if ("APP".equals(tile.actionType) && appIcon != null) {
+                iconView.setImageDrawable(appIcon);
+            } else {
+                iconView.setImageResource(R.drawable.ic_color_yellow);
+            }
+        } else if (tile.type == TileType.COLOR_BLUE) {
+            if ("APP".equals(tile.actionType) && appIcon != null) {
+                iconView.setImageDrawable(appIcon);
+            } else {
+                iconView.setImageResource(R.drawable.ic_color_blue);
             }
         } else {
             if (appIcon != null) {
@@ -199,6 +236,15 @@ public class TileView extends FrameLayout {
 
     public Tile getTile() {
         return tile;
+    }
+
+    public void flashColorPress() {
+        animate().scaleX(1.15f).scaleY(1.15f).setDuration(100).withEndAction(new Runnable() {
+            @Override
+            public void run() {
+                animate().scaleX(1.0f).scaleY(1.0f).setDuration(120).start();
+            }
+        }).start();
     }
 
     private int dpToPx(Context context, int dp) {

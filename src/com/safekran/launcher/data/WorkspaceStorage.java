@@ -103,25 +103,38 @@ public class WorkspaceStorage {
         config.tiles.add(clockTile);
         currentCol += clockSpan;
 
-        // 2. Düzenleme Modu Kutusu
+        // 2. Kumanda 4 Renk Butonları (Kırmızı, Yeşil, Sarı, Mavi)
         if (currentCol >= maxCols) { currentCol = 0; currentRow++; }
-        Tile editTile = new Tile(TileType.EDIT_MODE, "Düzenle", currentCol, currentRow, 1, 1);
-        config.tiles.add(editTile);
+        Tile redTile = new Tile(TileType.COLOR_RED, "🔴 Düzenle", currentCol, currentRow, 1, 1);
+        redTile.actionType = "EDIT_MODE";
+        config.tiles.add(redTile);
         currentCol += 1;
 
-        // 3. Başlatıcı Ayarları Kutusu
         if (currentCol >= maxCols) { currentCol = 0; currentRow++; }
-        Tile settingsTile = new Tile(TileType.LAUNCHER_SETTINGS, "Başlatıcı Ayarları", currentCol, currentRow, 1, 1);
-        config.tiles.add(settingsTile);
+        Tile greenTile = new Tile(TileType.COLOR_GREEN, "🟢 Gizlenenler", currentCol, currentRow, 1, 1);
+        greenTile.actionType = "HIDDEN_APPS";
+        config.tiles.add(greenTile);
         currentCol += 1;
 
-        // 4. Sistem Ayarları Kutusu
+        if (currentCol >= maxCols) { currentCol = 0; currentRow++; }
+        Tile yellowTile = new Tile(TileType.COLOR_YELLOW, "🟡 Tema", currentCol, currentRow, 1, 1);
+        yellowTile.actionType = "THEME_TOGGLE";
+        config.tiles.add(yellowTile);
+        currentCol += 1;
+
+        if (currentCol >= maxCols) { currentCol = 0; currentRow++; }
+        Tile blueTile = new Tile(TileType.COLOR_BLUE, "🔵 Ayarlar", currentCol, currentRow, 1, 1);
+        blueTile.actionType = "LAUNCHER_SETTINGS";
+        config.tiles.add(blueTile);
+        currentCol += 1;
+
+        // 3. Sistem Ayarları Kutusu
         if (currentCol >= maxCols) { currentCol = 0; currentRow++; }
         Tile sysSettingsTile = new Tile(TileType.SYSTEM_SETTINGS, "Sistem Ayarları", currentCol, currentRow, 1, 1);
         config.tiles.add(sysSettingsTile);
         currentCol += 1;
 
-        // 5. Yüklü Uygulamalar (HİÇ KESİNTİ OLMADAN AYNI SATIRDAN DEVAM EDER)
+        // 4. Yüklü Uygulamalar (HİÇ KESİNTİ OLMADAN AYNI SATIRDAN DEVAM EDER)
         for (AppInfo app : apps) {
             if (currentCol >= maxCols) {
                 currentCol = 0;

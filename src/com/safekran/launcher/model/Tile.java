@@ -15,6 +15,7 @@ public class Tile {
     public String packageName;
     public String activityName;
     public String label;
+    public String actionType; // "APP", "EDIT_MODE", "LAUNCHER_SETTINGS", "SYSTEM_SETTINGS", "THEME_TOGGLE", "HIDDEN_APPS", "NONE"
 
     // 2D Sanal Matris Hücre Koordinatları
     public int col;      // 0-tabanlı sütun indeksi (0..colCount-1)
@@ -46,6 +47,7 @@ public class Tile {
         obj.put("packageName", packageName == null ? "" : packageName);
         obj.put("activityName", activityName == null ? "" : activityName);
         obj.put("label", label == null ? "" : label);
+        obj.put("actionType", actionType == null ? "" : actionType);
         obj.put("col", col);
         obj.put("row", row);
         obj.put("colSpan", colSpan);
@@ -66,6 +68,7 @@ public class Tile {
         t.packageName = obj.optString("packageName", "");
         t.activityName = obj.optString("activityName", "");
         t.label = obj.optString("label", "");
+        t.actionType = obj.optString("actionType", "");
 
         // Yeni matris koordinatlarını oku
         if (obj.has("col")) {

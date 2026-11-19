@@ -138,6 +138,12 @@ public class MainActivity extends Activity {
             case SYSTEM_SETTINGS:
                 openSystemSettings();
                 break;
+            case COLOR_RED:
+            case COLOR_GREEN:
+            case COLOR_YELLOW:
+            case COLOR_BLUE:
+                executeColorAction(tile, tv);
+                break;
             case CLOCK:
                 Toast.makeText(this, "Saat kutusu. Düzenle modunda taşınabilir.", Toast.LENGTH_SHORT).show();
                 break;
@@ -165,108 +171,347 @@ public class MainActivity extends Activity {
         return hiddenApps;
     }
 
+    private List<Tile> getMissingSpecialTiles() {
+        List<Tile> missing = new java.util.ArrayList<Tile>();
+        boolean hasRed = false, hasGreen = false, hasYellow = false, hasBlue = false;
+        if (config != null && config.tiles != null) {
+            for (Tile t : config.tiles) {
+                if (t.type == TileType.COLOR_RED) hasRed = true;
+                else if (t.type == TileType.COLOR_GREEN) hasGreen = true;
+                else if (t.type == TileType.COLOR_YELLOW) hasYellow = true;
+                else if (t.type == TileType.COLOR_BLUE) hasBlue = true;
+            }
+        }
+        if (!hasRed) {
+            Tile r = new Tile(TileType.COLOR_RED, "🔴 Düzenle", 0, 0, 1, 1);
+            r.actionType = "EDIT_MODE";
+            missing.add(r);
+        }
+        if (!hasGreen) {
+            Tile g = new Tile(TileType.COLOR_GREEN, "🟢 Gizlenenler", 0, 0, 1, 1);
+            g.actionType = "HIDDEN_APPS";
+            missing.add(g);
+        }
+        if (!hasYellow) {
+            Tile y = new Tile(TileType.COLOR_YELLOW, "🟡 Tema", 0, 0, 1, 1);
+            y.actionType = "THEME_TOGGLE";
+            missing.add(y);
+        }
+        if (!hasBlue) {
+            Tile b = new Tile(TileType.COLOR_BLUE, "🔵 Ayarlar", 0, 0, 1, 1);
+            b.actionType = "LAUNCHER_SETTINGS";
+            missing.add(b);
+        }
+        return missing;
+    }
+
     private void openHiddenAppsDialog(final Tile anchorTile) {
         final List<AppInfo> hidden = getHiddenOrMissingApps();
-        if (hidden.isEmpty()) {
-            Toast.makeText(this, "Gizlenmiş uygulama yok. Tüm uygulamalar ana ekranda mevcut.", Toast.LENGTH_SHORT).show();
+        final List<Tile> missingSpecials = getMissingSpecialTiles();
+
+        if (hidden.isEmpty() && missingSpecials.isEmpty()) {
+            Toast.makeText(this, "Gizlenmiş kutu veya uygulama yok. Hepsi ana ekranda mevcut.", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        final boolean hasMultiple = hidden.size() > 1;
-        int listSize = hasMultiple ? hidden.size() + 1 : hidden.size();
-        String[] items = new String[listSize];
+        final boolean hasMultipleApps = hidden.size() > 1;
+        int totalItems = (hasMultipleApps ? 1 : 0) + missingSpecials.size() + hidden.size();
+        final String[] items = new String[totalItems];
 
-        int offset = 0;
-        if (hasMultiple) {
-            items[0] = "➕ TÜMÜNÜ GERİ GETİR (" + hidden.size() + " Uygulama)";
-            offset = 1;
+        int idx = 0;
+        if (hasMultipleApps) {
+            items[idx++] = "➕ TÜM GİZLENEN UYGULAMALARI GERİ GETİR (" + hidden.size() + ")";
+        }
+
+        for (int i = 0; i < missingSpecials.size(); i++) {
+            items[idx++] = "[RENK KUTUSU] " + missingSpecials.get(i).label + " Kutusunu Ekle";
         }
 
         for (int i = 0; i < hidden.size(); i++) {
-            items[i + offset] = hidden.get(i).label;
+            items[idx++] = hidden.get(i).label;
         }
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle(anchorTile != null ? anchorTile.label + " Yanına Uygulama Ekle" : "Gizlenen Uygulamaları Ekle (" + hidden.size() + ")");
+        builder.setTitle(anchorTile != null ? anchorTile.label + " Yanına Kutu Ekle" : "Gizlenen Kutuları / Uygulamaları Ekle");
         builder.setItems(items, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                if (hasMultiple && which == 0) {
-                    // Tümünü birden ekle
-                    for (AppInfo ai : hidden) {
-                        Tile nt = new Tile(TileType.APP, ai.label, 0, 0, 1, 1);
-                        nt.packageName = ai.packageName;
-                        iconCache.put(ai.packageName, ai.icon);
-                        config.tiles.add(nt);
-                    }
-                    WorkspaceStorage.saveWorkspace(MainActivity.this, config);
-                    workspaceView.rebuildViews();
-                    setupTileClickListeners();
-                    Toast.makeText(MainActivity.this, hidden.size() + " uygulama ana ekrana eklendi.", Toast.LENGTH_SHORT).show();
-                } else {
-                    int selectedIndex = hasMultiple ? (which - 1) : which;
-                    AppInfo selected = hidden.get(selectedIndex);
-                    Tile newTile = new Tile(TileType.APP, selected.label, 0, 0, 1, 1);
-                    newTile.packageName = selected.packageName;
-                    iconCache.put(selected.packageName, selected.icon);
-
-                    if (anchorTile != null) {
-                        int idx = config.tiles.indexOf(anchorTile);
-                        if (idx >= 0 && idx < config.tiles.size()) {
-                            config.tiles.add(idx + 1, newTile);
-                        } else {
-                            config.tiles.add(newTile);
+                int curIdx = 0;
+                if (hasMultipleApps) {
+                    if (which == curIdx) {
+                        for (AppInfo ai : hidden) {
+                            Tile nt = new Tile(TileType.APP, ai.label, 0, 0, 1, 1);
+                            nt.packageName = ai.packageName;
+                            iconCache.put(ai.packageName, ai.icon);
+                            config.tiles.add(nt);
                         }
-                    } else {
-                        config.tiles.add(newTile);
+                        saveAndRefresh("Tüm gizlenen uygulamalar geri eklendi.");
+                        return;
                     }
+                    curIdx++;
+                }
 
-                    WorkspaceStorage.saveWorkspace(MainActivity.this, config);
-                    workspaceView.rebuildViews();
-                    setupTileClickListeners();
-                    Toast.makeText(MainActivity.this, selected.label + " ana ekrana eklendi.", Toast.LENGTH_SHORT).show();
+                if (which < curIdx + missingSpecials.size()) {
+                    int specialIdx = which - curIdx;
+                    Tile st = missingSpecials.get(specialIdx);
+                    insertTileAt(st, anchorTile);
+                    saveAndRefresh(st.label + " kutusu eklendi.");
+                    return;
+                }
+                curIdx += missingSpecials.size();
+
+                int appIdx = which - curIdx;
+                AppInfo selected = hidden.get(appIdx);
+                Tile newTile = new Tile(TileType.APP, selected.label, 0, 0, 1, 1);
+                newTile.packageName = selected.packageName;
+                iconCache.put(selected.packageName, selected.icon);
+                insertTileAt(newTile, anchorTile);
+                saveAndRefresh(selected.label + " ana ekrana eklendi.");
+            }
+        });
+        builder.show();
+    }
+
+    private void insertTileAt(Tile newTile, Tile anchorTile) {
+        if (anchorTile != null) {
+            int idx = config.tiles.indexOf(anchorTile);
+            if (idx >= 0 && idx < config.tiles.size()) {
+                config.tiles.add(idx + 1, newTile);
+            } else {
+                config.tiles.add(newTile);
+            }
+        } else {
+            config.tiles.add(newTile);
+        }
+    }
+
+    private void saveAndRefresh(String toastMsg) {
+        WorkspaceStorage.saveWorkspace(MainActivity.this, config);
+        workspaceView.rebuildViews();
+        setupTileClickListeners();
+        if (toastMsg != null && !toastMsg.isEmpty()) {
+            Toast.makeText(MainActivity.this, toastMsg, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void executeColorAction(Tile tile, TileView tv) {
+        if (tv != null) {
+            tv.flashColorPress();
+        }
+        if (tile == null) return;
+
+        String action = (tile.actionType != null) ? tile.actionType : "NONE";
+
+        if ("APP".equals(action)) {
+            if (tile.packageName != null && !tile.packageName.isEmpty()) {
+                launchApp(tile.packageName);
+            } else {
+                Toast.makeText(this, tile.label + " için henüz bir uygulama atanmamış. Kutuya uzun basarak atayabilirsiniz.", Toast.LENGTH_SHORT).show();
+            }
+        } else if ("EDIT_MODE".equals(action)) {
+            toggleEditMode();
+        } else if ("HIDDEN_APPS".equals(action)) {
+            openHiddenAppsDialog(null);
+        } else if ("THEME_TOGGLE".equals(action)) {
+            toggleThemeQuickly();
+        } else if ("LAUNCHER_SETTINGS".equals(action)) {
+            openLauncherSettingsDialog();
+        } else if ("SYSTEM_SETTINGS".equals(action)) {
+            openSystemSettings();
+        } else {
+            Toast.makeText(this, tile.label + " için işlem atanmamış. Kutuya uzun basarak işlem atayabilirsiniz.", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void toggleThemeQuickly() {
+        if ("LIGHT".equals(config.themeMode)) {
+            config.themeMode = "BLACK";
+            Toast.makeText(this, "🌙 Saf Siyah Tema", Toast.LENGTH_SHORT).show();
+        } else {
+            config.themeMode = "LIGHT";
+            Toast.makeText(this, "☀️ Aydınlık Tema", Toast.LENGTH_SHORT).show();
+        }
+        WorkspaceStorage.saveWorkspace(this, config);
+        workspaceView.rebuildViews();
+        setupTileClickListeners();
+    }
+
+    private void triggerColorKey(TileType colorType) {
+        Tile targetTile = null;
+        TileView targetView = null;
+        if (config != null && config.tiles != null) {
+            for (Tile t : config.tiles) {
+                if (t.type == colorType) {
+                    targetTile = t;
+                    break;
+                }
+            }
+        }
+
+        if (targetTile != null) {
+            int childCount = workspaceView.getChildCount();
+            for (int i = 0; i < childCount; i++) {
+                View child = workspaceView.getChildAt(i);
+                if (child instanceof TileView) {
+                    TileView tv = (TileView) child;
+                    if (tv.getTile() == targetTile) {
+                        targetView = tv;
+                        break;
+                    }
+                }
+            }
+            executeColorAction(targetTile, targetView);
+        } else {
+            String colorName = (colorType == TileType.COLOR_RED) ? "Kırmızı" :
+                    (colorType == TileType.COLOR_GREEN) ? "Yeşil" :
+                    (colorType == TileType.COLOR_YELLOW) ? "Sarı" : "Mavi";
+            Toast.makeText(this, colorName + " tuşuna ait kutu ana ekranda bulunmuyor.", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void openColorAssignmentDialog(final Tile tile) {
+        final String prefix = (tile.type == TileType.COLOR_RED) ? "🔴 " :
+                (tile.type == TileType.COLOR_GREEN) ? "🟢 " :
+                (tile.type == TileType.COLOR_YELLOW) ? "🟡 " : "🔵 ";
+
+        String[] actions = new String[]{
+                "📱 Bir Uygulama Ata (YouTube, Netflix vb.)...",
+                "✏️ Düzenleme Modu Aç/Kapat",
+                "👁️ Gizlenen Uygulamalar Menüsü",
+                "🌗 Hızlı Tema Değiştir (Siyah ↔ Aydınlık)",
+                "⚙️ Başlatıcı Ayarları",
+                "🔧 Android Sistem Ayarları",
+                "🚫 İşlevi Temizle (Boş)"
+        };
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle(tile.label + " — İşlem / Uygulama Ata");
+        builder.setItems(actions, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                if (which == 0) {
+                    final List<AppInfo> apps = AppScanner.scanAllApps(MainActivity.this);
+                    String[] appNames = new String[apps.size()];
+                    for (int i = 0; i < apps.size(); i++) {
+                        appNames[i] = apps.get(i).label;
+                    }
+                    AlertDialog.Builder appDialog = new AlertDialog.Builder(MainActivity.this);
+                    appDialog.setTitle(tile.label + " için Uygulama Seç");
+                    appDialog.setItems(appNames, new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface d, int appIdx) {
+                            AppInfo chosen = apps.get(appIdx);
+                            tile.actionType = "APP";
+                            tile.packageName = chosen.packageName;
+                            tile.activityName = chosen.activityName;
+                            tile.label = prefix + chosen.label;
+                            iconCache.put(chosen.packageName, chosen.icon);
+
+                            WorkspaceStorage.saveWorkspace(MainActivity.this, config);
+                            workspaceView.rebuildViews();
+                            setupTileClickListeners();
+                            Toast.makeText(MainActivity.this, tile.label + " atandı.", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                    appDialog.show();
+                } else if (which == 1) {
+                    tile.actionType = "EDIT_MODE";
+                    tile.packageName = "";
+                    tile.label = prefix + "Düzenle";
+                    finishColorAssignment(tile);
+                } else if (which == 2) {
+                    tile.actionType = "HIDDEN_APPS";
+                    tile.packageName = "";
+                    tile.label = prefix + "Gizlenenler";
+                    finishColorAssignment(tile);
+                } else if (which == 3) {
+                    tile.actionType = "THEME_TOGGLE";
+                    tile.packageName = "";
+                    tile.label = prefix + "Tema";
+                    finishColorAssignment(tile);
+                } else if (which == 4) {
+                    tile.actionType = "LAUNCHER_SETTINGS";
+                    tile.packageName = "";
+                    tile.label = prefix + "Ayarlar";
+                    finishColorAssignment(tile);
+                } else if (which == 5) {
+                    tile.actionType = "SYSTEM_SETTINGS";
+                    tile.packageName = "";
+                    tile.label = prefix + "Sistem";
+                    finishColorAssignment(tile);
+                } else if (which == 6) {
+                    tile.actionType = "NONE";
+                    tile.packageName = "";
+                    String cName = (tile.type == TileType.COLOR_RED) ? "Kırmızı" :
+                            (tile.type == TileType.COLOR_GREEN) ? "Yeşil" :
+                            (tile.type == TileType.COLOR_YELLOW) ? "Sarı" : "Mavi";
+                    tile.label = prefix + cName;
+                    finishColorAssignment(tile);
                 }
             }
         });
         builder.show();
     }
 
+    private void finishColorAssignment(Tile tile) {
+        WorkspaceStorage.saveWorkspace(this, config);
+        workspaceView.rebuildViews();
+        setupTileClickListeners();
+        Toast.makeText(this, tile.label + " güncellendi.", Toast.LENGTH_SHORT).show();
+    }
+
     private void onTileLongClicked(final Tile tile) {
+        final boolean isColorTile = (tile.type == TileType.COLOR_RED ||
+                tile.type == TileType.COLOR_GREEN ||
+                tile.type == TileType.COLOR_YELLOW ||
+                tile.type == TileType.COLOR_BLUE);
+
         final List<AppInfo> hiddenApps = getHiddenOrMissingApps();
         String addAppOption = hiddenApps.isEmpty() ? "Sağına Uygulama Ekle (Gizlenen yok)" : "Sağına Uygulama Ekle (" + hiddenApps.size() + " gizlenen)";
 
-        String[] options = new String[]{
-                "Genişlet (+1 Sütun)",
-                "Daralt (-1 Sütun)",
-                "Yüksekliği Değiştir (1x/2x)",
-                "Sağına Boşluk (Spacer) Ekle",
-                addAppOption,
-                "Kutuyu Kaldır (Gizle)"
-        };
+        List<String> optionsList = new java.util.ArrayList<String>();
+        if (isColorTile) {
+            optionsList.add("🎯 İşlem / Uygulama Ata");
+        }
+        optionsList.add("Genişlet (+1 Sütun)");
+        optionsList.add("Daralt (-1 Sütun)");
+        optionsList.add("Yüksekliği Değiştir (1x/2x)");
+        optionsList.add("Sağına Boşluk (Spacer) Ekle");
+        optionsList.add(addAppOption);
+        optionsList.add("Kutuyu Kaldır (Gizle)");
+
+        String[] options = optionsList.toArray(new String[0]);
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle(tile.label + " — Kutu İşlemleri");
         builder.setItems(options, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
+                int shift = isColorTile ? 1 : 0;
+
+                if (isColorTile && which == 0) {
+                    openColorAssignmentDialog(tile);
+                    return;
+                }
+
+                int effectiveWhich = which - shift;
                 int maxC = workspaceView.getCalculatedCols();
-                if (which == 0) {
+                if (effectiveWhich == 0) {
                     tile.colSpan = Math.min(maxC, tile.colSpan + 1);
                     WorkspaceStorage.saveWorkspace(MainActivity.this, config);
                     workspaceView.rebuildViews();
                     setupTileClickListeners();
-                } else if (which == 1) {
+                } else if (effectiveWhich == 1) {
                     tile.colSpan = Math.max(1, tile.colSpan - 1);
                     WorkspaceStorage.saveWorkspace(MainActivity.this, config);
                     workspaceView.rebuildViews();
                     setupTileClickListeners();
-                } else if (which == 2) {
+                } else if (effectiveWhich == 2) {
                     tile.rowSpan = (tile.rowSpan == 1) ? 2 : 1;
                     WorkspaceStorage.saveWorkspace(MainActivity.this, config);
                     workspaceView.rebuildViews();
                     setupTileClickListeners();
-                } else if (which == 3) {
-                    // Araya boşluk ekleme: Tam bu kutunun hemen arkasına Spacer ekle
+                } else if (effectiveWhich == 3) {
                     int idx = config.tiles.indexOf(tile);
                     Tile spacer = new Tile(TileType.SPACER, "Boşluk", 0, 0, 1, 1);
                     if (idx >= 0 && idx < config.tiles.size()) {
@@ -277,13 +522,13 @@ public class MainActivity extends Activity {
                     WorkspaceStorage.saveWorkspace(MainActivity.this, config);
                     workspaceView.rebuildViews();
                     setupTileClickListeners();
-                } else if (which == 4) {
+                } else if (effectiveWhich == 4) {
                     if (hiddenApps.isEmpty()) {
                         Toast.makeText(MainActivity.this, "Gizlenmiş uygulama yok. Tüm uygulamalarınız ekranda.", Toast.LENGTH_SHORT).show();
                     } else {
                         openHiddenAppsDialog(tile);
                     }
-                } else if (which == 5) {
+                } else if (effectiveWhich == 5) {
                     config.tiles.remove(tile);
                     WorkspaceStorage.saveWorkspace(MainActivity.this, config);
                     workspaceView.rebuildViews();
@@ -614,6 +859,23 @@ public class MainActivity extends Activity {
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
+        // TV Kumandası 4 Renk Tuşları (Kırmızı, Yeşil, Sarı, Mavi)
+        if (event.getRepeatCount() == 0) {
+            if (keyCode == KeyEvent.KEYCODE_PROG_RED) {
+                triggerColorKey(TileType.COLOR_RED);
+                return true;
+            } else if (keyCode == KeyEvent.KEYCODE_PROG_GREEN) {
+                triggerColorKey(TileType.COLOR_GREEN);
+                return true;
+            } else if (keyCode == KeyEvent.KEYCODE_PROG_YELLOW) {
+                triggerColorKey(TileType.COLOR_YELLOW);
+                return true;
+            } else if (keyCode == KeyEvent.KEYCODE_PROG_BLUE) {
+                triggerColorKey(TileType.COLOR_BLUE);
+                return true;
+            }
+        }
+
         if (workspaceView.isEditMode()) {
             if (keyCode == KeyEvent.KEYCODE_BACK) {
                 toggleEditMode();
