@@ -1,12 +1,12 @@
 {
   "appName": "Saf Ekran",
   "packageName": "com.safekran.launcher",
-  "versionCode": 11,
-  "versionName": "2.3.1",
+  "versionCode": 12,
+  "versionName": "2.4.0",
   "developer": "Vezir",
   "schemaVersion": 1,
   "createdDate": "2026-11-19",
-  "apkName": "SafEkran_v2.3.1_vc11.apk",
+  "apkName": "SafEkran_v2.4.0_vc12.apk",
   "history": [
     {
       "versionCode": 1,
@@ -73,6 +73,12 @@
       "versionName": "2.3.1",
       "date": "2026-11-19",
       "description": "Fix: 2D Doluluk Izgarası (2D Occupancy Grid) ile dikeyde yükseltilen kutuların çakışması kökten çözüldü"
+    },
+    {
+      "versionCode": 12,
+      "versionName": "2.4.0",
+      "date": "2026-11-19",
+      "description": "Feat: 4 Yönlü Boşluk Ekleme (Sol, Sağ, Üst, Alt) ve Kademeli Yükseklik (+1/-1 Satır) v2.4.0"
     }
   ]
 }

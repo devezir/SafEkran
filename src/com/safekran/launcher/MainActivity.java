@@ -475,8 +475,12 @@ public class MainActivity extends Activity {
         }
         optionsList.add("Genişlet (+1 Sütun)");
         optionsList.add("Daralt (-1 Sütun)");
-        optionsList.add("Yüksekliği Değiştir (1x/2x)");
+        optionsList.add("Yükselt (+1 Satır)");
+        optionsList.add("Alçalt (-1 Satır)");
         optionsList.add("Sağına Boşluk (Spacer) Ekle");
+        optionsList.add("Soluna Boşluk (Spacer) Ekle");
+        optionsList.add("Üstüne Boşluk (Spacer) Ekle");
+        optionsList.add("Altına Boşluk (Spacer) Ekle");
         optionsList.add(addAppOption);
         optionsList.add("Kutuyu Kaldır (Gizle)");
 
@@ -498,20 +502,17 @@ public class MainActivity extends Activity {
                 int maxC = workspaceView.getCalculatedCols();
                 if (effectiveWhich == 0) {
                     tile.colSpan = Math.min(maxC, tile.colSpan + 1);
-                    WorkspaceStorage.saveWorkspace(MainActivity.this, config);
-                    workspaceView.rebuildViews();
-                    setupTileClickListeners();
+                    saveAndRefresh(tile.label + " genişletildi (" + tile.colSpan + " sütun).");
                 } else if (effectiveWhich == 1) {
                     tile.colSpan = Math.max(1, tile.colSpan - 1);
-                    WorkspaceStorage.saveWorkspace(MainActivity.this, config);
-                    workspaceView.rebuildViews();
-                    setupTileClickListeners();
+                    saveAndRefresh(tile.label + " daraltıldı (" + tile.colSpan + " sütun).");
                 } else if (effectiveWhich == 2) {
-                    tile.rowSpan = (tile.rowSpan == 1) ? 2 : 1;
-                    WorkspaceStorage.saveWorkspace(MainActivity.this, config);
-                    workspaceView.rebuildViews();
-                    setupTileClickListeners();
+                    tile.rowSpan = Math.min(4, tile.rowSpan + 1);
+                    saveAndRefresh(tile.label + " yükseltildi (" + tile.rowSpan + " satır).");
                 } else if (effectiveWhich == 3) {
+                    tile.rowSpan = Math.max(1, tile.rowSpan - 1);
+                    saveAndRefresh(tile.label + " alçaltıldı (" + tile.rowSpan + " satır).");
+                } else if (effectiveWhich == 4) {
                     int idx = config.tiles.indexOf(tile);
                     Tile spacer = new Tile(TileType.SPACER, "Boşluk", 0, 0, 1, 1);
                     if (idx >= 0 && idx < config.tiles.size()) {
@@ -519,21 +520,37 @@ public class MainActivity extends Activity {
                     } else {
                         config.tiles.add(spacer);
                     }
-                    WorkspaceStorage.saveWorkspace(MainActivity.this, config);
-                    workspaceView.rebuildViews();
-                    setupTileClickListeners();
-                } else if (effectiveWhich == 4) {
+                    saveAndRefresh("Sağına boşluk eklendi.");
+                } else if (effectiveWhich == 5) {
+                    int idx = config.tiles.indexOf(tile);
+                    Tile spacer = new Tile(TileType.SPACER, "Boşluk", 0, 0, 1, 1);
+                    if (idx >= 0) {
+                        config.tiles.add(idx, spacer);
+                    } else {
+                        config.tiles.add(0, spacer);
+                    }
+                    saveAndRefresh("Soluna boşluk eklendi.");
+                } else if (effectiveWhich == 6) {
+                    int idx = config.tiles.indexOf(tile);
+                    int target = Math.max(0, idx - maxC);
+                    Tile spacer = new Tile(TileType.SPACER, "Boşluk", 0, 0, 1, 1);
+                    config.tiles.add(target, spacer);
+                    saveAndRefresh("Üst satıra boşluk eklendi.");
+                } else if (effectiveWhich == 7) {
+                    int idx = config.tiles.indexOf(tile);
+                    int target = Math.min(config.tiles.size(), idx + maxC);
+                    Tile spacer = new Tile(TileType.SPACER, "Boşluk", 0, 0, 1, 1);
+                    config.tiles.add(target, spacer);
+                    saveAndRefresh("Alt satıra boşluk eklendi.");
+                } else if (effectiveWhich == 8) {
                     if (hiddenApps.isEmpty()) {
                         Toast.makeText(MainActivity.this, "Gizlenmiş uygulama yok. Tüm uygulamalarınız ekranda.", Toast.LENGTH_SHORT).show();
                     } else {
                         openHiddenAppsDialog(tile);
                     }
-                } else if (effectiveWhich == 5) {
+                } else if (effectiveWhich == 9) {
                     config.tiles.remove(tile);
-                    WorkspaceStorage.saveWorkspace(MainActivity.this, config);
-                    workspaceView.rebuildViews();
-                    setupTileClickListeners();
-                    Toast.makeText(MainActivity.this, tile.label + " gizlendi. Ayarlar veya kutu menüsünden geri getirebilirsiniz.", Toast.LENGTH_SHORT).show();
+                    saveAndRefresh(tile.label + " gizlendi. Ayarlar veya kutu menüsünden geri getirebilirsiniz.");
                 }
             }
         });
