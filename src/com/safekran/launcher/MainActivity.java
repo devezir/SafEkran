@@ -146,13 +146,102 @@ public class MainActivity extends Activity {
         }
     }
 
+    private List<AppInfo> getHiddenOrMissingApps() {
+        List<AppInfo> allApps = AppScanner.scanAllApps(this);
+        Map<String, Boolean> visiblePackages = new HashMap<String, Boolean>();
+        if (config != null && config.tiles != null) {
+            for (Tile t : config.tiles) {
+                if (t.type == TileType.APP && t.packageName != null) {
+                    visiblePackages.put(t.packageName, true);
+                }
+            }
+        }
+        List<AppInfo> hiddenApps = new java.util.ArrayList<AppInfo>();
+        for (AppInfo ai : allApps) {
+            if (!visiblePackages.containsKey(ai.packageName)) {
+                hiddenApps.add(ai);
+            }
+        }
+        return hiddenApps;
+    }
+
+    private void openHiddenAppsDialog(final Tile anchorTile) {
+        final List<AppInfo> hidden = getHiddenOrMissingApps();
+        if (hidden.isEmpty()) {
+            Toast.makeText(this, "Gizlenmiş uygulama yok. Tüm uygulamalar ana ekranda mevcut.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        final boolean hasMultiple = hidden.size() > 1;
+        int listSize = hasMultiple ? hidden.size() + 1 : hidden.size();
+        String[] items = new String[listSize];
+
+        int offset = 0;
+        if (hasMultiple) {
+            items[0] = "➕ TÜMÜNÜ GERİ GETİR (" + hidden.size() + " Uygulama)";
+            offset = 1;
+        }
+
+        for (int i = 0; i < hidden.size(); i++) {
+            items[i + offset] = hidden.get(i).label;
+        }
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle(anchorTile != null ? anchorTile.label + " Yanına Uygulama Ekle" : "Gizlenen Uygulamaları Ekle (" + hidden.size() + ")");
+        builder.setItems(items, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                if (hasMultiple && which == 0) {
+                    // Tümünü birden ekle
+                    for (AppInfo ai : hidden) {
+                        Tile nt = new Tile(TileType.APP, ai.label, 0, 0, 1, 1);
+                        nt.packageName = ai.packageName;
+                        iconCache.put(ai.packageName, ai.icon);
+                        config.tiles.add(nt);
+                    }
+                    WorkspaceStorage.saveWorkspace(MainActivity.this, config);
+                    workspaceView.rebuildViews();
+                    setupTileClickListeners();
+                    Toast.makeText(MainActivity.this, hidden.size() + " uygulama ana ekrana eklendi.", Toast.LENGTH_SHORT).show();
+                } else {
+                    int selectedIndex = hasMultiple ? (which - 1) : which;
+                    AppInfo selected = hidden.get(selectedIndex);
+                    Tile newTile = new Tile(TileType.APP, selected.label, 0, 0, 1, 1);
+                    newTile.packageName = selected.packageName;
+                    iconCache.put(selected.packageName, selected.icon);
+
+                    if (anchorTile != null) {
+                        int idx = config.tiles.indexOf(anchorTile);
+                        if (idx >= 0 && idx < config.tiles.size()) {
+                            config.tiles.add(idx + 1, newTile);
+                        } else {
+                            config.tiles.add(newTile);
+                        }
+                    } else {
+                        config.tiles.add(newTile);
+                    }
+
+                    WorkspaceStorage.saveWorkspace(MainActivity.this, config);
+                    workspaceView.rebuildViews();
+                    setupTileClickListeners();
+                    Toast.makeText(MainActivity.this, selected.label + " ana ekrana eklendi.", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+        builder.show();
+    }
+
     private void onTileLongClicked(final Tile tile) {
+        final List<AppInfo> hiddenApps = getHiddenOrMissingApps();
+        String addAppOption = hiddenApps.isEmpty() ? "Sağına Uygulama Ekle (Gizlenen yok)" : "Sağına Uygulama Ekle (" + hiddenApps.size() + " gizlenen)";
+
         String[] options = new String[]{
                 "Genişlet (+1 Sütun)",
                 "Daralt (-1 Sütun)",
                 "Yüksekliği Değiştir (1x/2x)",
                 "Sağına Boşluk (Spacer) Ekle",
-                "Kutuyu Sil"
+                addAppOption,
+                "Kutuyu Kaldır (Gizle)"
         };
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -163,10 +252,19 @@ public class MainActivity extends Activity {
                 int maxC = workspaceView.getCalculatedCols();
                 if (which == 0) {
                     tile.colSpan = Math.min(maxC, tile.colSpan + 1);
+                    WorkspaceStorage.saveWorkspace(MainActivity.this, config);
+                    workspaceView.rebuildViews();
+                    setupTileClickListeners();
                 } else if (which == 1) {
                     tile.colSpan = Math.max(1, tile.colSpan - 1);
+                    WorkspaceStorage.saveWorkspace(MainActivity.this, config);
+                    workspaceView.rebuildViews();
+                    setupTileClickListeners();
                 } else if (which == 2) {
                     tile.rowSpan = (tile.rowSpan == 1) ? 2 : 1;
+                    WorkspaceStorage.saveWorkspace(MainActivity.this, config);
+                    workspaceView.rebuildViews();
+                    setupTileClickListeners();
                 } else if (which == 3) {
                     // Araya boşluk ekleme: Tam bu kutunun hemen arkasına Spacer ekle
                     int idx = config.tiles.indexOf(tile);
@@ -176,12 +274,22 @@ public class MainActivity extends Activity {
                     } else {
                         config.tiles.add(spacer);
                     }
+                    WorkspaceStorage.saveWorkspace(MainActivity.this, config);
+                    workspaceView.rebuildViews();
+                    setupTileClickListeners();
                 } else if (which == 4) {
+                    if (hiddenApps.isEmpty()) {
+                        Toast.makeText(MainActivity.this, "Gizlenmiş uygulama yok. Tüm uygulamalarınız ekranda.", Toast.LENGTH_SHORT).show();
+                    } else {
+                        openHiddenAppsDialog(tile);
+                    }
+                } else if (which == 5) {
                     config.tiles.remove(tile);
+                    WorkspaceStorage.saveWorkspace(MainActivity.this, config);
+                    workspaceView.rebuildViews();
+                    setupTileClickListeners();
+                    Toast.makeText(MainActivity.this, tile.label + " gizlendi. Ayarlar veya kutu menüsünden geri getirebilirsiniz.", Toast.LENGTH_SHORT).show();
                 }
-                WorkspaceStorage.saveWorkspace(MainActivity.this, config);
-                workspaceView.rebuildViews();
-                setupTileClickListeners();
             }
         });
         builder.show();
@@ -349,8 +457,23 @@ public class MainActivity extends Activity {
         });
         layout.addView(cbDate);
 
+        // 6. Gizlenen ve Eksik Uygulamalar
+        addSectionHeader(layout, "6. GİZLENEN UYGULAMALAR");
+        final List<AppInfo> currentHidden = getHiddenOrMissingApps();
+        Button hiddenBtn = new Button(this);
+        hiddenBtn.setText("👁️ Gizlenen Uygulamaları Yönet (" + currentHidden.size() + " adet)");
+        hiddenBtn.setBackgroundColor(currentHidden.isEmpty() ? Color.parseColor("#37474F") : Color.parseColor("#00695C"));
+        hiddenBtn.setTextColor(Color.WHITE);
+        hiddenBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openHiddenAppsDialog(null);
+            }
+        });
+        layout.addView(hiddenBtn);
+
         // 7. Düzen Sıfırlama Butonu
-        addSectionHeader(layout, "6. DÜZEN İŞLEMLERİ");
+        addSectionHeader(layout, "7. DÜZEN İŞLEMLERİ");
         Button reflowBtn = new Button(this);
         reflowBtn.setText("🔄 Sıralamayı Varsayılana Sıfırla (Alfabeye Göre Sırala)");
         reflowBtn.setBackgroundColor(Color.parseColor("#37474F"));
