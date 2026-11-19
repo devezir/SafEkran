@@ -21,10 +21,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Saf Ekran Otomatik Türetilen Izgara Motoru (Auto-Fit Grid Engine).
- * Sütun sayısı yapay bir ayar değildir; Ekran Genişliği, Kutu Boyutu ve 
- * Gutter oranından matematiksel olarak anında türetilir.
- * Ekran döndüğünde (TV yatay vs. telefon dikey) satırlar ve sütunlar kendiliğinden akar.
+ * Saf Ekran Kesintisiz Akış Motoru (Continuous Auto-Flow Engine).
+ * Sütun sayısı ve hücre konumları dinamik olarak hesaplanır.
+ * Kutular asla üst üste binemez (Koleksiyon bazlı otomatik akış).
+ * Ayar değiştiğinde veya ekran döndüğünde düzen kendini otomatik onarır.
  */
 public class WorkspaceView extends ViewGroup {
 
@@ -153,6 +153,41 @@ public class WorkspaceView extends ViewGroup {
         return Color.BLACK;
     }
 
+    /**
+     * KÖK NEDEN ÇÖZÜMÜ: Otomatik Akış ve Paketleme Algoritması (Auto-Flow Packing).
+     * Kutuları mevcut sütun sayısına göre sırayla ve boşluksuz paketler.
+     * Üst üste binme matematiksel olarak imkansız hale gelir.
+     */
+    private void packTilesAutomatically() {
+        int curCol = 0;
+        int curRow = 0;
+        int cols = Math.max(1, calculatedCols);
+
+        int childCount = getChildCount();
+        for (int i = 0; i < childCount; i++) {
+            View child = getChildAt(i);
+            if (child instanceof TileView) {
+                Tile t = ((TileView) child).getTile();
+                int span = Math.min(cols, t.colSpan);
+
+                // Eğer kutu mevcut satırın kalanına sığmıyorsa alt satıra geç
+                if (curCol + span > cols) {
+                    curCol = 0;
+                    curRow++;
+                }
+
+                t.col = curCol;
+                t.row = curRow;
+
+                curCol += span;
+                if (curCol >= cols) {
+                    curCol = 0;
+                    curRow++;
+                }
+            }
+        }
+    }
+
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         int width = MeasureSpec.getSize(widthMeasureSpec);
@@ -168,28 +203,30 @@ public class WorkspaceView extends ViewGroup {
             int usableWidth = Math.max(100, width - leftOff - rightOff);
             int usableHeight = Math.max(100, height - topOffset - bottomOff);
 
-            // Referans Boyut: Ekranın en uzun kenarı (Telefon dikeyde de olsa kutu boyutunu korur)
+            // Referans Boyut: Ekranın en uzun kenarı
             int refDim = Math.max(width, height);
             int targetTileW = Math.max(60, (int) (refDim * config.tileScale));
 
             gutterXPx = Math.max(0, (int) (usableWidth * config.gutterPercent));
             gutterYPx = Math.max(0, (int) (usableHeight * config.gutterPercent));
 
-            // TÜRETİLEN SÜTUN SAYISI (Kullanıcının formülü):
-            // Sütun Sayısı = (usableWidth + gutter) / (targetTileW + gutter)
+            // TÜRETİLEN SÜTUN SAYISI: (usableWidth + gutter) / (targetTileW + gutter)
             calculatedCols = Math.max(1, (usableWidth + gutterXPx) / (targetTileW + gutterXPx));
 
-            // Hücre Genişliği (Artık pikselleri kutulara pürüzsüz yayma)
+            // Hücre Genişliği (Kalan artık pikselleri tam yayan formül)
             int totalGuttersW = (calculatedCols - 1) * gutterXPx;
             cellWidth = Math.max(10, (usableWidth - totalGuttersW) / calculatedCols);
 
-            // Hücre Yüksekliği (En-Boy Oranına Göre: %75 = TV Kartı)
+            // Hücre Yüksekliği (%75 En-Boy Oranı = TV Kartı)
             cellHeight = Math.max(10, (int) (cellWidth * config.tileHeightRatio));
 
             // Izgarayı ekranda tam ortalama
             int totalContentW = calculatedCols * cellWidth + totalGuttersW;
             int extraMarginX = Math.max(0, (usableWidth - totalContentW) / 2);
             startLeft = leftOff + extraMarginX;
+
+            // Her ölçümde kutuları güncel sütun sayısına göre boşluksuz ve çakışmasız paketle
+            packTilesAutomatically();
 
             int childCount = getChildCount();
             for (int i = 0; i < childCount; i++) {
@@ -226,16 +263,8 @@ public class WorkspaceView extends ViewGroup {
             if (child instanceof TileView) {
                 Tile tile = ((TileView) child).getTile();
 
-                // Eğer kutu mevcut sütun sayısının dışına taşarsa otomatik sar
-                int effectiveCol = tile.col;
-                int effectiveRow = tile.row;
-
-                if (effectiveCol + tile.colSpan > calculatedCols) {
-                    effectiveCol = effectiveCol % calculatedCols;
-                }
-
-                int childLeft = startLeft + effectiveCol * (cellWidth + gutterXPx);
-                int childTop = topOffset + effectiveRow * (cellHeight + gutterYPx);
+                int childLeft = startLeft + tile.col * (cellWidth + gutterXPx);
+                int childTop = topOffset + tile.row * (cellHeight + gutterYPx);
                 int childRight = childLeft + child.getMeasuredWidth();
                 int childBottom = childTop + child.getMeasuredHeight();
 
@@ -244,8 +273,8 @@ public class WorkspaceView extends ViewGroup {
                 if (childBottom > maxBottom) {
                     maxBottom = childBottom;
                 }
-                if (effectiveRow + tile.rowSpan > maxRow) {
-                    maxRow = effectiveRow + tile.rowSpan;
+                if (tile.row + tile.rowSpan > maxRow) {
+                    maxRow = tile.row + tile.rowSpan;
                 }
             }
         }
@@ -470,8 +499,8 @@ public class WorkspaceView extends ViewGroup {
                 }
             }
 
-            String hudText1 = "DÜZENLEME MODU | Otomatik Türetilen: " + calculatedCols + " Sütun";
-            String hudText2 = "Hücre: " + cellWidth + "x" + cellHeight + " px | [Yön Tuşu]: Hücre Atla | [OK]: Bırak";
+            String hudText1 = "DÜZENLEME MODU | Otomatik Akış: " + calculatedCols + " Sütun";
+            String hudText2 = "Hücre: " + cellWidth + "x" + cellHeight + " px | [Yön Tuşu]: Sıra Değiştir | [OK]: Bırak";
 
             float cardW = 760f;
             float cardH = 90f;

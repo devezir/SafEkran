@@ -1,12 +1,12 @@
 {
   "appName": "Saf Ekran",
   "packageName": "com.safekran.launcher",
-  "versionCode": 5,
-  "versionName": "2.1.0",
+  "versionCode": 6,
+  "versionName": "2.2.0",
   "developer": "Vezir",
   "schemaVersion": 1,
   "createdDate": "2026-11-19",
-  "apkName": "SafEkran_v2.1.0_vc5.apk",
+  "apkName": "SafEkran_v2.2.0_vc6.apk",
   "history": [
     {
       "versionCode": 1,
@@ -37,6 +37,12 @@
       "versionName": "2.1.0",
       "date": "2026-11-19",
       "description": "Otomatik türetilen sütun sistemi: Kutu boyutu ve ekrana göre dinamik akış (Auto-Fit Grid)"
+    },
+    {
+      "versionCode": 6,
+      "versionName": "2.2.0",
+      "date": "2026-11-19",
+      "description": "Kesintisiz Otomatik Paketleme (Auto-Flow): Butonların üst üste binmesi kökten engellendi, tam dinamik akış"
     }
   ]
 }

@@ -32,6 +32,7 @@ import com.safekran.launcher.model.WorkspaceConfig;
 import com.safekran.launcher.ui.TileView;
 import com.safekran.launcher.ui.WorkspaceView;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -109,13 +110,17 @@ public class MainActivity extends Activity {
         if (workspaceView.isEditMode()) {
             if (selectedMovingTile == null) {
                 selectedMovingTile = tile;
-                Toast.makeText(this, tile.label + " seçildi. Yön tuşlarıyla hücre hücre taşıyın, [OK] ile bırakın.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, tile.label + " seçildi. Yön tuşlarıyla veya diğer kutuya dokunarak yer değiştirin.", Toast.LENGTH_SHORT).show();
             } else {
+                // Dokunmatik ile iki kutunun sırasını yer değiştir
+                if (selectedMovingTile != tile) {
+                    swapTilePositions(selectedMovingTile, tile);
+                    Toast.makeText(this, selectedMovingTile.label + " ile " + tile.label + " yer değiştirdi.", Toast.LENGTH_SHORT).show();
+                }
                 selectedMovingTile = null;
                 WorkspaceStorage.saveWorkspace(this, config);
                 workspaceView.rebuildViews();
                 setupTileClickListeners();
-                Toast.makeText(this, "Hücre konumu kaydedildi.", Toast.LENGTH_SHORT).show();
             }
             return;
         }
@@ -142,17 +147,16 @@ public class MainActivity extends Activity {
     }
 
     private void onTileLongClicked(final Tile tile) {
-        int maxCols = workspaceView.getCalculatedCols();
         String[] options = new String[]{
                 "Genişlet (+1 Sütun)",
                 "Daralt (-1 Sütun)",
-                "Yüksekliği Artır (+1 Satır)",
+                "Yüksekliği Değiştir (1x/2x)",
                 "Sağına Boşluk (Spacer) Ekle",
                 "Kutuyu Sil"
         };
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle(tile.label + " — Matris İşlemleri");
+        builder.setTitle(tile.label + " — Kutu İşlemleri");
         builder.setItems(options, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
@@ -164,8 +168,14 @@ public class MainActivity extends Activity {
                 } else if (which == 2) {
                     tile.rowSpan = (tile.rowSpan == 1) ? 2 : 1;
                 } else if (which == 3) {
-                    Tile spacer = new Tile(TileType.SPACER, "Boşluk", tile.col + tile.colSpan, tile.row, 1, 1);
-                    config.tiles.add(spacer);
+                    // Araya boşluk ekleme: Tam bu kutunun hemen arkasına Spacer ekle
+                    int idx = config.tiles.indexOf(tile);
+                    Tile spacer = new Tile(TileType.SPACER, "Boşluk", 0, 0, 1, 1);
+                    if (idx >= 0 && idx < config.tiles.size()) {
+                        config.tiles.add(idx + 1, spacer);
+                    } else {
+                        config.tiles.add(spacer);
+                    }
                 } else if (which == 4) {
                     config.tiles.remove(tile);
                 }
@@ -175,6 +185,31 @@ public class MainActivity extends Activity {
             }
         });
         builder.show();
+    }
+
+    private void swapTilePositions(Tile t1, Tile t2) {
+        int idx1 = config.tiles.indexOf(t1);
+        int idx2 = config.tiles.indexOf(t2);
+        if (idx1 >= 0 && idx2 >= 0) {
+            Collections.swap(config.tiles, idx1, idx2);
+        }
+    }
+
+    private void moveTileInStream(Tile tile, int delta) {
+        int currentIndex = config.tiles.indexOf(tile);
+        if (currentIndex < 0) return;
+
+        int targetIndex = currentIndex + delta;
+        if (targetIndex < 0) targetIndex = 0;
+        if (targetIndex >= config.tiles.size()) targetIndex = config.tiles.size() - 1;
+
+        if (currentIndex != targetIndex) {
+            config.tiles.remove(currentIndex);
+            config.tiles.add(targetIndex, tile);
+            WorkspaceStorage.saveWorkspace(this, config);
+            workspaceView.rebuildViews();
+            setupTileClickListeners();
+        }
     }
 
     private void launchApp(String packageName) {
@@ -232,7 +267,7 @@ public class MainActivity extends Activity {
 
         // 1. İmza & Sürüm Başlığı
         TextView authorText = new TextView(this);
-        authorText.setText("Geliştirici: Vezir | v2.1 (Türetilmiş Otomatik Izgara)");
+        authorText.setText("Geliştirici: Vezir | v2.2 (Kesintisiz Oto-Akış)");
         authorText.setTextColor(Color.parseColor("#4CAF50"));
         authorText.setTextSize(13);
         authorText.setPadding(0, 0, 0, 16);
@@ -314,11 +349,11 @@ public class MainActivity extends Activity {
         });
         layout.addView(cbDate);
 
-        // 7. Akış Butonu
+        // 7. Düzen Sıfırlama Butonu
         addSectionHeader(layout, "6. DÜZEN İŞLEMLERİ");
         Button reflowBtn = new Button(this);
-        reflowBtn.setText("⚡ Düzeni Yağ Gibi Akıt (Dinamik Sütunlara Oturt)");
-        reflowBtn.setBackgroundColor(Color.parseColor("#1B5E20"));
+        reflowBtn.setText("🔄 Sıralamayı Varsayılana Sıfırla (Alfabeye Göre Sırala)");
+        reflowBtn.setBackgroundColor(Color.parseColor("#37474F"));
         reflowBtn.setTextColor(Color.WHITE);
         reflowBtn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -329,7 +364,7 @@ public class MainActivity extends Activity {
                 WorkspaceStorage.saveWorkspace(MainActivity.this, config);
                 workspaceView.rebuildViews();
                 setupTileClickListeners();
-                Toast.makeText(MainActivity.this, "Tüm ekran " + cols + " sütunlu dinamik akışa oturtuldu!", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "Sıralama varsayılana sıfırlandı.", Toast.LENGTH_SHORT).show();
             }
         });
         layout.addView(reflowBtn);
@@ -354,13 +389,13 @@ public class MainActivity extends Activity {
             }
         });
 
-        builder.setNegativeButton("Varsayılana Sıfırla", new DialogInterface.OnClickListener() {
+        builder.setNegativeButton("Fabrika Ayarları", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 config = WorkspaceStorage.generateDefaultWorkspace(MainActivity.this);
                 workspaceView.setConfig(config, iconCache, false);
                 setupTileClickListeners();
-                Toast.makeText(MainActivity.this, "Varsayılan ızgara yüklendi.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "Fabrika ayarlarına dönüldü.", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -462,31 +497,25 @@ public class MainActivity extends Activity {
                 return true;
             }
 
-            // Snap-to-Grid: D-Pad yön tuşlarıyla hücre hücre atlama
+            // Superpowers Akış Hareketi: Kutu taşındığında sıralama listesinde dinamik yer değiştirir
+            // Asla üst üste binme veya boşluk oluşamaz!
             if (selectedMovingTile != null) {
-                int maxCols = workspaceView.getCalculatedCols();
+                int cols = workspaceView.getCalculatedCols();
                 if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-                    selectedMovingTile.row = Math.max(0, selectedMovingTile.row - 1);
-                    workspaceView.requestLayout();
+                    moveTileInStream(selectedMovingTile, -cols);
                     return true;
                 } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
-                    selectedMovingTile.row = selectedMovingTile.row + 1;
-                    workspaceView.requestLayout();
+                    moveTileInStream(selectedMovingTile, cols);
                     return true;
                 } else if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
-                    selectedMovingTile.col = Math.max(0, selectedMovingTile.col - 1);
-                    workspaceView.requestLayout();
+                    moveTileInStream(selectedMovingTile, -1);
                     return true;
                 } else if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
-                    selectedMovingTile.col = Math.min(maxCols - selectedMovingTile.colSpan, selectedMovingTile.col + 1);
-                    workspaceView.requestLayout();
+                    moveTileInStream(selectedMovingTile, 1);
                     return true;
                 } else if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
                     selectedMovingTile = null;
-                    WorkspaceStorage.saveWorkspace(this, config);
-                    workspaceView.rebuildViews();
-                    setupTileClickListeners();
-                    Toast.makeText(this, "Hücreye yapışarak kaydedildi.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Kutu konumu bırakıldı.", Toast.LENGTH_SHORT).show();
                     return true;
                 }
             }
