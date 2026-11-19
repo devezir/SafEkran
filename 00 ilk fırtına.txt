@@ -64,6 +64,8 @@ Proje ismi "Saf Ekran"
 Böyle bişe yaptık mecburen çok dilli olacak ama, merkez dil=tr olacak . ing bile tr den çevrilecek
 endüstri standardından mesela afrikalı biri kendi diline nasıl çevirir? bunu da konuşalım
 
+versiyon kontrolü de olsun.
+imza da olsun
 
 Mimarimizi analiz et
 Seçenekler ve önerilerde bulun 

@@ -5,10 +5,13 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.DashPathEffect;
 import android.graphics.Paint;
-import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
+import android.view.MotionEvent;
+import android.view.VelocityTracker;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.ViewGroup;
+import android.widget.OverScroller;
 
 import com.safekran.launcher.model.SafeArea;
 import com.safekran.launcher.model.Tile;
@@ -24,14 +27,34 @@ public class WorkspaceView extends ViewGroup {
     private boolean isEditMode = false;
     private final Map<String, Drawable> iconCache = new HashMap<String, Drawable>();
 
-    // Düzenleme modu çizim fırçaları
+    // Dokunmatik ve Fiziksel Kaydırma (Touch Scrolling Engine)
+    private final OverScroller scroller;
+    private VelocityTracker velocityTracker;
+    private final int touchSlop;
+    private final int minFlingVelocity;
+    private final int maxFlingVelocity;
+
+    private float lastTouchY = 0f;
+    private float initialDownY = 0f;
+    private float initialDownX = 0f;
+    private boolean isBeingDragged = false;
+    private int maxScrollY = 0;
+
+    // Düzenleme modu ve çizim fırçaları
     private Paint safeAreaPaint;
     private Paint guidelinePaint;
     private Paint hudBgPaint;
     private Paint hudTextPaint;
+    private Paint scrollbarPaint;
 
     public WorkspaceView(Context context) {
         super(context);
+        scroller = new OverScroller(context);
+        ViewConfiguration vc = ViewConfiguration.get(context);
+        touchSlop = vc.getScaledTouchSlop();
+        minFlingVelocity = vc.getScaledMinimumFlingVelocity();
+        maxFlingVelocity = vc.getScaledMaximumFlingVelocity();
+
         initPaints();
         setBackgroundColor(Color.BLACK);
         setClipChildren(false);
@@ -58,6 +81,10 @@ public class WorkspaceView extends ViewGroup {
         hudTextPaint.setColor(Color.WHITE);
         hudTextPaint.setTextSize(26f);
         hudTextPaint.setAntiAlias(true);
+
+        scrollbarPaint = new Paint();
+        scrollbarPaint.setColor(Color.parseColor("#66FFFFFF"));
+        scrollbarPaint.setStyle(Paint.Style.FILL);
     }
 
     public void setConfig(WorkspaceConfig config, Map<String, Drawable> icons, boolean editMode) {
@@ -141,20 +168,211 @@ public class WorkspaceView extends ViewGroup {
         int usableWidth = screenWidth - leftOffset - (int) (screenWidth * sa.right);
         int usableHeight = screenHeight - topOffset - (int) (screenHeight * sa.bottom);
 
+        int maxBottom = screenHeight;
+
         int childCount = getChildCount();
         for (int i = 0; i < childCount; i++) {
             View child = getChildAt(i);
             if (child instanceof TileView) {
                 Tile tile = ((TileView) child).getTile();
 
-                // Seçenek B: Serbest Yüzde pozisyonlaması
+                // Seçenek B: Serbest Yüzde koordinat yerleşimi
                 int childLeft = leftOffset + (int) (usableWidth * tile.xPercent);
                 int childTop = topOffset + (int) (usableHeight * tile.yPercent);
                 int childRight = childLeft + child.getMeasuredWidth();
                 int childBottom = childTop + child.getMeasuredHeight();
 
                 child.layout(childLeft, childTop, childRight, childBottom);
+
+                if (childBottom > maxBottom) {
+                    maxBottom = childBottom;
+                }
             }
+        }
+
+        // Toplam içerik yüksekliğine göre maksimum kaydırma mesafesini hesapla
+        int bottomPadding = (int) (screenHeight * sa.bottom);
+        maxScrollY = Math.max(0, (maxBottom + bottomPadding) - screenHeight);
+
+        // Ekran boyutu değiştiğinde scroll limitini aşmamak için denetle
+        if (getScrollY() > maxScrollY) {
+            scrollTo(0, maxScrollY);
+        }
+    }
+
+    // ==========================================
+    // DOKUNMATİK KAYDIRMA VE İVME MOTORU (TOUCH & FLING)
+    // ==========================================
+
+    @Override
+    public boolean onInterceptTouchEvent(MotionEvent ev) {
+        int action = ev.getActionMasked();
+
+        if (action == MotionEvent.ACTION_CANCEL || action == MotionEvent.ACTION_UP) {
+            isBeingDragged = false;
+            recycleVelocityTracker();
+            return false;
+        }
+
+        switch (action) {
+            case MotionEvent.ACTION_DOWN:
+                initialDownX = ev.getX();
+                initialDownY = ev.getY();
+                lastTouchY = ev.getY();
+                isBeingDragged = !scroller.isFinished();
+                initOrResetVelocityTracker();
+                velocityTracker.addMovement(ev);
+                break;
+
+            case MotionEvent.ACTION_MOVE:
+                float y = ev.getY();
+                float dy = Math.abs(y - initialDownY);
+                float dx = Math.abs(ev.getX() - initialDownX);
+
+                // Dikey hareket touchSlop'u aşarsa ve yataydan fazlaysa dokunmayı yakala
+                if (dy > touchSlop && dy > dx) {
+                    isBeingDragged = true;
+                    lastTouchY = y;
+                    initVelocityTrackerIfNotExists();
+                    velocityTracker.addMovement(ev);
+                    // Alt elemanların tıklama odağını iptal et
+                    MotionEvent cancelEvent = MotionEvent.obtain(ev);
+                    cancelEvent.setAction(MotionEvent.ACTION_CANCEL);
+                    super.dispatchTouchEvent(cancelEvent);
+                    cancelEvent.recycle();
+                    return true;
+                }
+                break;
+        }
+
+        return isBeingDragged;
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent ev) {
+        initVelocityTrackerIfNotExists();
+        velocityTracker.addMovement(ev);
+
+        int action = ev.getActionMasked();
+
+        switch (action) {
+            case MotionEvent.ACTION_DOWN:
+                if (!scroller.isFinished()) {
+                    scroller.abortAnimation();
+                }
+                lastTouchY = ev.getY();
+                initialDownY = ev.getY();
+                return true;
+
+            case MotionEvent.ACTION_MOVE:
+                float y = ev.getY();
+                float deltaY = lastTouchY - y;
+
+                if (!isBeingDragged && Math.abs(y - initialDownY) > touchSlop) {
+                    isBeingDragged = true;
+                }
+
+                if (isBeingDragged) {
+                    // Kaydırma sınırları içinde pürüzsüz kaydır
+                    int currentScrollY = getScrollY();
+                    int newScrollY = (int) (currentScrollY + deltaY);
+
+                    if (newScrollY < 0) {
+                        newScrollY = 0;
+                    } else if (newScrollY > maxScrollY) {
+                        newScrollY = maxScrollY;
+                    }
+
+                    scrollTo(0, newScrollY);
+                    lastTouchY = y;
+                }
+                break;
+
+            case MotionEvent.ACTION_UP:
+                if (isBeingDragged) {
+                    velocityTracker.computeCurrentVelocity(1000, maxFlingVelocity);
+                    float yVelocity = velocityTracker.getYVelocity();
+
+                    if (Math.abs(yVelocity) > minFlingVelocity) {
+                        // Fiziksel ivmeli kaydırma (Fling)
+                        scroller.fling(0, getScrollY(), 0, (int) -yVelocity, 0, 0, 0, maxScrollY);
+                        postInvalidateOnAnimation();
+                    }
+                    isBeingDragged = false;
+                }
+                recycleVelocityTracker();
+                break;
+
+            case MotionEvent.ACTION_CANCEL:
+                isBeingDragged = false;
+                recycleVelocityTracker();
+                break;
+        }
+
+        return true;
+    }
+
+    @Override
+    public void computeScroll() {
+        if (scroller.computeScrollOffset()) {
+            int currY = scroller.getCurrY();
+            scrollTo(0, currY);
+            postInvalidateOnAnimation();
+        }
+    }
+
+    // ==========================================
+    // TV KUMANDASI ODAK TAKİBİ VE OTO-KAYDIRMA
+    // ==========================================
+
+    @Override
+    public void requestChildFocus(View child, View focused) {
+        super.requestChildFocus(child, focused);
+
+        if (focused != null && config != null) {
+            // Kumanda ile odaklanan kutucuk ekran sınırlarının dışındaysa otomatik kaydır
+            int childTop = child.getTop();
+            int childBottom = child.getBottom();
+            int currentScrollY = getScrollY();
+            int viewH = getHeight();
+
+            int topMargin = (int) (viewH * config.safeArea.top) + 20;
+            int bottomMargin = (int) (viewH * config.safeArea.bottom) + 20;
+
+            if (childBottom > currentScrollY + viewH - bottomMargin) {
+                int targetY = Math.min(maxScrollY, childBottom - viewH + bottomMargin);
+                smoothScrollTo(targetY);
+            } else if (childTop < currentScrollY + topMargin) {
+                int targetY = Math.max(0, childTop - topMargin);
+                smoothScrollTo(targetY);
+            }
+        }
+    }
+
+    public void smoothScrollTo(int targetY) {
+        int dy = targetY - getScrollY();
+        scroller.startScroll(0, getScrollY(), 0, dy, 250);
+        postInvalidateOnAnimation();
+    }
+
+    private void initOrResetVelocityTracker() {
+        if (velocityTracker == null) {
+            velocityTracker = VelocityTracker.obtain();
+        } else {
+            velocityTracker.clear();
+        }
+    }
+
+    private void initVelocityTrackerIfNotExists() {
+        if (velocityTracker == null) {
+            velocityTracker = VelocityTracker.obtain();
+        }
+    }
+
+    private void recycleVelocityTracker() {
+        if (velocityTracker != null) {
+            velocityTracker.recycle();
+            velocityTracker = null;
         }
     }
 
@@ -165,23 +383,35 @@ public class WorkspaceView extends ViewGroup {
 
         super.dispatchDraw(canvas);
 
-        // 2. Düzenleme Modu Göstergeleri (Cetvel & Bilgi Kartı)
+        int w = getWidth();
+        int h = getHeight();
+        int scrollY = getScrollY();
+
+        // 2. Minimalist Dikey Kaydırma Çubuğu (Scrollbar)
+        if (maxScrollY > 0) {
+            float totalH = h + maxScrollY;
+            float barH = Math.max(40f, (h / totalH) * h);
+            float barY = scrollY + ((float) scrollY / maxScrollY) * (h - barH);
+            float barW = 6f;
+            float barRight = w - 8f;
+            canvas.drawRect(barRight - barW, barY, barRight, barY + barH, scrollbarPaint);
+        }
+
+        // 3. Düzenleme Modu Göstergeleri (Cetvel & Bilgi Kartı)
         if (isEditMode && config != null) {
-            int w = getWidth();
-            int h = getHeight();
             SafeArea sa = config.safeArea;
 
             int left = (int) (w * sa.left);
-            int top = (int) (h * sa.top);
+            int top = (int) (h * sa.top) + scrollY;
             int right = w - (int) (w * sa.right);
-            int bottom = h - (int) (h * sa.bottom);
+            int bottom = (h - (int) (h * sa.bottom)) + scrollY;
 
             // Güvenli alan sınır çizgisi
             canvas.drawRect(left, top, right, bottom, safeAreaPaint);
 
             // Kılavuz ızgara çizgileri (Yüzde 10'luk adımlarla)
             int usableW = right - left;
-            int usableH = bottom - top;
+            int usableH = (bottom - top);
             for (int i = 1; i <= 9; i++) {
                 float gx = left + (usableW * (i * 0.10f));
                 canvas.drawLine(gx, top, gx, bottom, guidelinePaint);
@@ -193,7 +423,7 @@ public class WorkspaceView extends ViewGroup {
 
             // TV Ergonomisi için Sağ Üstte Büyük Okunaklı Bilgi Kartı (HUD)
             String hudText1 = "DÜZENLEME MODU | Güvenli Alan: %" + (int) ((1f - sa.left - sa.right) * 100) + " x %" + (int) ((1f - sa.top - sa.bottom) * 100);
-            String hudText2 = "Kutu Sayısı: " + config.tiles.size() + " | [OK]: Seç/Bırak | [Geri]: Çık";
+            String hudText2 = "Kutu Sayısı: " + config.tiles.size() + " | [OK/Dokun]: Taşı | [Geri]: Çık";
 
             float cardW = 750f;
             float cardH = 90f;
