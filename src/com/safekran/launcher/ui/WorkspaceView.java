@@ -15,19 +15,24 @@ import android.widget.OverScroller;
 
 import com.safekran.launcher.model.SafeArea;
 import com.safekran.launcher.model.Tile;
-import com.safekran.launcher.model.TileType;
 import com.safekran.launcher.model.WorkspaceConfig;
 
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Superpowers 2D Sanal Hücre Matrisi Motoru (Virtual Cell Grid Engine).
+ * Tüm ekranı sütun ve satırlara böler. Kutular matematiksel hücre koordinatlarıyla
+ * (col, row, colSpan, rowSpan) yerleştirilir. 
+ * Sıfır piksel kayması, kusursuz hizalama, donanım hızlandırmalı dokunmatik kaydırma.
+ */
 public class WorkspaceView extends ViewGroup {
 
     private WorkspaceConfig config;
     private boolean isEditMode = false;
     private final Map<String, Drawable> iconCache = new HashMap<String, Drawable>();
 
-    // Dokunmatik ve Fiziksel Kaydırma (Touch Scrolling Engine)
+    // Dokunmatik ve Fiziksel Kaydırma (Touch & Fling Engine)
     private final OverScroller scroller;
     private VelocityTracker velocityTracker;
     private final int touchSlop;
@@ -40,9 +45,18 @@ public class WorkspaceView extends ViewGroup {
     private boolean isBeingDragged = false;
     private int maxScrollY = 0;
 
-    // Düzenleme modu ve çizim fırçaları
+    // Hesaplanan Hücre Ölçüleri (Piksel cinsinden)
+    private int cellWidth = 0;
+    private int cellHeight = 0;
+    private int gutterXPx = 0;
+    private int gutterYPx = 0;
+    private int leftOffset = 0;
+    private int topOffset = 0;
+    private int maxRow = 0;
+
+    // Çizim fırçaları
     private Paint safeAreaPaint;
-    private Paint guidelinePaint;
+    private Paint cellGridPaint;
     private Paint hudBgPaint;
     private Paint hudTextPaint;
     private Paint scrollbarPaint;
@@ -68,10 +82,10 @@ public class WorkspaceView extends ViewGroup {
         safeAreaPaint.setStrokeWidth(3f);
         safeAreaPaint.setPathEffect(new DashPathEffect(new float[]{15f, 10f}, 0));
 
-        guidelinePaint = new Paint();
-        guidelinePaint.setColor(Color.parseColor("#1AFFFFFF"));
-        guidelinePaint.setStyle(Paint.Style.STROKE);
-        guidelinePaint.setStrokeWidth(1f);
+        cellGridPaint = new Paint();
+        cellGridPaint.setColor(Color.parseColor("#15FFFFFF"));
+        cellGridPaint.setStyle(Paint.Style.STROKE);
+        cellGridPaint.setStrokeWidth(1f);
 
         hudBgPaint = new Paint();
         hudBgPaint.setColor(Color.parseColor("#E60D0D0D"));
@@ -79,7 +93,7 @@ public class WorkspaceView extends ViewGroup {
 
         hudTextPaint = new Paint();
         hudTextPaint.setColor(Color.WHITE);
-        hudTextPaint.setTextSize(26f);
+        hudTextPaint.setTextSize(24f);
         hudTextPaint.setAntiAlias(true);
 
         scrollbarPaint = new Paint();
@@ -141,8 +155,24 @@ public class WorkspaceView extends ViewGroup {
 
         if (config != null) {
             SafeArea sa = config.safeArea;
-            int usableWidth = width - (int) (width * sa.left) - (int) (width * sa.right);
-            int usableHeight = height - (int) (height * sa.top) - (int) (height * sa.bottom);
+            leftOffset = (int) (width * sa.left);
+            int rightOffset = (int) (width * sa.right);
+            topOffset = (int) (height * sa.top);
+            int bottomOffset = (int) (height * sa.bottom);
+
+            int usableWidth = width - leftOffset - rightOffset;
+            int usableHeight = height - topOffset - bottomOffset;
+
+            int cols = Math.max(1, config.colCount);
+            gutterXPx = Math.max(0, (int) (usableWidth * config.gutterPercent));
+            gutterYPx = Math.max(0, (int) (usableHeight * config.gutterPercent));
+
+            // Hücre Genişliği = (Kullanılabilir Alan - Ara Boşluklar) / Sütun Sayısı
+            int totalGuttersW = (cols - 1) * gutterXPx;
+            cellWidth = Math.max(10, (usableWidth - totalGuttersW) / cols);
+
+            // Hücre Yüksekliği = Ekran Yüksekliği * Varsayılan Yükseklik Yüzdesi (Seçenek B: %10)
+            cellHeight = Math.max(10, (int) (usableHeight * config.defaultTileHeight));
 
             int childCount = getChildCount();
             for (int i = 0; i < childCount; i++) {
@@ -150,12 +180,14 @@ public class WorkspaceView extends ViewGroup {
                 if (child instanceof TileView) {
                     Tile t = ((TileView) child).getTile();
 
-                    int childWidth = Math.max(10, (int) (usableWidth * t.widthPercent));
-                    int childHeight = Math.max(10, (int) (usableHeight * t.heightPercent));
+                    // Matris Span Genişlik ve Yükseklik Formülü:
+                    // Genişlik = (colSpan * cellWidth) + (colSpan - 1) * gutter
+                    int childW = t.colSpan * cellWidth + (t.colSpan - 1) * gutterXPx;
+                    int childH = t.rowSpan * cellHeight + (t.rowSpan - 1) * gutterYPx;
 
                     child.measure(
-                            MeasureSpec.makeMeasureSpec(childWidth, MeasureSpec.EXACTLY),
-                            MeasureSpec.makeMeasureSpec(childHeight, MeasureSpec.EXACTLY)
+                            MeasureSpec.makeMeasureSpec(childW, MeasureSpec.EXACTLY),
+                            MeasureSpec.makeMeasureSpec(childH, MeasureSpec.EXACTLY)
                     );
                 }
             }
@@ -168,16 +200,9 @@ public class WorkspaceView extends ViewGroup {
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
         if (config == null) return;
 
-        int screenWidth = r - l;
         int screenHeight = b - t;
-
-        SafeArea sa = config.safeArea;
-        int leftOffset = (int) (screenWidth * sa.left);
-        int topOffset = (int) (screenHeight * sa.top);
-        int usableWidth = screenWidth - leftOffset - (int) (screenWidth * sa.right);
-        int usableHeight = screenHeight - topOffset - (int) (screenHeight * sa.bottom);
-
         int maxBottom = screenHeight;
+        maxRow = 0;
 
         int childCount = getChildCount();
         for (int i = 0; i < childCount; i++) {
@@ -185,8 +210,9 @@ public class WorkspaceView extends ViewGroup {
             if (child instanceof TileView) {
                 Tile tile = ((TileView) child).getTile();
 
-                int childLeft = leftOffset + (int) (usableWidth * tile.xPercent);
-                int childTop = topOffset + (int) (usableHeight * tile.yPercent);
+                // 2D Hücre Matrisi Pozisyon Formülü:
+                int childLeft = leftOffset + tile.col * (cellWidth + gutterXPx);
+                int childTop = topOffset + tile.row * (cellHeight + gutterYPx);
                 int childRight = childLeft + child.getMeasuredWidth();
                 int childBottom = childTop + child.getMeasuredHeight();
 
@@ -195,10 +221,13 @@ public class WorkspaceView extends ViewGroup {
                 if (childBottom > maxBottom) {
                     maxBottom = childBottom;
                 }
+                if (tile.row + tile.rowSpan > maxRow) {
+                    maxRow = tile.row + tile.rowSpan;
+                }
             }
         }
 
-        int bottomPadding = (int) (screenHeight * sa.bottom);
+        int bottomPadding = (int) (screenHeight * config.safeArea.bottom);
         maxScrollY = Math.max(0, (maxBottom + bottomPadding) - screenHeight);
 
         if (getScrollY() > maxScrollY) {
@@ -380,7 +409,7 @@ public class WorkspaceView extends ViewGroup {
 
     @Override
     protected void dispatchDraw(Canvas canvas) {
-        // Zemin Rengi (Saf Siyah / Koyu Gri / Aydınlık Mod)
+        // Zemin Rengi
         canvas.drawColor(getThemeBgColor());
 
         super.dispatchDraw(canvas);
@@ -399,32 +428,34 @@ public class WorkspaceView extends ViewGroup {
             canvas.drawRect(barRight - barW, barY, barRight, barY + barH, scrollbarPaint);
         }
 
-        // 3. Düzenleme Modu Göstergeleri (Cetvel & Bilgi Kartı)
+        // 3. Düzenleme Modu: 2D Hücre Izgara Çizgileri & HUD
         if (isEditMode && config != null) {
             SafeArea sa = config.safeArea;
-
             int left = (int) (w * sa.left);
             int top = (int) (h * sa.top) + scrollY;
             int right = w - (int) (w * sa.right);
             int bottom = (h - (int) (h * sa.bottom)) + scrollY;
 
+            // Güvenli alan kırmızı kesikli çerçeve
             canvas.drawRect(left, top, right, bottom, safeAreaPaint);
 
-            int usableW = right - left;
-            int usableH = (bottom - top);
-            for (int i = 1; i <= 9; i++) {
-                float gx = left + (usableW * (i * 0.10f));
-                canvas.drawLine(gx, top, gx, bottom, guidelinePaint);
-            }
-            for (int i = 1; i <= 9; i++) {
-                float gy = top + (usableH * (i * 0.10f));
-                canvas.drawLine(left, gy, right, gy, guidelinePaint);
+            // Tüm 2D Matris Hücre Çizgileri (Hücre Hücre Kesik Çizgiler)
+            int cols = Math.max(1, config.colCount);
+            int rowsToDraw = Math.max(10, maxRow + 2);
+
+            for (int rIndex = 0; rIndex < rowsToDraw; rIndex++) {
+                int cellTop = (top - scrollY) + rIndex * (cellHeight + gutterYPx);
+                for (int cIndex = 0; cIndex < cols; cIndex++) {
+                    int cellLeft = left + cIndex * (cellWidth + gutterXPx);
+                    canvas.drawRect(cellLeft, cellTop, cellLeft + cellWidth, cellTop + cellHeight, cellGridPaint);
+                }
             }
 
-            String hudText1 = "DÜZENLEME MODU | Güvenli Alan: %" + (int) ((1f - sa.left - sa.right) * 100) + " x %" + (int) ((1f - sa.top - sa.bottom) * 100);
-            String hudText2 = "Kutu Sayısı: " + config.tiles.size() + " | [OK/Dokun]: Taşı | [Geri]: Çık";
+            // TV Ergonomisi için Sağ Üstte Bilgi Kartı (HUD)
+            String hudText1 = "DÜZENLEME MODU | 2D Sanal Matris (" + cols + " Sütun)";
+            String hudText2 = "Kutu: " + config.tiles.size() + " | [Yön Tuşu]: Hücreye Yapış (Snap) | [OK]: Bırak";
 
-            float cardW = 750f;
+            float cardW = 760f;
             float cardH = 90f;
             float cardRight = right - 10f;
             float cardLeft = cardRight - cardW;

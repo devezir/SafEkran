@@ -26,7 +26,6 @@ import android.widget.Toast;
 import com.safekran.launcher.data.AppInfo;
 import com.safekran.launcher.data.AppScanner;
 import com.safekran.launcher.data.WorkspaceStorage;
-import com.safekran.launcher.model.SafeArea;
 import com.safekran.launcher.model.Tile;
 import com.safekran.launcher.model.TileType;
 import com.safekran.launcher.model.WorkspaceConfig;
@@ -110,11 +109,13 @@ public class MainActivity extends Activity {
         if (workspaceView.isEditMode()) {
             if (selectedMovingTile == null) {
                 selectedMovingTile = tile;
-                Toast.makeText(this, tile.label + " seçildi. Yön tuşlarıyla taşıyın, [OK] ile bırakın.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, tile.label + " seçildi. Yön tuşlarıyla hücre hücre taşıyın, [OK] ile bırakın.", Toast.LENGTH_SHORT).show();
             } else {
                 selectedMovingTile = null;
                 WorkspaceStorage.saveWorkspace(this, config);
-                Toast.makeText(this, "Kutu konumu kaydedildi.", Toast.LENGTH_SHORT).show();
+                workspaceView.rebuildViews();
+                setupTileClickListeners();
+                Toast.makeText(this, "Hücre konumu kaydedildi.", Toast.LENGTH_SHORT).show();
             }
             return;
         }
@@ -142,27 +143,28 @@ public class MainActivity extends Activity {
 
     private void onTileLongClicked(final Tile tile) {
         String[] options = new String[]{
-                "Kutuyu Büyüt (+%5)",
-                "Kutuyu Küçült (-%5)",
+                "Genişlet (+1 Sütun)",
+                "Daralt (-1 Sütun)",
+                "Yüksekliği Artır (+1 Satır)",
                 "Sağına Boşluk (Spacer) Ekle",
                 "Kutuyu Sil"
         };
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle(tile.label + " — İşlemler");
+        builder.setTitle(tile.label + " — Matris İşlemleri");
         builder.setItems(options, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 if (which == 0) {
-                    tile.widthPercent = Math.min(0.50f, tile.widthPercent + 0.05f);
-                    tile.heightPercent = Math.min(0.50f, tile.heightPercent + 0.05f);
+                    tile.colSpan = Math.min(config.colCount, tile.colSpan + 1);
                 } else if (which == 1) {
-                    tile.widthPercent = Math.max(0.05f, tile.widthPercent - 0.05f);
-                    tile.heightPercent = Math.max(0.05f, tile.heightPercent - 0.05f);
+                    tile.colSpan = Math.max(1, tile.colSpan - 1);
                 } else if (which == 2) {
-                    Tile spacer = new Tile(TileType.SPACER, "Boşluk", tile.xPercent + tile.widthPercent + config.gutterPercent, tile.yPercent, config.defaultTileWidth, config.defaultTileHeight);
-                    config.tiles.add(spacer);
+                    tile.rowSpan = (tile.rowSpan == 1) ? 2 : 1;
                 } else if (which == 3) {
+                    Tile spacer = new Tile(TileType.SPACER, "Boşluk", tile.col + tile.colSpan, tile.row, 1, 1);
+                    config.tiles.add(spacer);
+                } else if (which == 4) {
                     config.tiles.remove(tile);
                 }
                 WorkspaceStorage.saveWorkspace(MainActivity.this, config);
@@ -219,7 +221,7 @@ public class MainActivity extends Activity {
 
     private void openLauncherSettingsDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Saf Ekran — Başlatıcı Ayarları");
+        builder.setTitle("Saf Ekran — Matris Ayarları");
 
         ScrollView scroll = new ScrollView(this);
         LinearLayout layout = new LinearLayout(this);
@@ -228,14 +230,14 @@ public class MainActivity extends Activity {
 
         // 1. İmza & Sürüm Başlığı
         TextView authorText = new TextView(this);
-        authorText.setText("Geliştirici: Vezir | Sürüm: 1.0.2 (Resmi İmzalı)");
+        authorText.setText("Geliştirici: Vezir | Sürüm: 2.0.0 (Superpowers 2D Matris)");
         authorText.setTextColor(Color.parseColor("#4CAF50"));
         authorText.setTextSize(13);
         authorText.setPadding(0, 0, 0, 16);
         layout.addView(authorText);
 
         // 2. Güvenli Alan Başlığı ve Kaydırıcıları
-        addSectionHeader(layout, "1. GÜVENLİ ALAN KENARLARI (OVERSCAN)");
+        addSectionHeader(layout, "1. GÜVENLİ ALAN (OVERSCAN)");
         addPercentSlider(layout, "Üst Güvenli Alan", config.safeArea.top, 0, 20, new ValueCallback() {
             @Override public void onValueChanged(float val) { config.safeArea.top = val; workspaceView.requestLayout(); }
         });
@@ -249,16 +251,19 @@ public class MainActivity extends Activity {
             @Override public void onValueChanged(float val) { config.safeArea.right = val; workspaceView.requestLayout(); }
         });
 
-        // 3. Izgara ve Kutu Boyutları
-        addSectionHeader(layout, "2. KUTU VE IZGARA BOYUTLARI");
-        addPercentSlider(layout, "Kutular Arası Boşluk (Gutter)", config.gutterPercent, 0, 5, new ValueCallback() {
-            @Override public void onValueChanged(float val) { config.gutterPercent = val; }
+        // 3. Matris ve Hücre Boyutları (Superpowers)
+        addSectionHeader(layout, "2. 2D SANAL MATRİS VE HÜCRE BOYUTLARI");
+        addIntegerSlider(layout, "Sütun Sayısı (Izgara Yoğunluğu)", config.colCount, 4, 12, new IntCallback() {
+            @Override public void onIntChanged(int val) {
+                config.colCount = val;
+                workspaceView.requestLayout();
+            }
         });
-        addPercentSlider(layout, "Varsayılan Kutu Genişliği", config.defaultTileWidth, 5, 25, new ValueCallback() {
-            @Override public void onValueChanged(float val) { config.defaultTileWidth = val; }
+        addPercentSlider(layout, "Hücreler Arası Boşluk (Gutter)", config.gutterPercent, 0, 5, new ValueCallback() {
+            @Override public void onValueChanged(float val) { config.gutterPercent = val; workspaceView.requestLayout(); }
         });
-        addPercentSlider(layout, "Varsayılan Kutu Yüksekliği", config.defaultTileHeight, 5, 25, new ValueCallback() {
-            @Override public void onValueChanged(float val) { config.defaultTileHeight = val; }
+        addPercentSlider(layout, "Kutu Yüksekliği Oranı", config.defaultTileHeight, 5, 25, new ValueCallback() {
+            @Override public void onValueChanged(float val) { config.defaultTileHeight = val; workspaceView.requestLayout(); }
         });
 
         // 4. Odaklanma Genişleme Değeri (Satır 40)
@@ -301,10 +306,10 @@ public class MainActivity extends Activity {
         });
         layout.addView(cbDate);
 
-        // 7. Sihirli Düzen Butonu: "Düzeni Yağ Gibi Akıt"
+        // 7. Matris Düzenleme Butonu: "Düzeni Yağ Gibi Akıt"
         addSectionHeader(layout, "6. DÜZEN İŞLEMLERİ");
         Button reflowBtn = new Button(this);
-        reflowBtn.setText("⚡ Düzeni Yağ Gibi Akıt (Boşluksuz Yeniden Diz)");
+        reflowBtn.setText("⚡ Düzeni Yağ Gibi Akıt (Matrisi Sıfırdan Doldur)");
         reflowBtn.setBackgroundColor(Color.parseColor("#1B5E20"));
         reflowBtn.setTextColor(Color.WHITE);
         reflowBtn.setOnClickListener(new View.OnClickListener() {
@@ -315,7 +320,7 @@ public class MainActivity extends Activity {
                 WorkspaceStorage.saveWorkspace(MainActivity.this, config);
                 workspaceView.rebuildViews();
                 setupTileClickListeners();
-                Toast.makeText(MainActivity.this, "Tüm ekran boşluksuz ve kesintisiz akışla dizildi!", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "Tüm ekran matris düzenine oturtuldu!", Toast.LENGTH_SHORT).show();
             }
         });
         layout.addView(reflowBtn);
@@ -346,7 +351,7 @@ public class MainActivity extends Activity {
                 config = WorkspaceStorage.generateDefaultWorkspace(MainActivity.this);
                 workspaceView.setConfig(config, iconCache, false);
                 setupTileClickListeners();
-                Toast.makeText(MainActivity.this, "Varsayılan ızgara yüklendi.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "Varsayılan matris yüklendi.", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -382,6 +387,34 @@ public class MainActivity extends Activity {
 
     private interface ValueCallback {
         void onValueChanged(float val);
+    }
+
+    private interface IntCallback {
+        void onIntChanged(int val);
+    }
+
+    private void addIntegerSlider(LinearLayout layout, final String label, int initialVal, final int min, final int max, final IntCallback callback) {
+        final TextView labelView = new TextView(this);
+        labelView.setText(label + ": " + initialVal);
+        labelView.setTextColor(Color.parseColor("#CCCCCC"));
+        labelView.setTextSize(12);
+        labelView.setPadding(0, 10, 0, 2);
+        layout.addView(labelView);
+
+        SeekBar seekBar = new SeekBar(this);
+        seekBar.setMax(max - min);
+        seekBar.setProgress(Math.max(0, initialVal - min));
+        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar sb, int progress, boolean fromUser) {
+                int actualVal = min + progress;
+                labelView.setText(label + ": " + actualVal);
+                callback.onIntChanged(actualVal);
+            }
+            @Override public void onStartTrackingTouch(SeekBar sb) {}
+            @Override public void onStopTrackingTouch(SeekBar sb) {}
+        });
+        layout.addView(seekBar);
     }
 
     private void addPercentSlider(LinearLayout layout, final String label, float initialVal, final int min, final int max, final ValueCallback callback) {
@@ -448,28 +481,31 @@ public class MainActivity extends Activity {
                 return true;
             }
 
+            // Superpowers Snap-to-Grid: D-Pad yön tuşlarıyla TAM 1 HÜCRE zıplama!
             if (selectedMovingTile != null) {
-                float step = 0.01f;
+                int maxCols = Math.max(1, config.colCount);
                 if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-                    selectedMovingTile.yPercent = Math.max(0.0f, selectedMovingTile.yPercent - step);
+                    selectedMovingTile.row = Math.max(0, selectedMovingTile.row - 1);
                     workspaceView.requestLayout();
                     return true;
                 } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
-                    selectedMovingTile.yPercent = Math.min(1.0f - selectedMovingTile.heightPercent, selectedMovingTile.yPercent + step);
+                    selectedMovingTile.row = selectedMovingTile.row + 1;
                     workspaceView.requestLayout();
                     return true;
                 } else if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
-                    selectedMovingTile.xPercent = Math.max(0.0f, selectedMovingTile.xPercent - step);
+                    selectedMovingTile.col = Math.max(0, selectedMovingTile.col - 1);
                     workspaceView.requestLayout();
                     return true;
                 } else if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
-                    selectedMovingTile.xPercent = Math.min(1.0f - selectedMovingTile.widthPercent, selectedMovingTile.xPercent + step);
+                    selectedMovingTile.col = Math.min(maxCols - selectedMovingTile.colSpan, selectedMovingTile.col + 1);
                     workspaceView.requestLayout();
                     return true;
                 } else if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
                     selectedMovingTile = null;
                     WorkspaceStorage.saveWorkspace(this, config);
-                    Toast.makeText(this, "Kutu konumu bırakıldı ve kaydedildi.", Toast.LENGTH_SHORT).show();
+                    workspaceView.rebuildViews();
+                    setupTileClickListeners();
+                    Toast.makeText(this, "Hücreye yapışarak kaydedildi.", Toast.LENGTH_SHORT).show();
                     return true;
                 }
             }

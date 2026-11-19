@@ -7,14 +7,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class WorkspaceConfig {
-    public int schemaVersion = 2;
+    public int schemaVersion = 3; // Superpowers 2D Matris Sürümü
     public String appName = "Saf Ekran";
     public String developer = "Vezir";
 
     public SafeArea safeArea = new SafeArea();
+    public int colCount = 8;                 // Varsayılan 8 Sütun (TV için ideal)
     public float gutterPercent = 0.01f;     // Varsayılan %1
-    public float defaultTileWidth = 0.10f;   // Varsayılan %10
-    public float defaultTileHeight = 0.10f;  // Varsayılan %10
+    public float defaultTileHeight = 0.10f;  // Varsayılan %10 (TV 16:9 dikdörtgen)
     public float focusScale = 1.06f;         // Varsayılan %6 büyüme
 
     public String themeMode = "BLACK";       // "BLACK", "DARK_GRAY", "LIGHT"
@@ -29,8 +29,8 @@ public class WorkspaceConfig {
         root.put("appName", appName);
         root.put("developer", developer);
         root.put("safeArea", safeArea.toJson());
+        root.put("colCount", colCount);
         root.put("gutterPercent", (double) gutterPercent);
-        root.put("defaultTileWidth", (double) defaultTileWidth);
         root.put("defaultTileHeight", (double) defaultTileHeight);
         root.put("focusScale", (double) focusScale);
         root.put("themeMode", themeMode);
@@ -49,7 +49,7 @@ public class WorkspaceConfig {
         WorkspaceConfig config = new WorkspaceConfig();
         if (root == null) return config;
 
-        config.schemaVersion = root.optInt("schemaVersion", 2);
+        config.schemaVersion = root.optInt("schemaVersion", 3);
         config.appName = root.optString("appName", "Saf Ekran");
         config.developer = root.optString("developer", "Vezir");
 
@@ -58,8 +58,8 @@ public class WorkspaceConfig {
             config.safeArea = SafeArea.fromJson(saObj);
         }
 
+        config.colCount = root.optInt("colCount", 8);
         config.gutterPercent = (float) root.optDouble("gutterPercent", 0.01);
-        config.defaultTileWidth = (float) root.optDouble("defaultTileWidth", 0.10);
         config.defaultTileHeight = (float) root.optDouble("defaultTileHeight", 0.10);
         config.focusScale = (float) root.optDouble("focusScale", 1.06);
         config.themeMode = root.optString("themeMode", "BLACK");

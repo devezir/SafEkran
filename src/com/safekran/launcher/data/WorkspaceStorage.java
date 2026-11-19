@@ -39,11 +39,11 @@ public class WorkspaceStorage {
             JSONObject root = new JSONObject(sb.toString());
             WorkspaceConfig config = WorkspaceConfig.fromJson(root);
 
-            // Sürüm 2 Göçü (Üst satırdaki boşluğu giderip her şeyi kesintisiz akışa bağlama)
-            if (config.schemaVersion < 2) {
+            // Sürüm 3 Göçü (Superpowers 2D Sanal Hücre Matrisi Mimarisi)
+            if (config.schemaVersion < 3) {
                 List<AppInfo> apps = AppScanner.scanAllApps(context);
                 reflowContinuousTiles(config, apps);
-                config.schemaVersion = 2;
+                config.schemaVersion = 3;
                 saveWorkspace(context, config);
             }
 
@@ -71,11 +71,11 @@ public class WorkspaceStorage {
 
     public static WorkspaceConfig generateDefaultWorkspace(Context context) {
         WorkspaceConfig config = new WorkspaceConfig();
-        config.schemaVersion = 2;
+        config.schemaVersion = 3;
         config.safeArea = new SafeArea(0.03f, 0.03f, 0.03f, 0.03f); // %3 Optimum güvenli alan
+        config.colCount = 8;              // 8 Sütunlu TV ızgarası
         config.gutterPercent = 0.01f;     // %1 Gutter
-        config.defaultTileWidth = 0.10f;   // %10 Seçenek B: Serbest Yüzde
-        config.defaultTileHeight = 0.10f;  // %10 Seçenek B: Serbest Yüzde
+        config.defaultTileHeight = 0.10f;  // %10 Yükseklik (TV 16:9 oranı)
         config.focusScale = 1.06f;
         config.themeMode = "BLACK";
 
@@ -87,54 +87,54 @@ public class WorkspaceStorage {
     }
 
     /**
-     * Tüm kutucukları (Saat, Düzenle, Ayarlar, Sistem Ayarları ve tüm Uygulamaları)
-     * en üst satırın sağında hiçbir boşluk bırakmadan, satır satır kesintisiz bir akışla dizer.
+     * Superpowers 2D Matris Düzenleyici:
+     * Tüm kutuları hücre hücre (col, row, span) sıralar.
+     * En üst satır dahil tüm satırlar boşluksuz, pürüzsüz doldurulur.
      */
     public static void reflowContinuousTiles(WorkspaceConfig config, List<AppInfo> apps) {
         config.tiles.clear();
 
-        float tileW = config.defaultTileWidth;
-        float tileH = config.defaultTileHeight;
-        float gutter = config.gutterPercent;
+        int maxCols = Math.max(4, config.colCount);
+        int currentCol = 0;
+        int currentRow = 0;
 
-        float currentX = 0.0f;
-        float currentY = 0.0f;
-
-        // 1. Saat ve Tarih Kutusu (2 birim genişlik: tileW * 2 + gutter)
-        float clockW = (tileW * 2f) + gutter;
-        Tile clockTile = new Tile(TileType.CLOCK, "Saat & Tarih", currentX, currentY, clockW, tileH);
+        // 1. Saat Kutusu (2 Sütun genişlik, 1 Satır yükseklik)
+        int clockSpan = Math.min(2, maxCols);
+        Tile clockTile = new Tile(TileType.CLOCK, "Saat & Tarih", currentCol, currentRow, clockSpan, 1);
         config.tiles.add(clockTile);
-        currentX += clockW + gutter;
+        currentCol += clockSpan;
 
         // 2. Düzenleme Modu Kutusu
-        Tile editTile = new Tile(TileType.EDIT_MODE, "Düzenle", currentX, currentY, tileW, tileH);
+        if (currentCol >= maxCols) { currentCol = 0; currentRow++; }
+        Tile editTile = new Tile(TileType.EDIT_MODE, "Düzenle", currentCol, currentRow, 1, 1);
         config.tiles.add(editTile);
-        currentX += tileW + gutter;
+        currentCol += 1;
 
         // 3. Başlatıcı Ayarları Kutusu
-        Tile settingsTile = new Tile(TileType.LAUNCHER_SETTINGS, "Başlatıcı Ayarları", currentX, currentY, tileW, tileH);
+        if (currentCol >= maxCols) { currentCol = 0; currentRow++; }
+        Tile settingsTile = new Tile(TileType.LAUNCHER_SETTINGS, "Başlatıcı Ayarları", currentCol, currentRow, 1, 1);
         config.tiles.add(settingsTile);
-        currentX += tileW + gutter;
+        currentCol += 1;
 
         // 4. Sistem Ayarları Kutusu
-        Tile sysSettingsTile = new Tile(TileType.SYSTEM_SETTINGS, "Sistem Ayarları", currentX, currentY, tileW, tileH);
+        if (currentCol >= maxCols) { currentCol = 0; currentRow++; }
+        Tile sysSettingsTile = new Tile(TileType.SYSTEM_SETTINGS, "Sistem Ayarları", currentCol, currentRow, 1, 1);
         config.tiles.add(sysSettingsTile);
-        currentX += tileW + gutter;
+        currentCol += 1;
 
-        // 5. Yüklü Uygulamalar — HİÇ BOŞLUK BIRAKMADAN AYNI SATIRDAN DEVAM EDER!
+        // 5. Yüklü Uygulamalar (HİÇ KESİNTİ OLMADAN AYNI SATIRDAN VE SONRAKİ SATIRLARDAN DEVAM EDER)
         for (AppInfo app : apps) {
-            // Eğer sıradaki kutucuk bu satıra sığmıyorsa alt satıra geç
-            if (currentX + tileW > 1.001f) {
-                currentX = 0.0f;
-                currentY += tileH + gutter;
+            if (currentCol >= maxCols) {
+                currentCol = 0;
+                currentRow++;
             }
 
-            Tile appTile = new Tile(TileType.APP, app.label, currentX, currentY, tileW, tileH);
+            Tile appTile = new Tile(TileType.APP, app.label, currentCol, currentRow, 1, 1);
             appTile.packageName = app.packageName;
             appTile.activityName = app.activityName;
             config.tiles.add(appTile);
 
-            currentX += tileW + gutter;
+            currentCol += 1;
         }
     }
 

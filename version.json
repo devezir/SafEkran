@@ -1,12 +1,12 @@
 {
   "appName": "Saf Ekran",
   "packageName": "com.safekran.launcher",
-  "versionCode": 3,
-  "versionName": "1.1.0",
+  "versionCode": 4,
+  "versionName": "2.0.0",
   "developer": "Vezir",
   "schemaVersion": 1,
   "createdDate": "2026-11-19",
-  "apkName": "SafEkran_v1.1.0_vc3.apk",
+  "apkName": "SafEkran_v2.0.0_vc4.apk",
   "history": [
     {
       "versionCode": 1,
@@ -25,6 +25,12 @@
       "versionName": "1.1.0",
       "date": "2026-11-19",
       "description": "Üst satır boşluğunu gideren kesintisiz akış, kapsamlı ayarlar menüsü (Gutter, Kutu boyutu, Odaklama, Tema, Saat)"
+    },
+    {
+      "versionCode": 4,
+      "versionName": "2.0.0",
+      "date": "2026-11-19",
+      "description": "Superpowers 2D Sanal Hücre Matrisi mimarisine geçiş (Snap-to-Grid, Sütun ayarı, Deterministik odak ve düzen)"
     }
   ]
 }
