@@ -1,12 +1,12 @@
 {
   "appName": "Saf Ekran",
   "packageName": "com.safekran.launcher",
-  "versionCode": 17,
-  "versionName": "2.9.0",
+  "versionCode": 18,
+  "versionName": "2.10.0",
   "developer": "Vezir",
   "schemaVersion": 1,
   "createdDate": "2026-11-19",
-  "apkName": "SafEkran_v2.9.0_vc17.apk",
+  "apkName": "SafEkran_v2.10.0_vc18.apk",
   "history": [
     {
       "versionCode": 1,
@@ -109,6 +109,12 @@
       "versionName": "2.9.0",
       "date": "2026-11-20",
       "description": "Fix: Sanal kumanda D-Pad navigasyonu (TouchMode ve Index Navigasyonu) v2.9.0"
+    },
+    {
+      "versionCode": 18,
+      "versionName": "2.10.0",
+      "date": "2026-11-20",
+      "description": "Feat: Kusursuz TV Odak İmleci & 2D Uzaysal Gezinti (TV Focus Cursor & 2D Spatial Engine) v2.10.0"
     }
   ]
 }

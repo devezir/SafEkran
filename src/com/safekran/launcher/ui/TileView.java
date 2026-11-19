@@ -309,13 +309,19 @@ public class TileView extends FrameLayout {
         }
     }
 
+    public void setTvFocused(boolean focused) {
+        setSelected(focused);
+        float targetScale = focused ? ((config != null) ? config.focusScale : 1.08f) : 1.0f;
+        animate().scaleX(targetScale).scaleY(targetScale).setDuration(120).start();
+        invalidate();
+    }
+
     @Override
     public void setSelected(boolean selected) {
         super.setSelected(selected);
-        float targetScale = (config != null) ? config.focusScale : 1.06f;
+        float targetScale = (config != null) ? config.focusScale : 1.08f;
         if (selected) {
             animate().scaleX(targetScale).scaleY(targetScale).setDuration(120).start();
-            bringToFront();
         } else if (!hasFocus()) {
             animate().scaleX(1.0f).scaleY(1.0f).setDuration(120).start();
         }
@@ -332,11 +338,10 @@ public class TileView extends FrameLayout {
         setOnFocusChangeListener(new OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean hasFocus) {
-                float targetScale = (config != null) ? config.focusScale : 1.06f;
+                float targetScale = (config != null) ? config.focusScale : 1.08f;
                 if (hasFocus) {
                     animate().scaleX(targetScale).scaleY(targetScale).setDuration(120).start();
-                    bringToFront();
-                } else {
+                } else if (!isSelected()) {
                     animate().scaleX(1.0f).scaleY(1.0f).setDuration(120).start();
                 }
             }

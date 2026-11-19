@@ -52,6 +52,9 @@ public class MainActivity extends Activity {
     // Düzenleme modunda taşınan kutucuk durumu
     private Tile selectedMovingTile = null;
 
+    // Sanal kumanda başlık göstergesi (Mini OSD)
+    private TextView remoteTitleView = null;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -144,6 +147,11 @@ public class MainActivity extends Activity {
     }
 
     private void onTileClicked(Tile tile, TileView tv) {
+        if (workspaceView != null) {
+            workspaceView.setTvSelectedTile(tv);
+            updateRemoteTitleWithSelected();
+        }
+
         if (workspaceView.isEditMode()) {
             if (selectedMovingTile == null) {
                 selectedMovingTile = tile;
@@ -692,7 +700,7 @@ public class MainActivity extends Activity {
 
         // 1. İmza & Sürüm Başlığı
         TextView authorText = new TextView(this);
-        authorText.setText("Geliştirici: Vezir | v2.2 (Kesintisiz Oto-Akış)");
+        authorText.setText("Geliştirici: Vezir | v2.10.0 (TV Focus & 2D Spatial Engine)");
         authorText.setTextColor(Color.parseColor("#4CAF50"));
         authorText.setTextSize(13);
         authorText.setPadding(0, 0, 0, 16);
@@ -1025,6 +1033,15 @@ public class MainActivity extends Activity {
             if (keyCode == KeyEvent.KEYCODE_BACK) {
                 return true;
             }
+            if (keyCode == KeyEvent.KEYCODE_DPAD_UP ||
+                    keyCode == KeyEvent.KEYCODE_DPAD_DOWN ||
+                    keyCode == KeyEvent.KEYCODE_DPAD_LEFT ||
+                    keyCode == KeyEvent.KEYCODE_DPAD_RIGHT ||
+                    keyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
+                    keyCode == KeyEvent.KEYCODE_ENTER) {
+                handleDpadNavigation(keyCode);
+                return true;
+            }
         }
 
         return super.onKeyDown(keyCode, event);
@@ -1035,7 +1052,7 @@ public class MainActivity extends Activity {
     // ==========================================
 
     private void sendKeyEvent(int keyCode) {
-        // D-Pad Yön ve Seçim Tuşları için Akıllı Focus Navigatörü
+        // D-Pad Yön ve Seçim Tuşları için TV Focus Motoru
         if (keyCode == KeyEvent.KEYCODE_DPAD_UP ||
                 keyCode == KeyEvent.KEYCODE_DPAD_DOWN ||
                 keyCode == KeyEvent.KEYCODE_DPAD_LEFT ||
@@ -1053,11 +1070,8 @@ public class MainActivity extends Activity {
         dispatchKeyEvent(up);
     }
 
-    private int currentNavIndex = -1;
-
     private void handleDpadNavigation(int keyCode) {
-        int count = workspaceView.getChildCount();
-        if (count == 0) return;
+        if (workspaceView == null || workspaceView.getChildCount() == 0) return;
 
         // Düzenleme modunda kutu taşınıyorsa
         if (workspaceView.isEditMode() && selectedMovingTile != null) {
@@ -1079,85 +1093,28 @@ public class MainActivity extends Activity {
 
         // [OK] Tuşu: Odaktaki kutuyu başlat
         if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
-            if (currentNavIndex >= 0 && currentNavIndex < count) {
-                View target = workspaceView.getChildAt(currentNavIndex);
-                if (target != null) {
-                    target.performClick();
-                    return;
-                }
-            }
-            View focused = workspaceView.findFocus();
-            if (focused != null) {
-                focused.performClick();
-            } else {
-                selectNavTile(0);
-            }
+            workspaceView.executeTvSelected();
             return;
         }
 
-        // Yön tuşları
-        int cols = Math.max(1, workspaceView.getCalculatedCols());
-
-        // Mevcut seçili indeksi bul
-        if (currentNavIndex < 0 || currentNavIndex >= count) {
-            View focused = workspaceView.findFocus();
-            if (focused != null) {
-                for (int i = 0; i < count; i++) {
-                    if (workspaceView.getChildAt(i) == focused) {
-                        currentNavIndex = i;
-                        break;
-                    }
-                }
-            }
+        // Yön tuşları: 2D Uzaysal TV Gezintisi
+        if (keyCode == KeyEvent.KEYCODE_DPAD_UP ||
+                keyCode == KeyEvent.KEYCODE_DPAD_DOWN ||
+                keyCode == KeyEvent.KEYCODE_DPAD_LEFT ||
+                keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+            workspaceView.navigateTv(keyCode);
+            updateRemoteTitleWithSelected();
         }
-
-        if (currentNavIndex < 0) {
-            selectNavTile(0);
-            return;
-        }
-
-        int targetIndex = currentNavIndex;
-        if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
-            targetIndex++;
-        } else if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
-            targetIndex--;
-        } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
-            targetIndex += cols;
-        } else if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-            targetIndex -= cols;
-        }
-
-        // Sınır kontrolü
-        if (targetIndex < 0) targetIndex = 0;
-        if (targetIndex >= count) targetIndex = count - 1;
-
-        selectNavTile(targetIndex);
     }
 
-    private void selectNavTile(int index) {
-        int count = workspaceView.getChildCount();
-        if (index < 0 || index >= count) return;
-
-        // Önceki seçiliyi temizle
-        if (currentNavIndex >= 0 && currentNavIndex < count) {
-            View prev = workspaceView.getChildAt(currentNavIndex);
-            if (prev != null) {
-                prev.setSelected(false);
-                prev.clearFocus();
+    private void updateRemoteTitleWithSelected() {
+        if (remoteTitleView != null && workspaceView != null) {
+            TileView sel = workspaceView.getTvSelectedTile();
+            if (sel != null && sel.getTile() != null && sel.getTile().label != null) {
+                remoteTitleView.setText("🎮 " + sel.getTile().label);
+            } else {
+                remoteTitleView.setText("🎮 TV Kumandası (Sürükle)");
             }
-        }
-
-        currentNavIndex = index;
-        View target = workspaceView.getChildAt(index);
-        if (target != null) {
-            target.setFocusable(true);
-            target.setFocusableInTouchMode(true);
-            target.requestFocusFromTouch();
-            target.requestFocus();
-            target.setSelected(true);
-
-            // WorkspaceView TV oto-kaydırmasını tetikle
-            workspaceView.requestChildFocus(target, target);
         }
     }
 
@@ -1167,9 +1124,15 @@ public class MainActivity extends Activity {
         if (virtualRemoteView != null) {
             rootContainer.removeView(virtualRemoteView);
             virtualRemoteView = null;
+            remoteTitleView = null;
         }
 
-        if (config == null || !config.virtualRemoteEnabled) return;
+        if (config == null || !config.virtualRemoteEnabled) {
+            if (workspaceView != null) {
+                workspaceView.clearTvSelection();
+            }
+            return;
+        }
 
         int pad = dpToPx(10);
         int btnPad = dpToPx(6);
@@ -1197,6 +1160,7 @@ public class MainActivity extends Activity {
         title.setTextSize(11);
         title.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
         headerRow.addView(title);
+        remoteTitleView = title;
 
         TextView closeBtn = new TextView(this);
         closeBtn.setText(" ✕ ");
@@ -1284,10 +1248,14 @@ public class MainActivity extends Activity {
         flp.setMargins(0, 0, dpToPx(16), dpToPx(16));
         virtualRemoteView = remoteLayout;
         rootContainer.addView(virtualRemoteView, flp);
+
+        // İlk açılışta ekrandaki ilk kutuyu TV imleciyle seç ve başlığı güncelle
+        workspaceView.selectFirstVisibleTile();
+        updateRemoteTitleWithSelected();
     }
 
     private Button createRemoteButton(String text, final int keyCode) {
-        Button btn = new Button(this);
+        final Button btn = new Button(this);
         btn.setText(text);
         btn.setTextColor(Color.WHITE);
         btn.setTextSize(12);
@@ -1300,6 +1268,8 @@ public class MainActivity extends Activity {
         btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                btn.setAlpha(0.4f);
+                btn.animate().alpha(1.0f).setDuration(120).start();
                 sendKeyEvent(keyCode);
             }
         });
@@ -1307,7 +1277,7 @@ public class MainActivity extends Activity {
     }
 
     private Button createColorRemoteButton(String text, final int keyCode) {
-        Button btn = new Button(this);
+        final Button btn = new Button(this);
         btn.setText(text);
         btn.setTextSize(12);
         btn.setBackgroundColor(Color.parseColor("#26FFFFFF"));
@@ -1319,6 +1289,8 @@ public class MainActivity extends Activity {
         btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                btn.setAlpha(0.4f);
+                btn.animate().alpha(1.0f).setDuration(120).start();
                 sendKeyEvent(keyCode);
             }
         });
@@ -1326,7 +1298,7 @@ public class MainActivity extends Activity {
     }
 
     private Button createActionButton(String text, final int keyCode) {
-        Button btn = new Button(this);
+        final Button btn = new Button(this);
         btn.setText(text);
         btn.setTextColor(Color.WHITE);
         btn.setTextSize(10);
@@ -1338,6 +1310,8 @@ public class MainActivity extends Activity {
         btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                btn.setAlpha(0.4f);
+                btn.animate().alpha(1.0f).setDuration(120).start();
                 sendKeyEvent(keyCode);
             }
         });

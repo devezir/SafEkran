@@ -5,7 +5,9 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.DashPathEffect;
 import android.graphics.Paint;
+import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
+import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.VelocityTracker;
 import android.view.View;
@@ -15,6 +17,7 @@ import android.widget.OverScroller;
 
 import com.safekran.launcher.model.SafeArea;
 import com.safekran.launcher.model.Tile;
+import com.safekran.launcher.model.TileType;
 import com.safekran.launcher.model.WorkspaceConfig;
 
 import java.util.HashMap;
@@ -67,6 +70,12 @@ public class WorkspaceView extends ViewGroup {
     private Paint hudTextPaint;
     private Paint scrollbarPaint;
 
+    // TV Seçim İmleci (TV Focus Cursor)
+    private Paint tvCursorPaint;
+    private Paint tvCursorGlowPaint;
+    private final RectF tvCursorRect = new RectF();
+    private TileView tvSelectedTile = null;
+
     public WorkspaceView(Context context) {
         super(context);
         scroller = new OverScroller(context);
@@ -105,6 +114,21 @@ public class WorkspaceView extends ViewGroup {
         scrollbarPaint = new Paint();
         scrollbarPaint.setColor(Color.parseColor("#66FFFFFF"));
         scrollbarPaint.setStyle(Paint.Style.FILL);
+
+        // TV Seçim İmleci (TV Focus Cursor)
+        tvCursorPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        tvCursorPaint.setStyle(Paint.Style.STROKE);
+        tvCursorPaint.setStrokeWidth(dpToPx(3.5f));
+        tvCursorPaint.setColor(Color.WHITE);
+
+        tvCursorGlowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        tvCursorGlowPaint.setStyle(Paint.Style.STROKE);
+        tvCursorGlowPaint.setStrokeWidth(dpToPx(7f));
+        tvCursorGlowPaint.setColor(Color.parseColor("#4DFFFFFF"));
+    }
+
+    private float dpToPx(float dp) {
+        return dp * getContext().getResources().getDisplayMetrics().density;
     }
 
     public void setConfig(WorkspaceConfig config, Map<String, Drawable> icons, boolean editMode) {
@@ -137,6 +161,7 @@ public class WorkspaceView extends ViewGroup {
 
     public void rebuildViews() {
         removeAllViews();
+        tvSelectedTile = null;
         if (config == null || config.tiles == null) return;
 
         for (Tile t : config.tiles) {
@@ -146,6 +171,14 @@ public class WorkspaceView extends ViewGroup {
         }
         requestLayout();
         invalidate();
+        if (config.virtualRemoteEnabled) {
+            post(new Runnable() {
+                @Override
+                public void run() {
+                    selectFirstVisibleTile();
+                }
+            });
+        }
     }
 
     private int getThemeBgColor() {
@@ -497,6 +530,216 @@ public class WorkspaceView extends ViewGroup {
         postInvalidateOnAnimation();
     }
 
+    // ==========================================
+    // TV SEÇİM İMLECİ & 2D UZAYSAL GEZİNTİ MOTORU
+    // ==========================================
+
+    public void setTvSelectedTile(TileView target) {
+        if (tvSelectedTile != null && tvSelectedTile != target) {
+            tvSelectedTile.setTvFocused(false);
+        }
+        tvSelectedTile = target;
+        if (tvSelectedTile != null) {
+            tvSelectedTile.setTvFocused(true);
+            ensureTileVisible(tvSelectedTile);
+        }
+        postInvalidateOnAnimation();
+    }
+
+    public TileView getTvSelectedTile() {
+        return tvSelectedTile;
+    }
+
+    public void clearTvSelection() {
+        if (tvSelectedTile != null) {
+            tvSelectedTile.setTvFocused(false);
+            tvSelectedTile = null;
+            postInvalidateOnAnimation();
+        }
+    }
+
+    public void ensureTileVisible(TileView target) {
+        if (target == null || config == null) return;
+        int childTop = target.getTop();
+        int childBottom = target.getBottom();
+        int currentScrollY = getScrollY();
+        int viewH = getHeight();
+
+        int visibleWindowBottom = viewH - safeBottom;
+
+        if (childBottom - currentScrollY > visibleWindowBottom) {
+            int targetY = Math.min(maxScrollY, childBottom - visibleWindowBottom);
+            smoothScrollTo(targetY);
+        } else if (childTop - currentScrollY < safeTop) {
+            int targetY = Math.max(0, childTop - safeTop);
+            smoothScrollTo(targetY);
+        }
+    }
+
+    public TileView selectFirstVisibleTile() {
+        int count = getChildCount();
+        if (count == 0) return null;
+
+        int currentScrollY = getScrollY();
+        TileView bestCandidate = null;
+
+        for (int i = 0; i < count; i++) {
+            View child = getChildAt(i);
+            if (child instanceof TileView && child.getVisibility() == View.VISIBLE) {
+                TileView tv = (TileView) child;
+                Tile t = tv.getTile();
+                if (t != null && t.type != TileType.SPACER) {
+                    if (bestCandidate == null) {
+                        bestCandidate = tv;
+                    }
+                    if (tv.getBottom() > currentScrollY + safeTop) {
+                        setTvSelectedTile(tv);
+                        return tv;
+                    }
+                }
+            }
+        }
+
+        if (bestCandidate != null) {
+            setTvSelectedTile(bestCandidate);
+            return bestCandidate;
+        }
+        return null;
+    }
+
+    public void executeTvSelected() {
+        if (tvSelectedTile != null) {
+            tvSelectedTile.performClick();
+        } else {
+            selectFirstVisibleTile();
+        }
+    }
+
+    public void navigateTv(int keyCode) {
+        int count = getChildCount();
+        if (count == 0) return;
+
+        if (tvSelectedTile == null || tvSelectedTile.getVisibility() != View.VISIBLE || tvSelectedTile.getParent() != this) {
+            selectFirstVisibleTile();
+            return;
+        }
+
+        Tile curTile = tvSelectedTile.getTile();
+        if (curTile == null) {
+            selectFirstVisibleTile();
+            return;
+        }
+
+        java.util.List<TileView> validTiles = new java.util.ArrayList<TileView>();
+        for (int i = 0; i < count; i++) {
+            View child = getChildAt(i);
+            if (child instanceof TileView && child.getVisibility() == View.VISIBLE) {
+                TileView tv = (TileView) child;
+                Tile t = tv.getTile();
+                if (t != null && (isEditMode || t.type != TileType.SPACER)) {
+                    validTiles.add(tv);
+                }
+            }
+        }
+
+        if (validTiles.isEmpty()) return;
+
+        TileView targetTile = null;
+
+        if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+            TileView nextInRow = null;
+            TileView nextWrap = null;
+            for (TileView tv : validTiles) {
+                Tile t = tv.getTile();
+                if (t.row == curTile.row && t.col > curTile.col) {
+                    if (nextInRow == null || t.col < nextInRow.getTile().col) {
+                        nextInRow = tv;
+                    }
+                } else if (t.row > curTile.row) {
+                    if (nextWrap == null || t.row < nextWrap.getTile().row ||
+                            (t.row == nextWrap.getTile().row && t.col < nextWrap.getTile().col)) {
+                        nextWrap = tv;
+                    }
+                }
+            }
+            targetTile = (nextInRow != null) ? nextInRow : nextWrap;
+
+        } else if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+            TileView prevInRow = null;
+            TileView prevWrap = null;
+            for (TileView tv : validTiles) {
+                Tile t = tv.getTile();
+                if (t.row == curTile.row && t.col < curTile.col) {
+                    if (prevInRow == null || t.col > prevInRow.getTile().col) {
+                        prevInRow = tv;
+                    }
+                } else if (t.row < curTile.row) {
+                    if (prevWrap == null || t.row > prevWrap.getTile().row ||
+                            (t.row == prevWrap.getTile().row && t.col > prevWrap.getTile().col)) {
+                        prevWrap = tv;
+                    }
+                }
+            }
+            targetTile = (prevInRow != null) ? prevInRow : prevWrap;
+
+        } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+            int minDeltaRow = Integer.MAX_VALUE;
+            for (TileView tv : validTiles) {
+                Tile t = tv.getTile();
+                if (t.row > curTile.row) {
+                    int dRow = t.row - curTile.row;
+                    if (dRow < minDeltaRow) {
+                        minDeltaRow = dRow;
+                    }
+                }
+            }
+            if (minDeltaRow != Integer.MAX_VALUE) {
+                int targetRow = curTile.row + minDeltaRow;
+                int minColDist = Integer.MAX_VALUE;
+                for (TileView tv : validTiles) {
+                    Tile t = tv.getTile();
+                    if (t.row == targetRow) {
+                        int dist = Math.abs(t.col - curTile.col);
+                        if (dist < minColDist) {
+                            minColDist = dist;
+                            targetTile = tv;
+                        }
+                    }
+                }
+            }
+
+        } else if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+            int minDeltaRow = Integer.MAX_VALUE;
+            for (TileView tv : validTiles) {
+                Tile t = tv.getTile();
+                if (t.row < curTile.row) {
+                    int dRow = curTile.row - t.row;
+                    if (dRow < minDeltaRow) {
+                        minDeltaRow = dRow;
+                    }
+                }
+            }
+            if (minDeltaRow != Integer.MAX_VALUE) {
+                int targetRow = curTile.row - minDeltaRow;
+                int minColDist = Integer.MAX_VALUE;
+                for (TileView tv : validTiles) {
+                    Tile t = tv.getTile();
+                    if (t.row == targetRow) {
+                        int dist = Math.abs(t.col - curTile.col);
+                        if (dist < minColDist) {
+                            minColDist = dist;
+                            targetTile = tv;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (targetTile != null) {
+            setTvSelectedTile(targetTile);
+        }
+    }
+
     private void initOrResetVelocityTracker() {
         if (velocityTracker == null) {
             velocityTracker = VelocityTracker.obtain();
@@ -534,6 +777,28 @@ public class WorkspaceView extends ViewGroup {
         canvas.clipRect(safeLeft, safeTop + scrollY, w - safeRight, (h - safeBottom) + scrollY);
 
         super.dispatchDraw(canvas);
+
+        // TV SEÇİM İMLECİ (TV FOCUS CURSOR) ÇİZİMİ
+        if (tvSelectedTile != null && tvSelectedTile.getVisibility() == View.VISIBLE && tvSelectedTile.getParent() == this) {
+            float cx = (tvSelectedTile.getLeft() + tvSelectedTile.getRight()) / 2f;
+            float cy = (tvSelectedTile.getTop() + tvSelectedTile.getBottom()) / 2f;
+            float scaleX = tvSelectedTile.getScaleX();
+            float scaleY = tvSelectedTile.getScaleY();
+            float halfW = (tvSelectedTile.getWidth() / 2f) * scaleX;
+            float halfH = (tvSelectedTile.getHeight() / 2f) * scaleY;
+
+            float r = dpToPx(6f);
+            tvCursorRect.set(cx - halfW, cy - halfH, cx + halfW, cy + halfH);
+
+            boolean isLight = config != null && "LIGHT".equals(config.themeMode);
+            tvCursorPaint.setColor(isLight ? Color.parseColor("#007AFF") : Color.WHITE);
+            tvCursorGlowPaint.setColor(isLight ? Color.parseColor("#33007AFF") : Color.parseColor("#66FFFFFF"));
+
+            // 1. Neon Dış Hale (Yumuşak ve Parlak)
+            canvas.drawRoundRect(tvCursorRect, r + dpToPx(2.5f), r + dpToPx(2.5f), tvCursorGlowPaint);
+            // 2. Parlak Keskin TV Çerçevesi
+            canvas.drawRoundRect(tvCursorRect, r, r, tvCursorPaint);
+        }
 
         canvas.restoreToCount(saveCount);
 
