@@ -24,6 +24,7 @@ public class WorkspaceConfig {
     public float gutterPercent = 0.01f;      // Kutular arası boşluk (Varsayılan %1)
     public float focusScale = 1.06f;          // Odaklanınca büyüme payı (%6)
 
+    public String tileStyle = "FOCUS_ONLY";   // "FOCUS_ONLY", "ALWAYS", "FLOATING"
     public String themeMode = "BLACK";        // "BLACK", "DARK_GRAY", "LIGHT"
     public boolean is24Hour = true;
     public boolean showDate = true;
@@ -40,6 +41,7 @@ public class WorkspaceConfig {
         root.put("tileHeightRatio", (double) tileHeightRatio);
         root.put("gutterPercent", (double) gutterPercent);
         root.put("focusScale", (double) focusScale);
+        root.put("tileStyle", tileStyle);
         root.put("themeMode", themeMode);
         root.put("is24Hour", is24Hour);
         root.put("showDate", showDate);
@@ -69,6 +71,7 @@ public class WorkspaceConfig {
         config.tileHeightRatio = (float) root.optDouble("tileHeightRatio", 0.75);
         config.gutterPercent = (float) root.optDouble("gutterPercent", 0.01);
         config.focusScale = (float) root.optDouble("focusScale", 1.06);
+        config.tileStyle = root.optString("tileStyle", "FOCUS_ONLY");
         config.themeMode = root.optString("themeMode", "BLACK");
         config.is24Hour = root.optBoolean("is24Hour", true);
         config.showDate = root.optBoolean("showDate", true);

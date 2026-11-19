@@ -713,8 +713,17 @@ public class MainActivity extends Activity {
             @Override public void onValueChanged(float val) { config.focusScale = 1.0f + val; }
         });
 
+        // 4. Kutu Çerçeve Stili
+        addSectionHeader(layout, "4. KUTU ÇERÇEVE STİLİ");
+        LinearLayout styleRow = new LinearLayout(this);
+        styleRow.setOrientation(LinearLayout.HORIZONTAL);
+        addStyleButton(styleRow, "Sadece Odakta (Önerilen)", "FOCUS_ONLY");
+        addStyleButton(styleRow, "Her Zaman Çerçeveli", "ALWAYS");
+        addStyleButton(styleRow, "Yüzen (Çerçevesiz)", "FLOATING");
+        layout.addView(styleRow);
+
         // 5. Tema Seçimi
-        addSectionHeader(layout, "4. TEMA MODU");
+        addSectionHeader(layout, "5. TEMA MODU");
         LinearLayout themeRow = new LinearLayout(this);
         themeRow.setOrientation(LinearLayout.HORIZONTAL);
         addThemeButton(themeRow, "Saf Siyah", "BLACK");
@@ -723,7 +732,7 @@ public class MainActivity extends Activity {
         layout.addView(themeRow);
 
         // 6. Saat & Tarih Ayarları
-        addSectionHeader(layout, "5. SAAT & TARİH");
+        addSectionHeader(layout, "6. SAAT & TARİH");
         CheckBox cb24 = new CheckBox(this);
         cb24.setText("24 Saat Formatı (Örn: 22:30)");
         cb24.setTextColor(Color.WHITE);
@@ -746,8 +755,8 @@ public class MainActivity extends Activity {
         });
         layout.addView(cbDate);
 
-        // 6. Gizlenen ve Eksik Uygulamalar
-        addSectionHeader(layout, "6. GİZLENEN UYGULAMALAR");
+        // 7. Gizlenen ve Eksik Uygulamalar
+        addSectionHeader(layout, "7. GİZLENEN UYGULAMALAR");
         final List<AppInfo> currentHidden = getHiddenOrMissingApps();
         Button hiddenBtn = new Button(this);
         hiddenBtn.setText("👁️ Gizlenen Uygulamaları Yönet (" + currentHidden.size() + " adet)");
@@ -761,8 +770,8 @@ public class MainActivity extends Activity {
         });
         layout.addView(hiddenBtn);
 
-        // 7. Düzen Sıfırlama Butonu
-        addSectionHeader(layout, "7. DÜZEN İŞLEMLERİ");
+        // 8. Düzen Sıfırlama Butonu
+        addSectionHeader(layout, "8. DÜZEN İŞLEMLERİ");
         Button reflowBtn = new Button(this);
         reflowBtn.setText("🔄 Sıralamayı Varsayılana Sıfırla (Alfabeye Göre Sırala)");
         reflowBtn.setBackgroundColor(Color.parseColor("#37474F"));
@@ -821,6 +830,24 @@ public class MainActivity extends Activity {
         header.setTextSize(12);
         header.setPadding(0, 20, 0, 6);
         layout.addView(header);
+    }
+
+    private void addStyleButton(LinearLayout row, String text, final String style) {
+        Button btn = new Button(this);
+        btn.setText(text);
+        btn.setTextSize(10);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        params.setMargins(4, 4, 4, 4);
+        btn.setLayoutParams(params);
+        btn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                config.tileStyle = style;
+                workspaceView.rebuildViews();
+                Toast.makeText(MainActivity.this, "Çerçeve Stili: " + style, Toast.LENGTH_SHORT).show();
+            }
+        });
+        row.addView(btn);
     }
 
     private void addThemeButton(LinearLayout row, String text, final String mode) {

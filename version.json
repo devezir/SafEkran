@@ -1,12 +1,12 @@
 {
   "appName": "Saf Ekran",
   "packageName": "com.safekran.launcher",
-  "versionCode": 13,
-  "versionName": "2.5.0",
+  "versionCode": 14,
+  "versionName": "2.6.0",
   "developer": "Vezir",
   "schemaVersion": 1,
   "createdDate": "2026-11-19",
-  "apkName": "SafEkran_v2.5.0_vc13.apk",
+  "apkName": "SafEkran_v2.6.0_vc14.apk",
   "history": [
     {
       "versionCode": 1,
@@ -85,6 +85,12 @@
       "versionName": "2.5.0",
       "date": "2026-11-19",
       "description": "Feat: Otomatik Yönelim (Hem Dikey Telefon Tutuşu Hem TV Yataylığı) v2.5.0"
+    },
+    {
+      "versionCode": 14,
+      "versionName": "2.6.0",
+      "date": "2026-11-19",
+      "description": "Feat: Kutu Çerçeve Stilleri (Sadece Odakta Çerçeve, Klasik, Yüzen Simgeler) v2.6.0"
     }
   ]
 }

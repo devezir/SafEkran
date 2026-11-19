@@ -4,6 +4,8 @@ import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.StateListDrawable;
 import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
@@ -93,7 +95,7 @@ public class TileView extends FrameLayout {
         setVisibility(View.VISIBLE);
         setFocusable(true);
         setClickable(true);
-        setBackgroundResource(isLightMode() ? R.drawable.bg_tile_selector_light : R.drawable.bg_tile_selector);
+        applyTileBackground();
 
         LinearLayout container = new LinearLayout(context);
         container.setOrientation(LinearLayout.VERTICAL);
@@ -128,20 +130,7 @@ public class TileView extends FrameLayout {
         setVisibility(View.VISIBLE);
         setFocusable(true);
         setClickable(true);
-
-        int bgRes;
-        if (tile.type == TileType.COLOR_RED) {
-            bgRes = isLightMode() ? R.drawable.bg_tile_red_light : R.drawable.bg_tile_red;
-        } else if (tile.type == TileType.COLOR_GREEN) {
-            bgRes = isLightMode() ? R.drawable.bg_tile_green_light : R.drawable.bg_tile_green;
-        } else if (tile.type == TileType.COLOR_YELLOW) {
-            bgRes = isLightMode() ? R.drawable.bg_tile_yellow_light : R.drawable.bg_tile_yellow;
-        } else if (tile.type == TileType.COLOR_BLUE) {
-            bgRes = isLightMode() ? R.drawable.bg_tile_blue_light : R.drawable.bg_tile_blue;
-        } else {
-            bgRes = isLightMode() ? R.drawable.bg_tile_selector_light : R.drawable.bg_tile_selector;
-        }
-        setBackgroundResource(bgRes);
+        applyTileBackground();
 
         LinearLayout container = new LinearLayout(context);
         container.setOrientation(LinearLayout.VERTICAL);
@@ -210,6 +199,109 @@ public class TileView extends FrameLayout {
         container.addView(labelView);
 
         addView(container, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT, Gravity.CENTER));
+    }
+
+    private void applyTileBackground() {
+        String style = (config != null && config.tileStyle != null) ? config.tileStyle : "FOCUS_ONLY";
+        boolean isLight = isLightMode();
+
+        GradientDrawable focusedDrawable = new GradientDrawable();
+        focusedDrawable.setShape(GradientDrawable.RECTANGLE);
+        focusedDrawable.setCornerRadius(dpToPx(getContext(), 4));
+
+        GradientDrawable normalDrawable = new GradientDrawable();
+        normalDrawable.setShape(GradientDrawable.RECTANGLE);
+        normalDrawable.setCornerRadius(dpToPx(getContext(), 4));
+
+        int strokeWidthFocused = dpToPx(getContext(), 2);
+        int strokeWidthNormal = dpToPx(getContext(), 1);
+
+        if (tile.type == TileType.COLOR_RED) {
+            focusedDrawable.setColor(Color.parseColor(isLight ? "#FFCDD2" : "#33D32F2F"));
+            focusedDrawable.setStroke(strokeWidthFocused, Color.parseColor(isLight ? "#C62828" : "#FF5252"));
+
+            if ("FLOATING".equals(style)) {
+                normalDrawable.setColor(Color.TRANSPARENT);
+            } else if ("FOCUS_ONLY".equals(style)) {
+                normalDrawable.setColor(Color.parseColor(isLight ? "#FFFFFF" : "#1A1212"));
+            } else { // ALWAYS
+                normalDrawable.setColor(Color.parseColor(isLight ? "#FFFFFF" : "#1A1212"));
+                normalDrawable.setStroke(strokeWidthNormal, Color.parseColor("#80E53935"));
+            }
+        } else if (tile.type == TileType.COLOR_GREEN) {
+            focusedDrawable.setColor(Color.parseColor(isLight ? "#C8E6C9" : "#33388E3C"));
+            focusedDrawable.setStroke(strokeWidthFocused, Color.parseColor(isLight ? "#2E7D32" : "#69F0AE"));
+
+            if ("FLOATING".equals(style)) {
+                normalDrawable.setColor(Color.TRANSPARENT);
+            } else if ("FOCUS_ONLY".equals(style)) {
+                normalDrawable.setColor(Color.parseColor(isLight ? "#FFFFFF" : "#121A14"));
+            } else {
+                normalDrawable.setColor(Color.parseColor(isLight ? "#FFFFFF" : "#121A14"));
+                normalDrawable.setStroke(strokeWidthNormal, Color.parseColor("#8043A047"));
+            }
+        } else if (tile.type == TileType.COLOR_YELLOW) {
+            focusedDrawable.setColor(Color.parseColor(isLight ? "#FFF9C4" : "#33FBC02D"));
+            focusedDrawable.setStroke(strokeWidthFocused, Color.parseColor(isLight ? "#F57F17" : "#FFFF00"));
+
+            if ("FLOATING".equals(style)) {
+                normalDrawable.setColor(Color.TRANSPARENT);
+            } else if ("FOCUS_ONLY".equals(style)) {
+                normalDrawable.setColor(Color.parseColor(isLight ? "#FFFFFF" : "#1A1810"));
+            } else {
+                normalDrawable.setColor(Color.parseColor(isLight ? "#FFFFFF" : "#1A1810"));
+                normalDrawable.setStroke(strokeWidthNormal, Color.parseColor("#80FBC02D"));
+            }
+        } else if (tile.type == TileType.COLOR_BLUE) {
+            focusedDrawable.setColor(Color.parseColor(isLight ? "#BBDEFB" : "#331976D2"));
+            focusedDrawable.setStroke(strokeWidthFocused, Color.parseColor(isLight ? "#0D47A1" : "#448AFF"));
+
+            if ("FLOATING".equals(style)) {
+                normalDrawable.setColor(Color.TRANSPARENT);
+            } else if ("FOCUS_ONLY".equals(style)) {
+                normalDrawable.setColor(Color.parseColor(isLight ? "#FFFFFF" : "#10151A"));
+            } else {
+                normalDrawable.setColor(Color.parseColor(isLight ? "#FFFFFF" : "#10151A"));
+                normalDrawable.setStroke(strokeWidthNormal, Color.parseColor("#801E88E5"));
+            }
+        } else {
+            // Standart Kutular (Uygulamalar, Saat, Ayarlar vs.)
+            if (isLight) {
+                focusedDrawable.setColor(Color.parseColor("#E6E6E6"));
+                focusedDrawable.setStroke(strokeWidthFocused, Color.parseColor("#000000"));
+
+                if ("FLOATING".equals(style)) {
+                    normalDrawable.setColor(Color.TRANSPARENT);
+                } else if ("FOCUS_ONLY".equals(style)) {
+                    normalDrawable.setColor(Color.parseColor("#FFFFFF"));
+                } else { // ALWAYS
+                    normalDrawable.setColor(Color.parseColor("#FFFFFF"));
+                    normalDrawable.setStroke(strokeWidthNormal, Color.parseColor("#D0D0D0"));
+                }
+            } else {
+                focusedDrawable.setColor(Color.parseColor("#242424"));
+                focusedDrawable.setStroke(strokeWidthFocused, Color.parseColor("#FFFFFF"));
+
+                if ("FLOATING".equals(style)) {
+                    normalDrawable.setColor(Color.TRANSPARENT);
+                } else if ("FOCUS_ONLY".equals(style)) {
+                    normalDrawable.setColor(Color.parseColor("#121212"));
+                } else { // ALWAYS
+                    normalDrawable.setColor(Color.parseColor("#121212"));
+                    normalDrawable.setStroke(strokeWidthNormal, Color.parseColor("#26FFFFFF"));
+                }
+            }
+        }
+
+        StateListDrawable sld = new StateListDrawable();
+        sld.addState(new int[]{android.R.attr.state_focused}, focusedDrawable);
+        sld.addState(new int[]{}, normalDrawable);
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.JELLY_BEAN) {
+            setBackground(sld);
+        } else {
+            setBackgroundDrawable(sld);
+        }
     }
 
     private int getTextColor() {
