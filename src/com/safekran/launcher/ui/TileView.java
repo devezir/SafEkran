@@ -51,6 +51,10 @@ public class TileView extends FrameLayout {
         setupFocusBehavior();
     }
 
+    private boolean isLightMode() {
+        return config != null && "LIGHT".equals(config.themeMode);
+    }
+
     private void initSpacerTile(Context context) {
         if (!isEditMode) {
             setVisibility(View.INVISIBLE);
@@ -68,12 +72,15 @@ public class TileView extends FrameLayout {
 
             iconView = new ImageView(context);
             iconView.setImageResource(R.drawable.ic_spacer);
+            if (isLightMode()) {
+                iconView.setColorFilter(Color.parseColor("#555555"));
+            }
             int iconSize = dpToPx(context, 26);
             container.addView(iconView, new LinearLayout.LayoutParams(iconSize, iconSize));
 
             labelView = new TextView(context);
             labelView.setText(context.getString(R.string.tile_spacer));
-            labelView.setTextColor(Color.parseColor("#888888"));
+            labelView.setTextColor(isLightMode() ? Color.parseColor("#555555") : Color.parseColor("#888888"));
             labelView.setTextSize(10);
             labelView.setGravity(Gravity.CENTER);
             container.addView(labelView);
@@ -86,7 +93,7 @@ public class TileView extends FrameLayout {
         setVisibility(View.VISIBLE);
         setFocusable(true);
         setClickable(true);
-        setBackgroundResource(R.drawable.bg_tile_selector);
+        setBackgroundResource(isLightMode() ? R.drawable.bg_tile_selector_light : R.drawable.bg_tile_selector);
 
         LinearLayout container = new LinearLayout(context);
         container.setOrientation(LinearLayout.VERTICAL);
@@ -108,7 +115,7 @@ public class TileView extends FrameLayout {
             dateClock = new TextClock(context);
             dateClock.setFormat24Hour("d MMMM EEEE");
             dateClock.setFormat12Hour("d MMMM EEEE");
-            dateClock.setTextColor(Color.parseColor("#AAAAAA"));
+            dateClock.setTextColor(isLightMode() ? Color.parseColor("#666666") : Color.parseColor("#AAAAAA"));
             dateClock.setTextSize(10);
             dateClock.setGravity(Gravity.CENTER);
             container.addView(dateClock);
@@ -121,7 +128,7 @@ public class TileView extends FrameLayout {
         setVisibility(View.VISIBLE);
         setFocusable(true);
         setClickable(true);
-        setBackgroundResource(R.drawable.bg_tile_selector);
+        setBackgroundResource(isLightMode() ? R.drawable.bg_tile_selector_light : R.drawable.bg_tile_selector);
 
         LinearLayout container = new LinearLayout(context);
         container.setOrientation(LinearLayout.VERTICAL);
@@ -134,10 +141,19 @@ public class TileView extends FrameLayout {
 
         if (tile.type == TileType.EDIT_MODE) {
             iconView.setImageResource(R.drawable.ic_edit);
+            if (isLightMode()) {
+                iconView.setColorFilter(Color.parseColor("#111111"));
+            }
         } else if (tile.type == TileType.LAUNCHER_SETTINGS) {
             iconView.setImageResource(R.drawable.ic_settings);
+            if (isLightMode()) {
+                iconView.setColorFilter(Color.parseColor("#111111"));
+            }
         } else if (tile.type == TileType.SYSTEM_SETTINGS) {
             iconView.setImageResource(R.drawable.ic_system);
+            if (isLightMode()) {
+                iconView.setColorFilter(Color.parseColor("#111111"));
+            }
         } else {
             if (appIcon != null) {
                 iconView.setImageDrawable(appIcon);

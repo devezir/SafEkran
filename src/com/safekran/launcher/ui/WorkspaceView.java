@@ -485,6 +485,8 @@ public class WorkspaceView extends ViewGroup {
         // 3. Minimalist Scrollbar (Kilitli Güvenli Alan Sınırları İçinde)
         int visibleWindowH = (h - safeBottom) - safeTop;
         if (maxScrollY > 0 && visibleWindowH > 0) {
+            boolean isLight = config != null && "LIGHT".equals(config.themeMode);
+            scrollbarPaint.setColor(isLight ? Color.parseColor("#66000000") : Color.parseColor("#66FFFFFF"));
             float totalContentH = visibleWindowH + maxScrollY;
             float barH = Math.max(30f, ((float) visibleWindowH / totalContentH) * visibleWindowH);
             float barY = safeTop + scrollY + ((float) scrollY / maxScrollY) * (visibleWindowH - barH);
@@ -495,6 +497,9 @@ public class WorkspaceView extends ViewGroup {
 
         // 4. DÜZENLEME MODU: CAMA ÇAKILI KILAVUZ ÇİZGİLERİ VE HUD
         if (isEditMode && config != null) {
+            boolean isLight = "LIGHT".equals(config.themeMode);
+            cellGridPaint.setColor(isLight ? Color.parseColor("#25000000") : Color.parseColor("#15FFFFFF"));
+
             // DİKKAT: Kırmızı çerçeve ekran camına çakılıdır (scrollY EKLENMEZ!)
             canvas.drawRect(safeLeft, safeTop + scrollY, w - safeRight, (h - safeBottom) + scrollY, safeAreaPaint);
 
