@@ -21,10 +21,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Superpowers 2D Sanal Hücre Matrisi Motoru (Virtual Cell Grid Engine).
- * Tüm ekranı sütun ve satırlara böler. Kutular matematiksel hücre koordinatlarıyla
- * (col, row, colSpan, rowSpan) yerleştirilir. 
- * Sıfır piksel kayması, kusursuz hizalama, donanım hızlandırmalı dokunmatik kaydırma.
+ * Saf Ekran Otomatik Türetilen Izgara Motoru (Auto-Fit Grid Engine).
+ * Sütun sayısı yapay bir ayar değildir; Ekran Genişliği, Kutu Boyutu ve 
+ * Gutter oranından matematiksel olarak anında türetilir.
+ * Ekran döndüğünde (TV yatay vs. telefon dikey) satırlar ve sütunlar kendiliğinden akar.
  */
 public class WorkspaceView extends ViewGroup {
 
@@ -32,7 +32,7 @@ public class WorkspaceView extends ViewGroup {
     private boolean isEditMode = false;
     private final Map<String, Drawable> iconCache = new HashMap<String, Drawable>();
 
-    // Dokunmatik ve Fiziksel Kaydırma (Touch & Fling Engine)
+    // Dokunmatik ve Fiziksel Kaydırma (Touch & Fling)
     private final OverScroller scroller;
     private VelocityTracker velocityTracker;
     private final int touchSlop;
@@ -45,12 +45,13 @@ public class WorkspaceView extends ViewGroup {
     private boolean isBeingDragged = false;
     private int maxScrollY = 0;
 
-    // Hesaplanan Hücre Ölçüleri (Piksel cinsinden)
+    // Matematiksel Olarak Türetilen Hücre Ölçüleri
+    private int calculatedCols = 8;
     private int cellWidth = 0;
     private int cellHeight = 0;
     private int gutterXPx = 0;
     private int gutterYPx = 0;
-    private int leftOffset = 0;
+    private int startLeft = 0;
     private int topOffset = 0;
     private int maxRow = 0;
 
@@ -125,6 +126,10 @@ public class WorkspaceView extends ViewGroup {
         return config;
     }
 
+    public int getCalculatedCols() {
+        return calculatedCols;
+    }
+
     public void rebuildViews() {
         removeAllViews();
         if (config == null || config.tiles == null) return;
@@ -155,24 +160,36 @@ public class WorkspaceView extends ViewGroup {
 
         if (config != null) {
             SafeArea sa = config.safeArea;
-            leftOffset = (int) (width * sa.left);
-            int rightOffset = (int) (width * sa.right);
+            int leftOff = (int) (width * sa.left);
+            int rightOff = (int) (width * sa.right);
             topOffset = (int) (height * sa.top);
-            int bottomOffset = (int) (height * sa.bottom);
+            int bottomOff = (int) (height * sa.bottom);
 
-            int usableWidth = width - leftOffset - rightOffset;
-            int usableHeight = height - topOffset - bottomOffset;
+            int usableWidth = Math.max(100, width - leftOff - rightOff);
+            int usableHeight = Math.max(100, height - topOffset - bottomOff);
 
-            int cols = Math.max(1, config.colCount);
+            // Referans Boyut: Ekranın en uzun kenarı (Telefon dikeyde de olsa kutu boyutunu korur)
+            int refDim = Math.max(width, height);
+            int targetTileW = Math.max(60, (int) (refDim * config.tileScale));
+
             gutterXPx = Math.max(0, (int) (usableWidth * config.gutterPercent));
             gutterYPx = Math.max(0, (int) (usableHeight * config.gutterPercent));
 
-            // Hücre Genişliği = (Kullanılabilir Alan - Ara Boşluklar) / Sütun Sayısı
-            int totalGuttersW = (cols - 1) * gutterXPx;
-            cellWidth = Math.max(10, (usableWidth - totalGuttersW) / cols);
+            // TÜRETİLEN SÜTUN SAYISI (Kullanıcının formülü):
+            // Sütun Sayısı = (usableWidth + gutter) / (targetTileW + gutter)
+            calculatedCols = Math.max(1, (usableWidth + gutterXPx) / (targetTileW + gutterXPx));
 
-            // Hücre Yüksekliği = Ekran Yüksekliği * Varsayılan Yükseklik Yüzdesi (Seçenek B: %10)
-            cellHeight = Math.max(10, (int) (usableHeight * config.defaultTileHeight));
+            // Hücre Genişliği (Artık pikselleri kutulara pürüzsüz yayma)
+            int totalGuttersW = (calculatedCols - 1) * gutterXPx;
+            cellWidth = Math.max(10, (usableWidth - totalGuttersW) / calculatedCols);
+
+            // Hücre Yüksekliği (En-Boy Oranına Göre: %75 = TV Kartı)
+            cellHeight = Math.max(10, (int) (cellWidth * config.tileHeightRatio));
+
+            // Izgarayı ekranda tam ortalama
+            int totalContentW = calculatedCols * cellWidth + totalGuttersW;
+            int extraMarginX = Math.max(0, (usableWidth - totalContentW) / 2);
+            startLeft = leftOff + extraMarginX;
 
             int childCount = getChildCount();
             for (int i = 0; i < childCount; i++) {
@@ -180,9 +197,8 @@ public class WorkspaceView extends ViewGroup {
                 if (child instanceof TileView) {
                     Tile t = ((TileView) child).getTile();
 
-                    // Matris Span Genişlik ve Yükseklik Formülü:
-                    // Genişlik = (colSpan * cellWidth) + (colSpan - 1) * gutter
-                    int childW = t.colSpan * cellWidth + (t.colSpan - 1) * gutterXPx;
+                    int spanC = Math.min(calculatedCols, t.colSpan);
+                    int childW = spanC * cellWidth + (spanC - 1) * gutterXPx;
                     int childH = t.rowSpan * cellHeight + (t.rowSpan - 1) * gutterYPx;
 
                     child.measure(
@@ -210,9 +226,16 @@ public class WorkspaceView extends ViewGroup {
             if (child instanceof TileView) {
                 Tile tile = ((TileView) child).getTile();
 
-                // 2D Hücre Matrisi Pozisyon Formülü:
-                int childLeft = leftOffset + tile.col * (cellWidth + gutterXPx);
-                int childTop = topOffset + tile.row * (cellHeight + gutterYPx);
+                // Eğer kutu mevcut sütun sayısının dışına taşarsa otomatik sar
+                int effectiveCol = tile.col;
+                int effectiveRow = tile.row;
+
+                if (effectiveCol + tile.colSpan > calculatedCols) {
+                    effectiveCol = effectiveCol % calculatedCols;
+                }
+
+                int childLeft = startLeft + effectiveCol * (cellWidth + gutterXPx);
+                int childTop = topOffset + effectiveRow * (cellHeight + gutterYPx);
                 int childRight = childLeft + child.getMeasuredWidth();
                 int childBottom = childTop + child.getMeasuredHeight();
 
@@ -221,8 +244,8 @@ public class WorkspaceView extends ViewGroup {
                 if (childBottom > maxBottom) {
                     maxBottom = childBottom;
                 }
-                if (tile.row + tile.rowSpan > maxRow) {
-                    maxRow = tile.row + tile.rowSpan;
+                if (effectiveRow + tile.rowSpan > maxRow) {
+                    maxRow = effectiveRow + tile.rowSpan;
                 }
             }
         }
@@ -409,7 +432,6 @@ public class WorkspaceView extends ViewGroup {
 
     @Override
     protected void dispatchDraw(Canvas canvas) {
-        // Zemin Rengi
         canvas.drawColor(getThemeBgColor());
 
         super.dispatchDraw(canvas);
@@ -418,7 +440,7 @@ public class WorkspaceView extends ViewGroup {
         int h = getHeight();
         int scrollY = getScrollY();
 
-        // 2. Minimalist Dikey Kaydırma Çubuğu (Scrollbar)
+        // Minimalist Scrollbar
         if (maxScrollY > 0) {
             float totalH = h + maxScrollY;
             float barH = Math.max(40f, (h / totalH) * h);
@@ -428,7 +450,7 @@ public class WorkspaceView extends ViewGroup {
             canvas.drawRect(barRight - barW, barY, barRight, barY + barH, scrollbarPaint);
         }
 
-        // 3. Düzenleme Modu: 2D Hücre Izgara Çizgileri & HUD
+        // Düzenleme Modu: Otomatik Türetilen Hücre Izgarası & HUD
         if (isEditMode && config != null) {
             SafeArea sa = config.safeArea;
             int left = (int) (w * sa.left);
@@ -436,24 +458,20 @@ public class WorkspaceView extends ViewGroup {
             int right = w - (int) (w * sa.right);
             int bottom = (h - (int) (h * sa.bottom)) + scrollY;
 
-            // Güvenli alan kırmızı kesikli çerçeve
             canvas.drawRect(left, top, right, bottom, safeAreaPaint);
 
-            // Tüm 2D Matris Hücre Çizgileri (Hücre Hücre Kesik Çizgiler)
-            int cols = Math.max(1, config.colCount);
             int rowsToDraw = Math.max(10, maxRow + 2);
 
             for (int rIndex = 0; rIndex < rowsToDraw; rIndex++) {
                 int cellTop = (top - scrollY) + rIndex * (cellHeight + gutterYPx);
-                for (int cIndex = 0; cIndex < cols; cIndex++) {
-                    int cellLeft = left + cIndex * (cellWidth + gutterXPx);
-                    canvas.drawRect(cellLeft, cellTop, cellLeft + cellWidth, cellTop + cellHeight, cellGridPaint);
+                for (int cIndex = 0; cIndex < calculatedCols; cIndex++) {
+                    int cLeft = startLeft + cIndex * (cellWidth + gutterXPx);
+                    canvas.drawRect(cLeft, cellTop, cLeft + cellWidth, cellTop + cellHeight, cellGridPaint);
                 }
             }
 
-            // TV Ergonomisi için Sağ Üstte Bilgi Kartı (HUD)
-            String hudText1 = "DÜZENLEME MODU | 2D Sanal Matris (" + cols + " Sütun)";
-            String hudText2 = "Kutu: " + config.tiles.size() + " | [Yön Tuşu]: Hücreye Yapış (Snap) | [OK]: Bırak";
+            String hudText1 = "DÜZENLEME MODU | Otomatik Türetilen: " + calculatedCols + " Sütun";
+            String hudText2 = "Hücre: " + cellWidth + "x" + cellHeight + " px | [Yön Tuşu]: Hücre Atla | [OK]: Bırak";
 
             float cardW = 760f;
             float cardH = 90f;

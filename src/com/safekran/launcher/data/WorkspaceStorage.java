@@ -39,11 +39,11 @@ public class WorkspaceStorage {
             JSONObject root = new JSONObject(sb.toString());
             WorkspaceConfig config = WorkspaceConfig.fromJson(root);
 
-            // Sürüm 3 Göçü (Superpowers 2D Sanal Hücre Matrisi Mimarisi)
-            if (config.schemaVersion < 3) {
+            // Sürüm 4 Göçü (Otomatik Türetilen Sütun ve Boyut Modeli)
+            if (config.schemaVersion < 4) {
                 List<AppInfo> apps = AppScanner.scanAllApps(context);
-                reflowContinuousTiles(config, apps);
-                config.schemaVersion = 3;
+                reflowContinuousTiles(config, apps, 8);
+                config.schemaVersion = 4;
                 saveWorkspace(context, config);
             }
 
@@ -71,34 +71,33 @@ public class WorkspaceStorage {
 
     public static WorkspaceConfig generateDefaultWorkspace(Context context) {
         WorkspaceConfig config = new WorkspaceConfig();
-        config.schemaVersion = 3;
+        config.schemaVersion = 4;
         config.safeArea = new SafeArea(0.03f, 0.03f, 0.03f, 0.03f); // %3 Optimum güvenli alan
-        config.colCount = 8;              // 8 Sütunlu TV ızgarası
-        config.gutterPercent = 0.01f;     // %1 Gutter
-        config.defaultTileHeight = 0.10f;  // %10 Yükseklik (TV 16:9 oranı)
+        config.tileScale = 0.10f;          // %10 Kutu Boyutu
+        config.tileHeightRatio = 0.75f;     // %75 Yükseklik Oranı (16:9 TV için ideal)
+        config.gutterPercent = 0.01f;      // %1 Gutter
         config.focusScale = 1.06f;
         config.themeMode = "BLACK";
 
         List<AppInfo> apps = AppScanner.scanAllApps(context);
-        reflowContinuousTiles(config, apps);
+        reflowContinuousTiles(config, apps, 8);
 
         saveWorkspace(context, config);
         return config;
     }
 
     /**
-     * Superpowers 2D Matris Düzenleyici:
-     * Tüm kutuları hücre hücre (col, row, span) sıralar.
-     * En üst satır dahil tüm satırlar boşluksuz, pürüzsüz doldurulur.
+     * Tüm kutuları verilen sütun kapasitesine göre (cols)
+     * en üst satır dahil sağ kenarda hiç boşluk bırakmadan, satır satır akıtır.
      */
-    public static void reflowContinuousTiles(WorkspaceConfig config, List<AppInfo> apps) {
+    public static void reflowContinuousTiles(WorkspaceConfig config, List<AppInfo> apps, int cols) {
         config.tiles.clear();
 
-        int maxCols = Math.max(4, config.colCount);
+        int maxCols = Math.max(2, cols);
         int currentCol = 0;
         int currentRow = 0;
 
-        // 1. Saat Kutusu (2 Sütun genişlik, 1 Satır yükseklik)
+        // 1. Saat Kutusu (2 Sütun genişlik, eğer 2'den az sütun varsa 1)
         int clockSpan = Math.min(2, maxCols);
         Tile clockTile = new Tile(TileType.CLOCK, "Saat & Tarih", currentCol, currentRow, clockSpan, 1);
         config.tiles.add(clockTile);
@@ -122,7 +121,7 @@ public class WorkspaceStorage {
         config.tiles.add(sysSettingsTile);
         currentCol += 1;
 
-        // 5. Yüklü Uygulamalar (HİÇ KESİNTİ OLMADAN AYNI SATIRDAN VE SONRAKİ SATIRLARDAN DEVAM EDER)
+        // 5. Yüklü Uygulamalar (HİÇ KESİNTİ OLMADAN AYNI SATIRDAN DEVAM EDER)
         for (AppInfo app : apps) {
             if (currentCol >= maxCols) {
                 currentCol = 0;

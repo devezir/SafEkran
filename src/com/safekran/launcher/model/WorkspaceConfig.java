@@ -6,18 +6,25 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Saf Ekran Otomatik Türetilmiş Izgara Yapılandırması (v4).
+ * Sütun sayısı yapay bir ayar değildir; Ekran Genişliği, Kutu Boyutu 
+ * ve Gutter oranından matematiksel olarak türetilir.
+ */
 public class WorkspaceConfig {
-    public int schemaVersion = 3; // Superpowers 2D Matris Sürümü
+    public int schemaVersion = 4;
     public String appName = "Saf Ekran";
     public String developer = "Vezir";
 
     public SafeArea safeArea = new SafeArea();
-    public int colCount = 8;                 // Varsayılan 8 Sütun (TV için ideal)
-    public float gutterPercent = 0.01f;     // Varsayılan %1
-    public float defaultTileHeight = 0.10f;  // Varsayılan %10 (TV 16:9 dikdörtgen)
-    public float focusScale = 1.06f;         // Varsayılan %6 büyüme
+    
+    // Temel Geometrik Değişkenler
+    public float tileScale = 0.10f;          // Referans boyuta göre Kutu Genişliği (Varsayılan %10)
+    public float tileHeightRatio = 0.75f;     // Kutu Yükseklik Oranı (Genişliğin %75'i - Şık TV kartı)
+    public float gutterPercent = 0.01f;      // Kutular arası boşluk (Varsayılan %1)
+    public float focusScale = 1.06f;          // Odaklanınca büyüme payı (%6)
 
-    public String themeMode = "BLACK";       // "BLACK", "DARK_GRAY", "LIGHT"
+    public String themeMode = "BLACK";        // "BLACK", "DARK_GRAY", "LIGHT"
     public boolean is24Hour = true;
     public boolean showDate = true;
 
@@ -29,9 +36,9 @@ public class WorkspaceConfig {
         root.put("appName", appName);
         root.put("developer", developer);
         root.put("safeArea", safeArea.toJson());
-        root.put("colCount", colCount);
+        root.put("tileScale", (double) tileScale);
+        root.put("tileHeightRatio", (double) tileHeightRatio);
         root.put("gutterPercent", (double) gutterPercent);
-        root.put("defaultTileHeight", (double) defaultTileHeight);
         root.put("focusScale", (double) focusScale);
         root.put("themeMode", themeMode);
         root.put("is24Hour", is24Hour);
@@ -49,7 +56,7 @@ public class WorkspaceConfig {
         WorkspaceConfig config = new WorkspaceConfig();
         if (root == null) return config;
 
-        config.schemaVersion = root.optInt("schemaVersion", 3);
+        config.schemaVersion = root.optInt("schemaVersion", 4);
         config.appName = root.optString("appName", "Saf Ekran");
         config.developer = root.optString("developer", "Vezir");
 
@@ -58,9 +65,9 @@ public class WorkspaceConfig {
             config.safeArea = SafeArea.fromJson(saObj);
         }
 
-        config.colCount = root.optInt("colCount", 8);
+        config.tileScale = (float) root.optDouble("tileScale", 0.10);
+        config.tileHeightRatio = (float) root.optDouble("tileHeightRatio", 0.75);
         config.gutterPercent = (float) root.optDouble("gutterPercent", 0.01);
-        config.defaultTileHeight = (float) root.optDouble("defaultTileHeight", 0.10);
         config.focusScale = (float) root.optDouble("focusScale", 1.06);
         config.themeMode = root.optString("themeMode", "BLACK");
         config.is24Hour = root.optBoolean("is24Hour", true);

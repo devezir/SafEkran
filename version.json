@@ -1,12 +1,12 @@
 {
   "appName": "Saf Ekran",
   "packageName": "com.safekran.launcher",
-  "versionCode": 4,
-  "versionName": "2.0.0",
+  "versionCode": 5,
+  "versionName": "2.1.0",
   "developer": "Vezir",
   "schemaVersion": 1,
   "createdDate": "2026-11-19",
-  "apkName": "SafEkran_v2.0.0_vc4.apk",
+  "apkName": "SafEkran_v2.1.0_vc5.apk",
   "history": [
     {
       "versionCode": 1,
@@ -31,6 +31,12 @@
       "versionName": "2.0.0",
       "date": "2026-11-19",
       "description": "Superpowers 2D Sanal Hücre Matrisi mimarisine geçiş (Snap-to-Grid, Sütun ayarı, Deterministik odak ve düzen)"
+    },
+    {
+      "versionCode": 5,
+      "versionName": "2.1.0",
+      "date": "2026-11-19",
+      "description": "Otomatik türetilen sütun sistemi: Kutu boyutu ve ekrana göre dinamik akış (Auto-Fit Grid)"
     }
   ]
 }

@@ -142,6 +142,7 @@ public class MainActivity extends Activity {
     }
 
     private void onTileLongClicked(final Tile tile) {
+        int maxCols = workspaceView.getCalculatedCols();
         String[] options = new String[]{
                 "Genişlet (+1 Sütun)",
                 "Daralt (-1 Sütun)",
@@ -155,8 +156,9 @@ public class MainActivity extends Activity {
         builder.setItems(options, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
+                int maxC = workspaceView.getCalculatedCols();
                 if (which == 0) {
-                    tile.colSpan = Math.min(config.colCount, tile.colSpan + 1);
+                    tile.colSpan = Math.min(maxC, tile.colSpan + 1);
                 } else if (which == 1) {
                     tile.colSpan = Math.max(1, tile.colSpan - 1);
                 } else if (which == 2) {
@@ -221,7 +223,7 @@ public class MainActivity extends Activity {
 
     private void openLauncherSettingsDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Saf Ekran — Matris Ayarları");
+        builder.setTitle("Saf Ekran — Dinamik Izgara Ayarları");
 
         ScrollView scroll = new ScrollView(this);
         LinearLayout layout = new LinearLayout(this);
@@ -230,13 +232,13 @@ public class MainActivity extends Activity {
 
         // 1. İmza & Sürüm Başlığı
         TextView authorText = new TextView(this);
-        authorText.setText("Geliştirici: Vezir | Sürüm: 2.0.0 (Superpowers 2D Matris)");
+        authorText.setText("Geliştirici: Vezir | v2.1 (Türetilmiş Otomatik Izgara)");
         authorText.setTextColor(Color.parseColor("#4CAF50"));
         authorText.setTextSize(13);
         authorText.setPadding(0, 0, 0, 16);
         layout.addView(authorText);
 
-        // 2. Güvenli Alan Başlığı ve Kaydırıcıları
+        // 2. Güvenli Alan
         addSectionHeader(layout, "1. GÜVENLİ ALAN (OVERSCAN)");
         addPercentSlider(layout, "Üst Güvenli Alan", config.safeArea.top, 0, 20, new ValueCallback() {
             @Override public void onValueChanged(float val) { config.safeArea.top = val; workspaceView.requestLayout(); }
@@ -251,29 +253,35 @@ public class MainActivity extends Activity {
             @Override public void onValueChanged(float val) { config.safeArea.right = val; workspaceView.requestLayout(); }
         });
 
-        // 3. Matris ve Hücre Boyutları (Superpowers)
-        addSectionHeader(layout, "2. 2D SANAL MATRİS VE HÜCRE BOYUTLARI");
-        addIntegerSlider(layout, "Sütun Sayısı (Izgara Yoğunluğu)", config.colCount, 4, 12, new IntCallback() {
-            @Override public void onIntChanged(int val) {
-                config.colCount = val;
-                workspaceView.requestLayout();
+        // 3. Kutu Boyutları (Sütun Sayısı Artık Otomatik Çıkıyor!)
+        addSectionHeader(layout, "2. KUTU GEOMETRİSİ (SÜTUN OTOMATİK HESAPLANIR)");
+        addPercentSlider(layout, "Kutu Boyutu (Genişlik)", config.tileScale, 6, 20, new ValueCallback() {
+            @Override public void onValueChanged(float val) { 
+                config.tileScale = val; 
+                workspaceView.requestLayout(); 
             }
         });
-        addPercentSlider(layout, "Hücreler Arası Boşluk (Gutter)", config.gutterPercent, 0, 5, new ValueCallback() {
-            @Override public void onValueChanged(float val) { config.gutterPercent = val; workspaceView.requestLayout(); }
+        addPercentSlider(layout, "Kutu Yükseklik Oranı (%75 = TV, %100 = Kare)", config.tileHeightRatio, 50, 100, new ValueCallback() {
+            @Override public void onValueChanged(float val) { 
+                config.tileHeightRatio = val; 
+                workspaceView.requestLayout(); 
+            }
         });
-        addPercentSlider(layout, "Kutu Yüksekliği Oranı", config.defaultTileHeight, 5, 25, new ValueCallback() {
-            @Override public void onValueChanged(float val) { config.defaultTileHeight = val; workspaceView.requestLayout(); }
+        addPercentSlider(layout, "Kutular Arası Boşluk (Gutter)", config.gutterPercent, 0, 5, new ValueCallback() {
+            @Override public void onValueChanged(float val) { 
+                config.gutterPercent = val; 
+                workspaceView.requestLayout(); 
+            }
         });
 
-        // 4. Odaklanma Genişleme Değeri (Satır 40)
+        // 4. Odaklanma Genişleme Değeri
         addSectionHeader(layout, "3. ODAK VE ETKİLEŞİM");
         float currentFocusPercent = (config.focusScale - 1.0f);
         addPercentSlider(layout, "Odaklanınca Büyüme Oranı", currentFocusPercent, 0, 15, new ValueCallback() {
             @Override public void onValueChanged(float val) { config.focusScale = 1.0f + val; }
         });
 
-        // 5. Tema Seçimi (Satır 4)
+        // 5. Tema Seçimi
         addSectionHeader(layout, "4. TEMA MODU");
         LinearLayout themeRow = new LinearLayout(this);
         themeRow.setOrientation(LinearLayout.HORIZONTAL);
@@ -306,21 +314,22 @@ public class MainActivity extends Activity {
         });
         layout.addView(cbDate);
 
-        // 7. Matris Düzenleme Butonu: "Düzeni Yağ Gibi Akıt"
+        // 7. Akış Butonu
         addSectionHeader(layout, "6. DÜZEN İŞLEMLERİ");
         Button reflowBtn = new Button(this);
-        reflowBtn.setText("⚡ Düzeni Yağ Gibi Akıt (Matrisi Sıfırdan Doldur)");
+        reflowBtn.setText("⚡ Düzeni Yağ Gibi Akıt (Dinamik Sütunlara Oturt)");
         reflowBtn.setBackgroundColor(Color.parseColor("#1B5E20"));
         reflowBtn.setTextColor(Color.WHITE);
         reflowBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                int cols = workspaceView.getCalculatedCols();
                 List<AppInfo> apps = AppScanner.scanAllApps(MainActivity.this);
-                WorkspaceStorage.reflowContinuousTiles(config, apps);
+                WorkspaceStorage.reflowContinuousTiles(config, apps, cols);
                 WorkspaceStorage.saveWorkspace(MainActivity.this, config);
                 workspaceView.rebuildViews();
                 setupTileClickListeners();
-                Toast.makeText(MainActivity.this, "Tüm ekran matris düzenine oturtuldu!", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "Tüm ekran " + cols + " sütunlu dinamik akışa oturtuldu!", Toast.LENGTH_SHORT).show();
             }
         });
         layout.addView(reflowBtn);
@@ -351,7 +360,7 @@ public class MainActivity extends Activity {
                 config = WorkspaceStorage.generateDefaultWorkspace(MainActivity.this);
                 workspaceView.setConfig(config, iconCache, false);
                 setupTileClickListeners();
-                Toast.makeText(MainActivity.this, "Varsayılan matris yüklendi.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "Varsayılan ızgara yüklendi.", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -387,34 +396,6 @@ public class MainActivity extends Activity {
 
     private interface ValueCallback {
         void onValueChanged(float val);
-    }
-
-    private interface IntCallback {
-        void onIntChanged(int val);
-    }
-
-    private void addIntegerSlider(LinearLayout layout, final String label, int initialVal, final int min, final int max, final IntCallback callback) {
-        final TextView labelView = new TextView(this);
-        labelView.setText(label + ": " + initialVal);
-        labelView.setTextColor(Color.parseColor("#CCCCCC"));
-        labelView.setTextSize(12);
-        labelView.setPadding(0, 10, 0, 2);
-        layout.addView(labelView);
-
-        SeekBar seekBar = new SeekBar(this);
-        seekBar.setMax(max - min);
-        seekBar.setProgress(Math.max(0, initialVal - min));
-        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar sb, int progress, boolean fromUser) {
-                int actualVal = min + progress;
-                labelView.setText(label + ": " + actualVal);
-                callback.onIntChanged(actualVal);
-            }
-            @Override public void onStartTrackingTouch(SeekBar sb) {}
-            @Override public void onStopTrackingTouch(SeekBar sb) {}
-        });
-        layout.addView(seekBar);
     }
 
     private void addPercentSlider(LinearLayout layout, final String label, float initialVal, final int min, final int max, final ValueCallback callback) {
@@ -481,9 +462,9 @@ public class MainActivity extends Activity {
                 return true;
             }
 
-            // Superpowers Snap-to-Grid: D-Pad yön tuşlarıyla TAM 1 HÜCRE zıplama!
+            // Snap-to-Grid: D-Pad yön tuşlarıyla hücre hücre atlama
             if (selectedMovingTile != null) {
-                int maxCols = Math.max(1, config.colCount);
+                int maxCols = workspaceView.getCalculatedCols();
                 if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
                     selectedMovingTile.row = Math.max(0, selectedMovingTile.row - 1);
                     workspaceView.requestLayout();
