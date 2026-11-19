@@ -1,12 +1,12 @@
 {
   "appName": "Saf Ekran",
   "packageName": "com.safekran.launcher",
-  "versionCode": 15,
-  "versionName": "2.7.0",
+  "versionCode": 16,
+  "versionName": "2.8.0",
   "developer": "Vezir",
   "schemaVersion": 1,
   "createdDate": "2026-11-19",
-  "apkName": "SafEkran_v2.7.0_vc15.apk",
+  "apkName": "SafEkran_v2.8.0_vc16.apk",
   "history": [
     {
       "versionCode": 1,
@@ -97,6 +97,12 @@
       "versionName": "2.7.0",
       "date": "2026-11-19",
       "description": "Feat: Bağımsız Başlatıcı Ayarları Kutusu & Telefonda Sanal TV Kumandası Test Pedi (v2.7.0)"
+    },
+    {
+      "versionCode": 16,
+      "versionName": "2.8.0",
+      "date": "2026-11-20",
+      "description": "Feat: Akıllı D-Pad Odak Navigatörü & Sürüklenebilir Sanal Kumanda (v2.8.0)"
     }
   ]
 }

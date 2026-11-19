@@ -1035,11 +1035,122 @@ public class MainActivity extends Activity {
     // ==========================================
 
     private void sendKeyEvent(int keyCode) {
+        // D-Pad Yön ve Seçim Tuşları için Akıllı Focus Navigatörü
+        if (keyCode == KeyEvent.KEYCODE_DPAD_UP ||
+                keyCode == KeyEvent.KEYCODE_DPAD_DOWN ||
+                keyCode == KeyEvent.KEYCODE_DPAD_LEFT ||
+                keyCode == KeyEvent.KEYCODE_DPAD_RIGHT ||
+                keyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
+                keyCode == KeyEvent.KEYCODE_ENTER) {
+            handleDpadNavigation(keyCode);
+            return;
+        }
+
         long now = SystemClock.uptimeMillis();
         KeyEvent down = new KeyEvent(now, now, KeyEvent.ACTION_DOWN, keyCode, 0);
         KeyEvent up = new KeyEvent(now, now, KeyEvent.ACTION_UP, keyCode, 0);
         dispatchKeyEvent(down);
         dispatchKeyEvent(up);
+    }
+
+    private void handleDpadNavigation(int keyCode) {
+        // Düzenleme modunda kutu taşınıyorsa
+        if (workspaceView.isEditMode() && selectedMovingTile != null) {
+            int cols = workspaceView.getCalculatedCols();
+            if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                moveTileInStream(selectedMovingTile, -cols);
+            } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                moveTileInStream(selectedMovingTile, cols);
+            } else if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                moveTileInStream(selectedMovingTile, -1);
+            } else if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                moveTileInStream(selectedMovingTile, 1);
+            } else if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
+                selectedMovingTile = null;
+                Toast.makeText(this, "Kutu konumu bırakıldı.", Toast.LENGTH_SHORT).show();
+            }
+            return;
+        }
+
+        // [OK] Tuşu: Odaktaki kutuyu başlat
+        if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
+            View focused = workspaceView.findFocus();
+            if (focused != null) {
+                focused.performClick();
+            } else {
+                focusFirstTile();
+            }
+            return;
+        }
+
+        // Yön tuşları
+        View current = workspaceView.findFocus();
+        if (current == null) {
+            focusFirstTile();
+        } else {
+            int direction = View.FOCUS_DOWN;
+            if (keyCode == KeyEvent.KEYCODE_DPAD_UP) direction = View.FOCUS_UP;
+            else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) direction = View.FOCUS_DOWN;
+            else if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) direction = View.FOCUS_LEFT;
+            else if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) direction = View.FOCUS_RIGHT;
+
+            View next = current.focusSearch(direction);
+            if (next != null && next != current && isDescendantOf(next, workspaceView)) {
+                next.requestFocus(direction);
+            } else {
+                navigateTileFallback(current, keyCode);
+            }
+        }
+    }
+
+    private void focusFirstTile() {
+        int count = workspaceView.getChildCount();
+        for (int i = 0; i < count; i++) {
+            View child = workspaceView.getChildAt(i);
+            if (child instanceof TileView && child.getVisibility() == View.VISIBLE && child.isFocusable()) {
+                child.requestFocus();
+                break;
+            }
+        }
+    }
+
+    private boolean isDescendantOf(View v, View parent) {
+        View p = v;
+        while (p != null) {
+            if (p == parent) return true;
+            if (p.getParent() instanceof View) {
+                p = (View) p.getParent();
+            } else {
+                break;
+            }
+        }
+        return false;
+    }
+
+    private void navigateTileFallback(View current, int keyCode) {
+        int currentIndex = -1;
+        int count = workspaceView.getChildCount();
+        for (int i = 0; i < count; i++) {
+            if (workspaceView.getChildAt(i) == current) {
+                currentIndex = i;
+                break;
+            }
+        }
+        if (currentIndex < 0) return;
+
+        int cols = workspaceView.getCalculatedCols();
+        int targetIndex = currentIndex;
+        if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) targetIndex++;
+        else if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) targetIndex--;
+        else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) targetIndex += cols;
+        else if (keyCode == KeyEvent.KEYCODE_DPAD_UP) targetIndex -= cols;
+
+        if (targetIndex >= 0 && targetIndex < count) {
+            View targetView = workspaceView.getChildAt(targetIndex);
+            if (targetView != null && targetView.getVisibility() == View.VISIBLE && targetView.isFocusable()) {
+                targetView.requestFocus();
+            }
+        }
     }
 
     private void updateVirtualRemoteOverlay() {
@@ -1055,7 +1166,7 @@ public class MainActivity extends Activity {
         int pad = dpToPx(10);
         int btnPad = dpToPx(6);
 
-        LinearLayout remoteLayout = new LinearLayout(this);
+        final LinearLayout remoteLayout = new LinearLayout(this);
         remoteLayout.setOrientation(LinearLayout.VERTICAL);
         remoteLayout.setPadding(pad, pad, pad, pad);
         remoteLayout.setGravity(Gravity.CENTER);
@@ -1066,14 +1177,14 @@ public class MainActivity extends Activity {
         bg.setStroke(dpToPx(1), Color.parseColor("#4DFFFFFF"));
         remoteLayout.setBackground(bg);
 
-        // 1. Üst Başlık & Kapatma
+        // 1. Üst Başlık & Kapatma & SÜRÜKLEME TUTAMACI
         LinearLayout headerRow = new LinearLayout(this);
         headerRow.setOrientation(LinearLayout.HORIZONTAL);
         headerRow.setGravity(Gravity.CENTER_VERTICAL);
         headerRow.setPadding(0, 0, 0, dpToPx(6));
 
         TextView title = new TextView(this);
-        title.setText("🎮 TV Kumandası");
+        title.setText("🎮 TV Kumandası (Sürükle)");
         title.setTextColor(Color.parseColor("#80D8FF"));
         title.setTextSize(11);
         title.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
@@ -1095,6 +1206,32 @@ public class MainActivity extends Activity {
         });
         headerRow.addView(closeBtn);
         remoteLayout.addView(headerRow);
+
+        // Sürüklenebilir Panel (Draggable Overlay)
+        headerRow.setOnTouchListener(new View.OnTouchListener() {
+            private float initialX, initialY;
+            private float initialTouchX, initialTouchY;
+
+            @Override
+            public boolean onTouch(View v, android.view.MotionEvent event) {
+                switch (event.getAction()) {
+                    case android.view.MotionEvent.ACTION_DOWN:
+                        initialX = remoteLayout.getTranslationX();
+                        initialY = remoteLayout.getTranslationY();
+                        initialTouchX = event.getRawX();
+                        initialTouchY = event.getRawY();
+                        return true;
+
+                    case android.view.MotionEvent.ACTION_MOVE:
+                        float dx = event.getRawX() - initialTouchX;
+                        float dy = event.getRawY() - initialTouchY;
+                        remoteLayout.setTranslationX(initialX + dx);
+                        remoteLayout.setTranslationY(initialY + dy);
+                        return true;
+                }
+                return false;
+            }
+        });
 
         // 2. D-PAD
         LinearLayout rowUp = new LinearLayout(this);
