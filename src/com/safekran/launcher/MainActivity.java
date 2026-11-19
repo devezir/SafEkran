@@ -1053,7 +1053,12 @@ public class MainActivity extends Activity {
         dispatchKeyEvent(up);
     }
 
+    private int currentNavIndex = -1;
+
     private void handleDpadNavigation(int keyCode) {
+        int count = workspaceView.getChildCount();
+        if (count == 0) return;
+
         // Düzenleme modunda kutu taşınıyorsa
         if (workspaceView.isEditMode() && selectedMovingTile != null) {
             int cols = workspaceView.getCalculatedCols();
@@ -1074,82 +1079,85 @@ public class MainActivity extends Activity {
 
         // [OK] Tuşu: Odaktaki kutuyu başlat
         if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
+            if (currentNavIndex >= 0 && currentNavIndex < count) {
+                View target = workspaceView.getChildAt(currentNavIndex);
+                if (target != null) {
+                    target.performClick();
+                    return;
+                }
+            }
             View focused = workspaceView.findFocus();
             if (focused != null) {
                 focused.performClick();
             } else {
-                focusFirstTile();
+                selectNavTile(0);
             }
             return;
         }
 
         // Yön tuşları
-        View current = workspaceView.findFocus();
-        if (current == null) {
-            focusFirstTile();
-        } else {
-            int direction = View.FOCUS_DOWN;
-            if (keyCode == KeyEvent.KEYCODE_DPAD_UP) direction = View.FOCUS_UP;
-            else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) direction = View.FOCUS_DOWN;
-            else if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) direction = View.FOCUS_LEFT;
-            else if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) direction = View.FOCUS_RIGHT;
+        int cols = Math.max(1, workspaceView.getCalculatedCols());
 
-            View next = current.focusSearch(direction);
-            if (next != null && next != current && isDescendantOf(next, workspaceView)) {
-                next.requestFocus(direction);
-            } else {
-                navigateTileFallback(current, keyCode);
+        // Mevcut seçili indeksi bul
+        if (currentNavIndex < 0 || currentNavIndex >= count) {
+            View focused = workspaceView.findFocus();
+            if (focused != null) {
+                for (int i = 0; i < count; i++) {
+                    if (workspaceView.getChildAt(i) == focused) {
+                        currentNavIndex = i;
+                        break;
+                    }
+                }
             }
         }
+
+        if (currentNavIndex < 0) {
+            selectNavTile(0);
+            return;
+        }
+
+        int targetIndex = currentNavIndex;
+        if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+            targetIndex++;
+        } else if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+            targetIndex--;
+        } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+            targetIndex += cols;
+        } else if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+            targetIndex -= cols;
+        }
+
+        // Sınır kontrolü
+        if (targetIndex < 0) targetIndex = 0;
+        if (targetIndex >= count) targetIndex = count - 1;
+
+        selectNavTile(targetIndex);
     }
 
-    private void focusFirstTile() {
+    private void selectNavTile(int index) {
         int count = workspaceView.getChildCount();
-        for (int i = 0; i < count; i++) {
-            View child = workspaceView.getChildAt(i);
-            if (child instanceof TileView && child.getVisibility() == View.VISIBLE && child.isFocusable()) {
-                child.requestFocus();
-                break;
+        if (index < 0 || index >= count) return;
+
+        // Önceki seçiliyi temizle
+        if (currentNavIndex >= 0 && currentNavIndex < count) {
+            View prev = workspaceView.getChildAt(currentNavIndex);
+            if (prev != null) {
+                prev.setSelected(false);
+                prev.clearFocus();
             }
         }
-    }
 
-    private boolean isDescendantOf(View v, View parent) {
-        View p = v;
-        while (p != null) {
-            if (p == parent) return true;
-            if (p.getParent() instanceof View) {
-                p = (View) p.getParent();
-            } else {
-                break;
-            }
-        }
-        return false;
-    }
+        currentNavIndex = index;
+        View target = workspaceView.getChildAt(index);
+        if (target != null) {
+            target.setFocusable(true);
+            target.setFocusableInTouchMode(true);
+            target.requestFocusFromTouch();
+            target.requestFocus();
+            target.setSelected(true);
 
-    private void navigateTileFallback(View current, int keyCode) {
-        int currentIndex = -1;
-        int count = workspaceView.getChildCount();
-        for (int i = 0; i < count; i++) {
-            if (workspaceView.getChildAt(i) == current) {
-                currentIndex = i;
-                break;
-            }
-        }
-        if (currentIndex < 0) return;
-
-        int cols = workspaceView.getCalculatedCols();
-        int targetIndex = currentIndex;
-        if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) targetIndex++;
-        else if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) targetIndex--;
-        else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) targetIndex += cols;
-        else if (keyCode == KeyEvent.KEYCODE_DPAD_UP) targetIndex -= cols;
-
-        if (targetIndex >= 0 && targetIndex < count) {
-            View targetView = workspaceView.getChildAt(targetIndex);
-            if (targetView != null && targetView.getVisibility() == View.VISIBLE && targetView.isFocusable()) {
-                targetView.requestFocus();
-            }
+            // WorkspaceView TV oto-kaydırmasını tetikle
+            workspaceView.requestChildFocus(target, target);
         }
     }
 

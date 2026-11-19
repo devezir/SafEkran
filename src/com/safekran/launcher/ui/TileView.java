@@ -61,10 +61,12 @@ public class TileView extends FrameLayout {
         if (!isEditMode) {
             setVisibility(View.INVISIBLE);
             setFocusable(false);
+            setFocusableInTouchMode(false);
             setClickable(false);
         } else {
             setVisibility(View.VISIBLE);
             setFocusable(true);
+            setFocusableInTouchMode(true);
             setClickable(true);
             setBackgroundResource(R.drawable.bg_spacer_edit);
 
@@ -94,6 +96,7 @@ public class TileView extends FrameLayout {
     private void initClockTile(Context context) {
         setVisibility(View.VISIBLE);
         setFocusable(true);
+        setFocusableInTouchMode(true);
         setClickable(true);
         applyTileBackground();
 
@@ -129,6 +132,7 @@ public class TileView extends FrameLayout {
     private void initActionOrAppTile(Context context, Drawable appIcon) {
         setVisibility(View.VISIBLE);
         setFocusable(true);
+        setFocusableInTouchMode(true);
         setClickable(true);
         applyTileBackground();
 
@@ -295,12 +299,25 @@ public class TileView extends FrameLayout {
 
         StateListDrawable sld = new StateListDrawable();
         sld.addState(new int[]{android.R.attr.state_focused}, focusedDrawable);
+        sld.addState(new int[]{android.R.attr.state_selected}, focusedDrawable);
         sld.addState(new int[]{}, normalDrawable);
 
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.JELLY_BEAN) {
             setBackground(sld);
         } else {
             setBackgroundDrawable(sld);
+        }
+    }
+
+    @Override
+    public void setSelected(boolean selected) {
+        super.setSelected(selected);
+        float targetScale = (config != null) ? config.focusScale : 1.06f;
+        if (selected) {
+            animate().scaleX(targetScale).scaleY(targetScale).setDuration(120).start();
+            bringToFront();
+        } else if (!hasFocus()) {
+            animate().scaleX(1.0f).scaleY(1.0f).setDuration(120).start();
         }
     }
 
