@@ -1,12 +1,12 @@
 {
   "appName": "Saf Ekran",
   "packageName": "com.safekran.launcher",
-  "versionCode": 14,
-  "versionName": "2.6.0",
+  "versionCode": 15,
+  "versionName": "2.7.0",
   "developer": "Vezir",
   "schemaVersion": 1,
   "createdDate": "2026-11-19",
-  "apkName": "SafEkran_v2.6.0_vc14.apk",
+  "apkName": "SafEkran_v2.7.0_vc15.apk",
   "history": [
     {
       "versionCode": 1,
@@ -91,6 +91,12 @@
       "versionName": "2.6.0",
       "date": "2026-11-19",
       "description": "Feat: Kutu Çerçeve Stilleri (Sadece Odakta Çerçeve, Klasik, Yüzen Simgeler) v2.6.0"
+    },
+    {
+      "versionCode": 15,
+      "versionName": "2.7.0",
+      "date": "2026-11-19",
+      "description": "Feat: Bağımsız Başlatıcı Ayarları Kutusu & Telefonda Sanal TV Kumandası Test Pedi (v2.7.0)"
     }
   ]
 }

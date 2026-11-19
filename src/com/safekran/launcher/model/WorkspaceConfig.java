@@ -28,6 +28,7 @@ public class WorkspaceConfig {
     public String themeMode = "BLACK";        // "BLACK", "DARK_GRAY", "LIGHT"
     public boolean is24Hour = true;
     public boolean showDate = true;
+    public boolean virtualRemoteEnabled = false;
 
     public List<Tile> tiles = new ArrayList<Tile>();
 
@@ -45,6 +46,7 @@ public class WorkspaceConfig {
         root.put("themeMode", themeMode);
         root.put("is24Hour", is24Hour);
         root.put("showDate", showDate);
+        root.put("virtualRemoteEnabled", virtualRemoteEnabled);
 
         JSONArray arr = new JSONArray();
         for (Tile t : tiles) {
@@ -75,6 +77,7 @@ public class WorkspaceConfig {
         config.themeMode = root.optString("themeMode", "BLACK");
         config.is24Hour = root.optBoolean("is24Hour", true);
         config.showDate = root.optBoolean("showDate", true);
+        config.virtualRemoteEnabled = root.optBoolean("virtualRemoteEnabled", false);
 
         JSONArray arr = root.optJSONArray("tiles");
         config.tiles = new ArrayList<Tile>();

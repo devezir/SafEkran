@@ -6,9 +6,12 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.provider.Settings;
+import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.Window;
@@ -17,6 +20,7 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.SeekBar;
@@ -41,6 +45,8 @@ public class MainActivity extends Activity {
 
     private WorkspaceView workspaceView;
     private WorkspaceConfig config;
+    private FrameLayout rootContainer;
+    private View virtualRemoteView = null;
     private final Map<String, Drawable> iconCache = new HashMap<String, Drawable>();
 
     // Düzenleme modunda taşınan kutucuk durumu
@@ -66,9 +72,13 @@ public class MainActivity extends Activity {
 
         workspaceView = new WorkspaceView(this);
         workspaceView.setConfig(config, iconCache, false);
-        setContentView(workspaceView);
+
+        rootContainer = new FrameLayout(this);
+        rootContainer.addView(workspaceView, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+        setContentView(rootContainer);
 
         setupTileClickListeners();
+        updateVirtualRemoteOverlay();
     }
 
     private void hideSystemUI() {
@@ -228,6 +238,21 @@ public class MainActivity extends Activity {
             Tile b = new Tile(TileType.COLOR_BLUE, "🔵 Ayarlar", 0, 0, 1, 1);
             b.actionType = "LAUNCHER_SETTINGS";
             missing.add(b);
+        }
+
+        // Bağımsız Başlatıcı Ayarları Kutusu
+        boolean hasSettings = false;
+        if (config != null && config.tiles != null) {
+            for (Tile t : config.tiles) {
+                if (t.type == TileType.LAUNCHER_SETTINGS) {
+                    hasSettings = true;
+                    break;
+                }
+            }
+        }
+        if (!hasSettings) {
+            Tile s = new Tile(TileType.LAUNCHER_SETTINGS, "Başlatıcı Ayarları", 0, 0, 1, 1);
+            missing.add(s);
         }
         return missing;
     }
@@ -510,6 +535,7 @@ public class MainActivity extends Activity {
         optionsList.add("Altına Boşluk (Spacer) Ekle");
         optionsList.add(addAppOption);
         optionsList.add("Kutuyu Kaldır (Gizle)");
+        optionsList.add("⚙️ Başlatıcı Ayarları");
 
         String[] options = optionsList.toArray(new String[0]);
 
@@ -578,6 +604,8 @@ public class MainActivity extends Activity {
                 } else if (effectiveWhich == 9) {
                     config.tiles.remove(tile);
                     saveAndRefresh(tile.label + " gizlendi. Ayarlar veya kutu menüsünden geri getirebilirsiniz.");
+                } else if (effectiveWhich == 10) {
+                    openLauncherSettingsDialog();
                 }
             }
         });
@@ -755,8 +783,22 @@ public class MainActivity extends Activity {
         });
         layout.addView(cbDate);
 
-        // 7. Gizlenen ve Eksik Uygulamalar
-        addSectionHeader(layout, "7. GİZLENEN UYGULAMALAR");
+        // 7. Geliştirici ve Kumanda Testi
+        addSectionHeader(layout, "7. TELEFONDA KUMANDA TESTİ");
+        CheckBox cbRemote = new CheckBox(this);
+        cbRemote.setText("🕹️ Sanal TV Kumandası (Ekranda Test Pedi)");
+        cbRemote.setTextColor(Color.parseColor("#80D8FF"));
+        cbRemote.setChecked(config.virtualRemoteEnabled);
+        cbRemote.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                config.virtualRemoteEnabled = isChecked;
+                updateVirtualRemoteOverlay();
+            }
+        });
+        layout.addView(cbRemote);
+
+        // 8. Gizlenen ve Eksik Uygulamalar
+        addSectionHeader(layout, "8. GİZLENEN UYGULAMALAR");
         final List<AppInfo> currentHidden = getHiddenOrMissingApps();
         Button hiddenBtn = new Button(this);
         hiddenBtn.setText("👁️ Gizlenen Uygulamaları Yönet (" + currentHidden.size() + " adet)");
@@ -770,8 +812,8 @@ public class MainActivity extends Activity {
         });
         layout.addView(hiddenBtn);
 
-        // 8. Düzen Sıfırlama Butonu
-        addSectionHeader(layout, "8. DÜZEN İŞLEMLERİ");
+        // 9. Düzen Sıfırlama Butonu
+        addSectionHeader(layout, "9. DÜZEN İŞLEMLERİ");
         Button reflowBtn = new Button(this);
         reflowBtn.setText("🔄 Sıralamayı Varsayılana Sıfırla (Alfabeye Göre Sırala)");
         reflowBtn.setBackgroundColor(Color.parseColor("#37474F"));
@@ -977,7 +1019,7 @@ public class MainActivity extends Activity {
             }
         } else {
             if (keyCode == KeyEvent.KEYCODE_MENU) {
-                toggleEditMode();
+                openLauncherSettingsDialog();
                 return true;
             }
             if (keyCode == KeyEvent.KEYCODE_BACK) {
@@ -986,5 +1028,178 @@ public class MainActivity extends Activity {
         }
 
         return super.onKeyDown(keyCode, event);
+    }
+
+    // ==========================================
+    // SANAL TV KUMANDASI TEST PANELİ (VIRTUAL REMOTE)
+    // ==========================================
+
+    private void sendKeyEvent(int keyCode) {
+        long now = SystemClock.uptimeMillis();
+        KeyEvent down = new KeyEvent(now, now, KeyEvent.ACTION_DOWN, keyCode, 0);
+        KeyEvent up = new KeyEvent(now, now, KeyEvent.ACTION_UP, keyCode, 0);
+        dispatchKeyEvent(down);
+        dispatchKeyEvent(up);
+    }
+
+    private void updateVirtualRemoteOverlay() {
+        if (rootContainer == null) return;
+
+        if (virtualRemoteView != null) {
+            rootContainer.removeView(virtualRemoteView);
+            virtualRemoteView = null;
+        }
+
+        if (config == null || !config.virtualRemoteEnabled) return;
+
+        int pad = dpToPx(10);
+        int btnPad = dpToPx(6);
+
+        LinearLayout remoteLayout = new LinearLayout(this);
+        remoteLayout.setOrientation(LinearLayout.VERTICAL);
+        remoteLayout.setPadding(pad, pad, pad, pad);
+        remoteLayout.setGravity(Gravity.CENTER);
+
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(Color.parseColor("#E618181A"));
+        bg.setCornerRadius(dpToPx(14));
+        bg.setStroke(dpToPx(1), Color.parseColor("#4DFFFFFF"));
+        remoteLayout.setBackground(bg);
+
+        // 1. Üst Başlık & Kapatma
+        LinearLayout headerRow = new LinearLayout(this);
+        headerRow.setOrientation(LinearLayout.HORIZONTAL);
+        headerRow.setGravity(Gravity.CENTER_VERTICAL);
+        headerRow.setPadding(0, 0, 0, dpToPx(6));
+
+        TextView title = new TextView(this);
+        title.setText("🎮 TV Kumandası");
+        title.setTextColor(Color.parseColor("#80D8FF"));
+        title.setTextSize(11);
+        title.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        headerRow.addView(title);
+
+        TextView closeBtn = new TextView(this);
+        closeBtn.setText(" ✕ ");
+        closeBtn.setTextColor(Color.parseColor("#FF5252"));
+        closeBtn.setTextSize(13);
+        closeBtn.setPadding(btnPad, 0, btnPad, 0);
+        closeBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                config.virtualRemoteEnabled = false;
+                WorkspaceStorage.saveWorkspace(MainActivity.this, config);
+                updateVirtualRemoteOverlay();
+                Toast.makeText(MainActivity.this, "Sanal kumanda kapatıldı.", Toast.LENGTH_SHORT).show();
+            }
+        });
+        headerRow.addView(closeBtn);
+        remoteLayout.addView(headerRow);
+
+        // 2. D-PAD
+        LinearLayout rowUp = new LinearLayout(this);
+        rowUp.setGravity(Gravity.CENTER);
+        rowUp.addView(createRemoteButton("▲", KeyEvent.KEYCODE_DPAD_UP));
+        remoteLayout.addView(rowUp);
+
+        LinearLayout rowMid = new LinearLayout(this);
+        rowMid.setGravity(Gravity.CENTER);
+        rowMid.addView(createRemoteButton("◀", KeyEvent.KEYCODE_DPAD_LEFT));
+        rowMid.addView(createRemoteButton("OK", KeyEvent.KEYCODE_DPAD_CENTER));
+        rowMid.addView(createRemoteButton("▶", KeyEvent.KEYCODE_DPAD_RIGHT));
+        remoteLayout.addView(rowMid);
+
+        LinearLayout rowDown = new LinearLayout(this);
+        rowDown.setGravity(Gravity.CENTER);
+        rowDown.addView(createRemoteButton("▼", KeyEvent.KEYCODE_DPAD_DOWN));
+        remoteLayout.addView(rowDown);
+
+        // 3. Renk Tuşları
+        LinearLayout rowColors = new LinearLayout(this);
+        rowColors.setGravity(Gravity.CENTER);
+        rowColors.setPadding(0, dpToPx(6), 0, dpToPx(4));
+        rowColors.addView(createColorRemoteButton("🔴", KeyEvent.KEYCODE_PROG_RED));
+        rowColors.addView(createColorRemoteButton("🟢", KeyEvent.KEYCODE_PROG_GREEN));
+        rowColors.addView(createColorRemoteButton("🟡", KeyEvent.KEYCODE_PROG_YELLOW));
+        rowColors.addView(createColorRemoteButton("🔵", KeyEvent.KEYCODE_PROG_BLUE));
+        remoteLayout.addView(rowColors);
+
+        // 4. Fonksiyon Tuşları
+        LinearLayout rowActions = new LinearLayout(this);
+        rowActions.setGravity(Gravity.CENTER);
+        rowActions.addView(createActionButton("MENÜ", KeyEvent.KEYCODE_MENU));
+        rowActions.addView(createActionButton("GERİ", KeyEvent.KEYCODE_BACK));
+        remoteLayout.addView(rowActions);
+
+        FrameLayout.LayoutParams flp = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM | Gravity.END
+        );
+        flp.setMargins(0, 0, dpToPx(16), dpToPx(16));
+        virtualRemoteView = remoteLayout;
+        rootContainer.addView(virtualRemoteView, flp);
+    }
+
+    private Button createRemoteButton(String text, final int keyCode) {
+        Button btn = new Button(this);
+        btn.setText(text);
+        btn.setTextColor(Color.WHITE);
+        btn.setTextSize(12);
+        btn.setBackgroundColor(Color.parseColor("#33FFFFFF"));
+        btn.setFocusable(false);
+        int size = dpToPx(38);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(size, size);
+        lp.setMargins(dpToPx(2), dpToPx(2), dpToPx(2), dpToPx(2));
+        btn.setLayoutParams(lp);
+        btn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                sendKeyEvent(keyCode);
+            }
+        });
+        return btn;
+    }
+
+    private Button createColorRemoteButton(String text, final int keyCode) {
+        Button btn = new Button(this);
+        btn.setText(text);
+        btn.setTextSize(12);
+        btn.setBackgroundColor(Color.parseColor("#26FFFFFF"));
+        btn.setFocusable(false);
+        int size = dpToPx(34);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(size, size);
+        lp.setMargins(dpToPx(2), 0, dpToPx(2), 0);
+        btn.setLayoutParams(lp);
+        btn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                sendKeyEvent(keyCode);
+            }
+        });
+        return btn;
+    }
+
+    private Button createActionButton(String text, final int keyCode) {
+        Button btn = new Button(this);
+        btn.setText(text);
+        btn.setTextColor(Color.WHITE);
+        btn.setTextSize(10);
+        btn.setBackgroundColor(Color.parseColor("#26FFFFFF"));
+        btn.setFocusable(false);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dpToPx(64), dpToPx(32));
+        lp.setMargins(dpToPx(3), dpToPx(4), dpToPx(3), 0);
+        btn.setLayoutParams(lp);
+        btn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                sendKeyEvent(keyCode);
+            }
+        });
+        return btn;
+    }
+
+    private int dpToPx(int dp) {
+        return (int) (dp * getResources().getDisplayMetrics().density + 0.5f);
     }
 }
