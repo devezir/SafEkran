@@ -159,34 +159,89 @@ public class WorkspaceView extends ViewGroup {
     }
 
     /**
-     * Otomatik Paketleme Algoritması (Auto-Flow):
-     * Kutuları sütun sınırına göre sıralar; asla üst üste binme olamaz.
+     * 2 Boyutlu Doluluk Izgarası (2D Occupancy Grid Auto-Flow Engine):
+     * Kutuların hem yatay (colSpan) hem dikey (rowSpan) boyutlarını 2D haritada mühürler.
+     * Dikeyde 2x, 3x büyüyen kutuların altındaki hücreler dolu işaretlenir;
+     * alt satırdaki kutular dolu hücreleri otomatik atlar ve ASLA üst üste binme oluşamaz!
      */
     private void packTilesAutomatically() {
-        int curCol = 0;
-        int curRow = 0;
         int cols = Math.max(1, calculatedCols);
+        java.util.List<boolean[]> grid = new java.util.ArrayList<boolean[]>();
+
+        int curRow = 0;
+        int curCol = 0;
 
         int childCount = getChildCount();
         for (int i = 0; i < childCount; i++) {
             View child = getChildAt(i);
             if (child instanceof TileView) {
                 Tile t = ((TileView) child).getTile();
-                int span = Math.min(cols, t.colSpan);
+                int spanC = Math.min(cols, Math.max(1, t.colSpan));
+                int spanR = Math.max(1, t.rowSpan);
 
-                if (curCol + span > cols) {
-                    curCol = 0;
-                    curRow++;
+                // Bu kutu için sığabileceği ilk boş hücreyi bul
+                while (true) {
+                    if (curCol + spanC > cols) {
+                        // Sütun sınırını aşıyor, alt satırın başına geç
+                        curCol = 0;
+                        curRow++;
+                        continue;
+                    }
+
+                    // Alanın tüm hücreleri boş mu kontrol et
+                    boolean fits = true;
+                    for (int r = curRow; r < curRow + spanR; r++) {
+                        for (int c = curCol; c < curCol + spanC; c++) {
+                            if (isCellOccupied(grid, r, c)) {
+                                fits = false;
+                                break;
+                            }
+                        }
+                        if (!fits) break;
+                    }
+
+                    if (fits) {
+                        // Boş yer bulundu! Koordinatları ata
+                        t.col = curCol;
+                        t.row = curRow;
+
+                        // Grid üzerinde tüm hücreleri DOLU olarak işaretle
+                        markOccupied(grid, curRow, curCol, spanC, spanR, cols);
+
+                        // Bir sonraki arama için curCol'u ilerlet
+                        curCol += spanC;
+                        if (curCol >= cols) {
+                            curCol = 0;
+                            curRow++;
+                        }
+                        break;
+                    } else {
+                        // Bu hücre dolu (örneğin yukarıdan sarkan başka bir kutu var)
+                        // Sağa doğru 1 hücre kayarak boş yer ara
+                        curCol++;
+                        if (curCol >= cols) {
+                            curCol = 0;
+                            curRow++;
+                        }
+                    }
                 }
+            }
+        }
+    }
 
-                t.col = curCol;
-                t.row = curRow;
+    private boolean isCellOccupied(java.util.List<boolean[]> grid, int r, int c) {
+        if (r >= grid.size()) return false;
+        return grid.get(r)[c];
+    }
 
-                curCol += span;
-                if (curCol >= cols) {
-                    curCol = 0;
-                    curRow++;
-                }
+    private void markOccupied(java.util.List<boolean[]> grid, int startR, int startC, int spanC, int spanR, int cols) {
+        while (grid.size() < startR + spanR) {
+            grid.add(new boolean[cols]);
+        }
+        for (int r = startR; r < startR + spanR; r++) {
+            boolean[] rowArray = grid.get(r);
+            for (int c = startC; c < startC + spanC; c++) {
+                rowArray[c] = true;
             }
         }
     }
