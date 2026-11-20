@@ -162,7 +162,7 @@ public class TileView extends FrameLayout {
         boolean is24 = (config != null) ? config.is24Hour : true;
 
         clockView = new TextClock(context);
-        String timeFormat = is24 ? "HH:mm" : "hh:mm a";
+        String timeFormat = is24 ? "HH:mm" : "h:mm";
         clockView.setFormat24Hour(timeFormat);
         clockView.setFormat12Hour(timeFormat);
         clockView.setSingleLine(true);
@@ -171,7 +171,7 @@ public class TileView extends FrameLayout {
         clockView.setTextColor(getTextColor());
         clockView.setTypeface(Typeface.DEFAULT_BOLD);
         clockView.setGravity(Gravity.CENTER);
-        clockView.setIncludeFontPadding(true);
+        clockView.setIncludeFontPadding(false);
 
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT, Gravity.CENTER);
@@ -716,12 +716,41 @@ public class TileView extends FrameLayout {
             }
         }
 
-        // 3. Saat Kutusu Dinamik Tipografi (Kutuya tam oturan jilet gibi saat)
+        // 3. Saat Kutusu Dinamik Tipografi (Gerçek Metin Ölçümü - Paint.measureText ile Jilet Gibi Sığdırma)
         if (clockView != null) {
-            float maxSpByWidth = availWDp / 2.7f;
-            float maxSpByHeight = availHDp * 0.52f;
-            float clockSp = Math.max(14f, Math.min(84f, Math.min(maxSpByWidth, maxSpByHeight)));
-            clockView.setTextSize(TypedValue.COMPLEX_UNIT_SP, clockSp);
+            float availW = Math.max(10f, w - dpToPx(getContext(), 16));
+            float availH = Math.max(10f, h - dpToPx(getContext(), 12));
+
+            android.text.TextPaint paint = new android.text.TextPaint(clockView.getPaint());
+
+            // Yüksekliğe göre başlangıç hedef punto (kutunun dikeyde %56'sını doldurur)
+            float targetPx = availH * 0.56f;
+            paint.setTextSize(targetPx);
+
+            // Ölçüm yapılacak metinler:
+            boolean is24 = (config != null) ? config.is24Hour : true;
+            String currentFormatted = "";
+            try {
+                currentFormatted = new java.text.SimpleDateFormat(is24 ? "HH:mm" : "h:mm", java.util.Locale.getDefault()).format(new java.util.Date());
+            } catch (Exception ignored) {}
+
+            String worstCase = is24 ? "23:58" : "12:58";
+            float textWidth = Math.max(paint.measureText(worstCase), paint.measureText(currentFormatted));
+
+            if (clockView.getText() != null && clockView.getText().length() > 0) {
+                textWidth = Math.max(textWidth, paint.measureText(clockView.getText().toString()));
+            }
+
+            // Metin kutudan taşıyorsa pikseli pikseline tam orantılı küçült
+            if (textWidth > availW && textWidth > 0) {
+                targetPx = targetPx * (availW / textWidth);
+            }
+
+            float minPx = 12 * density;
+            float maxPx = 96 * density;
+            targetPx = Math.max(minPx, Math.min(maxPx, targetPx));
+
+            clockView.setTextSize(TypedValue.COMPLEX_UNIT_PX, targetPx);
         }
 
         // 4. Tarih Kutusu Dinamik Tipografi ve Adaptif Yerleşim (2x Geniş veya 1x Dar)
