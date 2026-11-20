@@ -80,6 +80,9 @@ public class MainActivity extends Activity {
     // Canlı Pil Dinleyicisi (Ekran açıkken anlık güncelleme)
     private BroadcastReceiver batteryReceiver = null;
 
+    // Uzun basma sonrası artçı tıklamaları yutan emniyet damgası (Debounce Guard)
+    private long lastLongClickTimestamp = 0;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -210,6 +213,7 @@ public class MainActivity extends Activity {
                 tv.setOnLongClickListener(new View.OnLongClickListener() {
                     @Override
                     public boolean onLongClick(View v) {
+                        lastLongClickTimestamp = SystemClock.uptimeMillis();
                         onTileLongClicked(tile);
                         return true;
                     }
@@ -219,6 +223,10 @@ public class MainActivity extends Activity {
     }
 
     private void onTileClicked(Tile tile, TileView tv) {
+        if (SystemClock.uptimeMillis() - lastLongClickTimestamp < 800) {
+            return;
+        }
+
         if (workspaceView != null) {
             workspaceView.setTvSelectedTile(tv);
             updateRemoteTitleWithSelected();
@@ -661,6 +669,8 @@ public class MainActivity extends Activity {
     }
 
     private void onTileLongClicked(final Tile tile) {
+        lastLongClickTimestamp = SystemClock.uptimeMillis();
+
         if (config != null && config.isLayoutLocked) {
             Toast.makeText(this, "🔒 Düzen kilitli! Kutu taşımak veya düzenlemek için Ayarlar'dan kilidi açın.", Toast.LENGTH_SHORT).show();
             return;
@@ -1775,7 +1785,7 @@ public class MainActivity extends Activity {
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
-            if (isLongPressHandled) {
+            if (isLongPressHandled || (SystemClock.uptimeMillis() - lastLongClickTimestamp < 800)) {
                 isLongPressHandled = false;
                 return true;
             }
@@ -1851,6 +1861,9 @@ public class MainActivity extends Activity {
 
         // [OK] Tuşu: Odaktaki kutuyu başlat
         if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
+            if (SystemClock.uptimeMillis() - lastLongClickTimestamp < 800) {
+                return;
+            }
             workspaceView.executeTvSelected();
             return;
         }
@@ -1987,6 +2000,7 @@ public class MainActivity extends Activity {
         okBtn.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View v) {
+                lastLongClickTimestamp = SystemClock.uptimeMillis();
                 v.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
                 v.setAlpha(0.2f);
                 v.animate().alpha(1.0f).setDuration(200).start();
@@ -2051,6 +2065,11 @@ public class MainActivity extends Activity {
         btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
+                    if (SystemClock.uptimeMillis() - lastLongClickTimestamp < 800) {
+                        return;
+                    }
+                }
                 btn.setAlpha(0.4f);
                 btn.animate().alpha(1.0f).setDuration(120).start();
                 sendKeyEvent(keyCode);
