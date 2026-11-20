@@ -88,6 +88,31 @@ public class WorkspaceStorage {
                 migrated = true;
             }
 
+            // Sürüm 6 / Tüm özel durum kutularının varsayılan olarak ana ekrana eklenmesi
+            boolean hasBattery = false, hasRam = false, hasStorage = false, hasNetwork = false, hasBluetooth = false;
+            int insertIndex = -1;
+            for (int i = 0; i < config.tiles.size(); i++) {
+                Tile t = config.tiles.get(i);
+                if (t.type == TileType.BATTERY) hasBattery = true;
+                else if (t.type == TileType.RAM) hasRam = true;
+                else if (t.type == TileType.STORAGE) hasStorage = true;
+                else if (t.type == TileType.NETWORK) hasNetwork = true;
+                else if (t.type == TileType.BLUETOOTH) hasBluetooth = true;
+                else if (t.type == TileType.SYSTEM_SETTINGS) insertIndex = i;
+            }
+            if (insertIndex < 0) insertIndex = Math.min(6, config.tiles.size());
+
+            if (!hasBattery) { config.tiles.add(insertIndex, new Tile(TileType.BATTERY, "Pil", 0, 0, 1, 1)); migrated = true; }
+            if (!hasRam) { config.tiles.add(insertIndex, new Tile(TileType.RAM, "RAM", 0, 0, 1, 1)); migrated = true; }
+            if (!hasStorage) { config.tiles.add(insertIndex, new Tile(TileType.STORAGE, "Depolama", 0, 0, 1, 1)); migrated = true; }
+            if (!hasNetwork) { config.tiles.add(insertIndex, new Tile(TileType.NETWORK, "Ağ", 0, 0, 1, 1)); migrated = true; }
+            if (!hasBluetooth) { config.tiles.add(insertIndex, new Tile(TileType.BLUETOOTH, "Bluetooth", 0, 0, 1, 1)); migrated = true; }
+
+            if (config.schemaVersion < 6) {
+                config.schemaVersion = 6;
+                migrated = true;
+            }
+
             if (migrated) {
                 saveWorkspace(context, config);
             }
@@ -183,7 +208,32 @@ public class WorkspaceStorage {
         config.tiles.add(blueTile);
         currentCol += 1;
 
-        // 3. Sistem Ayarları Kutusu
+        // 3. Sistem Durum Kutuları (Pil, RAM, Depolama, Ağ, Bluetooth, Sistem Ayarları)
+        if (currentCol >= maxCols) { currentCol = 0; currentRow++; }
+        Tile batteryTile = new Tile(TileType.BATTERY, "Pil", currentCol, currentRow, 1, 1);
+        config.tiles.add(batteryTile);
+        currentCol += 1;
+
+        if (currentCol >= maxCols) { currentCol = 0; currentRow++; }
+        Tile ramTile = new Tile(TileType.RAM, "RAM", currentCol, currentRow, 1, 1);
+        config.tiles.add(ramTile);
+        currentCol += 1;
+
+        if (currentCol >= maxCols) { currentCol = 0; currentRow++; }
+        Tile storageTile = new Tile(TileType.STORAGE, "Depolama", currentCol, currentRow, 1, 1);
+        config.tiles.add(storageTile);
+        currentCol += 1;
+
+        if (currentCol >= maxCols) { currentCol = 0; currentRow++; }
+        Tile networkTile = new Tile(TileType.NETWORK, "Ağ", currentCol, currentRow, 1, 1);
+        config.tiles.add(networkTile);
+        currentCol += 1;
+
+        if (currentCol >= maxCols) { currentCol = 0; currentRow++; }
+        Tile btTile = new Tile(TileType.BLUETOOTH, "Bluetooth", currentCol, currentRow, 1, 1);
+        config.tiles.add(btTile);
+        currentCol += 1;
+
         if (currentCol >= maxCols) { currentCol = 0; currentRow++; }
         Tile sysSettingsTile = new Tile(TileType.SYSTEM_SETTINGS, "Sistem Ayarları", currentCol, currentRow, 1, 1);
         config.tiles.add(sysSettingsTile);

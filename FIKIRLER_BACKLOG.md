@@ -20,6 +20,11 @@ Bu doküman, Saf Ekran projesinin minimalist, ultra-hafif (~110 KB) ve pil/RAM d
 * **Konsept:** Tek dokunuşla cihaz sesini "Normal / Titreşim / Sessiz" profilleri arasında döngüye sokan veya TV ses seviyesi ayarını açan kutu.
 * **Durum:** Kullanıcı talebiyle şimdilik ertelendi.
 
+### 4. ⚡ Güç Menüsü / Kapatma / Uyku Kutusu (`TileType.POWER`)
+* **Konsept:** Tek dokunuşla cihazı kapatma, yeniden başlatma veya uyku moduna alma.
+* **Kısıt / Analiz:** Standart Android mimarisinde doğrudan cihazı kapatma (`shutdown`) veya yeniden başlatma (`reboot`) işletim sistemi tarafından `android.permission.SHUTDOWN` (yalnızca sistem imzalı uygulamalara verilen izin) veya **Root (su)** yetkisi gerektirir. Root yetkisi olmadan yalnızca Erişilebilirlik Hizmeti (`AccessibilityService.GLOBAL_ACTION_POWER_DIALOG`) üzerinden sistemin kendi güç diyaloğu tetiklenebilir.
+* **Durum:** Root gereksinimi ve kullanıcı tercihi doğrultusunda şimdilik ertelendi.
+
 ---
 
 ## 📌 Şimdilik Ertelenen Başlatıcı (Launcher) Özellikleri

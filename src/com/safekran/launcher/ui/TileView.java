@@ -9,6 +9,10 @@ import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.StateListDrawable;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
 import android.os.BatteryManager;
 import android.os.Build;
 import android.os.Environment;
@@ -78,6 +82,10 @@ public class TileView extends FrameLayout {
             initRamTile(context);
         } else if (tile.type == TileType.STORAGE) {
             initStorageTile(context);
+        } else if (tile.type == TileType.NETWORK) {
+            initNetworkTile(context);
+        } else if (tile.type == TileType.BLUETOOTH) {
+            initBluetoothTile(context);
         } else {
             initActionOrAppTile(context, appIcon);
         }
@@ -372,6 +380,10 @@ public class TileView extends FrameLayout {
                 freeGb = (availableBlocks * blockSize) / (1024L * 1024L * 1024L);
             } catch (Exception ignored) {}
             infoPrimaryView.setText(freeGb + " GB Boş");
+        } else if (tile.type == TileType.NETWORK) {
+            updateNetworkData();
+        } else if (tile.type == TileType.BLUETOOTH) {
+            updateBluetoothData();
         }
     }
 
@@ -471,6 +483,153 @@ public class TileView extends FrameLayout {
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
         addView(container, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+    }
+
+    private void initNetworkTile(Context context) {
+        setVisibility(View.VISIBLE);
+        setFocusable(true);
+        setFocusableInTouchMode(false);
+        setClickable(true);
+        applyTileBackground();
+
+        LinearLayout container = new LinearLayout(context);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setGravity(Gravity.CENTER);
+        container.setClipChildren(false);
+        container.setClipToPadding(false);
+
+        infoPrimaryView = new TextView(context);
+        infoPrimaryView.setTypeface(Typeface.DEFAULT_BOLD);
+        infoPrimaryView.setGravity(Gravity.CENTER);
+        infoPrimaryView.setSingleLine(true);
+        container.addView(infoPrimaryView, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        infoSecondaryView = new TextView(context);
+        infoSecondaryView.setTextColor(isLightMode() ? Color.parseColor("#666666") : Color.parseColor("#AAAAAA"));
+        infoSecondaryView.setGravity(Gravity.CENTER);
+        infoSecondaryView.setSingleLine(true);
+        container.addView(infoSecondaryView, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        addView(container, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+        updateNetworkData();
+    }
+
+    private void updateNetworkData() {
+        if (infoPrimaryView == null || infoSecondaryView == null) return;
+        try {
+            ConnectivityManager cm = (ConnectivityManager) getContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+            NetworkInfo activeNetwork = (cm != null) ? cm.getActiveNetworkInfo() : null;
+            if (activeNetwork != null && activeNetwork.isConnected()) {
+                if (activeNetwork.getType() == ConnectivityManager.TYPE_WIFI) {
+                    WifiManager wm = (WifiManager) getContext().getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+                    WifiInfo wi = (wm != null) ? wm.getConnectionInfo() : null;
+                    int levelPct = 100;
+                    String ipStr = "Wi-Fi Bağlı";
+                    if (wi != null) {
+                        levelPct = WifiManager.calculateSignalLevel(wi.getRssi(), 100);
+                        int ip = wi.getIpAddress();
+                        if (ip != 0) {
+                            ipStr = String.format(java.util.Locale.US, "%d.%d.%d.%d", (ip & 0xff), (ip >> 8 & 0xff), (ip >> 16 & 0xff), (ip >> 24 & 0xff));
+                        }
+                    }
+                    infoPrimaryView.setText("📶 Wi-Fi: %" + levelPct);
+                    infoPrimaryView.setTextColor(getTextColor());
+                    infoSecondaryView.setText(ipStr);
+                } else if (activeNetwork.getType() == 9 /* TYPE_ETHERNET */) {
+                    infoPrimaryView.setText("🌐 Ethernet");
+                    infoPrimaryView.setTextColor(getTextColor());
+                    infoSecondaryView.setText("Kablolu Bağlı");
+                } else if (activeNetwork.getType() == ConnectivityManager.TYPE_MOBILE) {
+                    infoPrimaryView.setText("📶 Mobil Veri");
+                    infoPrimaryView.setTextColor(getTextColor());
+                    infoSecondaryView.setText(activeNetwork.getSubtypeName() != null ? activeNetwork.getSubtypeName() : "Bağlı");
+                } else {
+                    infoPrimaryView.setText("🌐 Bağlı");
+                    infoPrimaryView.setTextColor(getTextColor());
+                    infoSecondaryView.setText("İnternet Aktif");
+                }
+            } else {
+                infoPrimaryView.setText("❌ İnternet Yok");
+                infoPrimaryView.setTextColor(Color.parseColor("#E53935"));
+                infoSecondaryView.setText("Bağlantı Kesildi");
+            }
+        } catch (Exception e) {
+            infoPrimaryView.setText("Ağ Durumu");
+            infoSecondaryView.setText("Ayarlar");
+        }
+    }
+
+    private void initBluetoothTile(Context context) {
+        setVisibility(View.VISIBLE);
+        setFocusable(true);
+        setFocusableInTouchMode(false);
+        setClickable(true);
+        applyTileBackground();
+
+        LinearLayout container = new LinearLayout(context);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setGravity(Gravity.CENTER);
+        container.setClipChildren(false);
+        container.setClipToPadding(false);
+
+        infoPrimaryView = new TextView(context);
+        infoPrimaryView.setTypeface(Typeface.DEFAULT_BOLD);
+        infoPrimaryView.setGravity(Gravity.CENTER);
+        infoPrimaryView.setSingleLine(true);
+        container.addView(infoPrimaryView, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        infoSecondaryView = new TextView(context);
+        infoSecondaryView.setTextColor(isLightMode() ? Color.parseColor("#666666") : Color.parseColor("#AAAAAA"));
+        infoSecondaryView.setGravity(Gravity.CENTER);
+        infoSecondaryView.setSingleLine(true);
+        container.addView(infoSecondaryView, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        addView(container, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+        updateBluetoothData();
+    }
+
+    private void updateBluetoothData() {
+        if (infoPrimaryView == null || infoSecondaryView == null) return;
+        try {
+            android.bluetooth.BluetoothAdapter ba = android.bluetooth.BluetoothAdapter.getDefaultAdapter();
+            if (ba == null) {
+                infoPrimaryView.setText("Bluetooth Yok");
+                infoPrimaryView.setTextColor(isLightMode() ? Color.parseColor("#888888") : Color.parseColor("#666666"));
+                infoSecondaryView.setText("Donanım Yok");
+            } else if (!ba.isEnabled()) {
+                infoPrimaryView.setText("Bluetooth");
+                infoPrimaryView.setTextColor(isLightMode() ? Color.parseColor("#888888") : Color.parseColor("#777777"));
+                infoSecondaryView.setText("Kapalı");
+            } else {
+                infoPrimaryView.setText("🔵 Bluetooth");
+                infoPrimaryView.setTextColor(Color.parseColor("#29B6F6"));
+                String deviceText = "Bağlı Cihaz Yok";
+                try {
+                    java.util.Set<android.bluetooth.BluetoothDevice> bonded = ba.getBondedDevices();
+                    if (bonded != null && !bonded.isEmpty()) {
+                        for (android.bluetooth.BluetoothDevice dev : bonded) {
+                            int a2dp = ba.getProfileConnectionState(android.bluetooth.BluetoothProfile.A2DP);
+                            int headset = ba.getProfileConnectionState(android.bluetooth.BluetoothProfile.HEADSET);
+                            if (a2dp == android.bluetooth.BluetoothProfile.STATE_CONNECTED || headset == android.bluetooth.BluetoothProfile.STATE_CONNECTED) {
+                                deviceText = dev.getName() != null ? dev.getName() : "Bağlı";
+                                break;
+                            }
+                        }
+                        if ("Bağlı Cihaz Yok".equals(deviceText)) {
+                            deviceText = bonded.size() + " Eşleşmiş Cihaz";
+                        }
+                    }
+                } catch (Exception ignored) {}
+                infoSecondaryView.setText(deviceText);
+            }
+        } catch (Exception e) {
+            infoPrimaryView.setText("Bluetooth");
+            infoSecondaryView.setText("Ayarlar");
+        }
     }
 
     private void initActionOrAppTile(Context context, Drawable appIcon) {
@@ -761,7 +920,8 @@ public class TileView extends FrameLayout {
 
         // 1. Dinamik Simge Boyutu (Kutunun üst vitrin alanını cömertçe doldurur)
         if (iconView != null && tile.type != TileType.CLOCK && tile.type != TileType.DATE &&
-                tile.type != TileType.BATTERY && tile.type != TileType.RAM && tile.type != TileType.STORAGE) {
+                tile.type != TileType.BATTERY && tile.type != TileType.RAM && tile.type != TileType.STORAGE &&
+                tile.type != TileType.NETWORK && tile.type != TileType.BLUETOOTH) {
             int maxCap;
             if (tile.colSpan >= 2 && tile.rowSpan >= 2) {
                 maxCap = (int) (112 * density);

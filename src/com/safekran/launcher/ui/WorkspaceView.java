@@ -852,9 +852,37 @@ public class WorkspaceView extends ViewGroup {
                 TileView tv = (TileView) child;
                 if (tv.getTile() != null && (tv.getTile().type == TileType.BATTERY ||
                         tv.getTile().type == TileType.RAM ||
-                        tv.getTile().type == TileType.STORAGE)) {
+                        tv.getTile().type == TileType.STORAGE ||
+                        tv.getTile().type == TileType.NETWORK ||
+                        tv.getTile().type == TileType.BLUETOOTH)) {
                     tv.refreshStatusData();
                 }
+            }
+        }
+    }
+
+    public void playTurnstileAnimation() {
+        if (config == null || !config.animationEnabled) return;
+        int count = getChildCount();
+        for (int i = 0; i < count; i++) {
+            View child = getChildAt(i);
+            if (child instanceof TileView) {
+                Tile t = ((TileView) child).getTile();
+                child.setAlpha(0f);
+                child.setTranslationY(dpToPx(24));
+                child.setScaleX(0.96f);
+                child.setScaleY(0.96f);
+
+                int delay = Math.min(260, (t.row * 35) + (t.col * 20));
+                child.animate()
+                        .alpha(1f)
+                        .translationY(0f)
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setStartDelay(delay)
+                        .setDuration(220)
+                        .setInterpolator(new android.view.animation.DecelerateInterpolator(1.5f))
+                        .start();
             }
         }
     }

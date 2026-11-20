@@ -31,6 +31,8 @@ public class WorkspaceConfig {
     public boolean is24Hour = true;
     public boolean showDate = true;
     public boolean virtualRemoteEnabled = false;
+    public boolean animationEnabled = true;
+    public boolean isLayoutLocked = false;
 
     public List<Tile> tiles = new ArrayList<Tile>();
 
@@ -51,6 +53,8 @@ public class WorkspaceConfig {
         root.put("is24Hour", is24Hour);
         root.put("showDate", showDate);
         root.put("virtualRemoteEnabled", virtualRemoteEnabled);
+        root.put("animationEnabled", animationEnabled);
+        root.put("isLayoutLocked", isLayoutLocked);
 
         JSONArray arr = new JSONArray();
         for (Tile t : tiles) {
@@ -95,6 +99,8 @@ public class WorkspaceConfig {
         config.is24Hour = root.optBoolean("is24Hour", true);
         config.showDate = root.optBoolean("showDate", true);
         config.virtualRemoteEnabled = root.optBoolean("virtualRemoteEnabled", false);
+        config.animationEnabled = root.optBoolean("animationEnabled", true);
+        config.isLayoutLocked = root.optBoolean("isLayoutLocked", false);
 
         JSONArray arr = root.optJSONArray("tiles");
         config.tiles = new ArrayList<Tile>();

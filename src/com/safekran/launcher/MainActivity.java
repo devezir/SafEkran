@@ -146,6 +146,7 @@ public class MainActivity extends Activity {
         registerBatteryReceiver();
         if (workspaceView != null) {
             workspaceView.refreshStatusTiles();
+            workspaceView.playTurnstileAnimation();
         }
     }
 
@@ -270,10 +271,36 @@ public class MainActivity extends Activity {
             case STORAGE:
                 openStorageSettings();
                 break;
+            case NETWORK:
+                openNetworkSettings();
+                break;
+            case BLUETOOTH:
+                openBluetoothSettings();
+                break;
             case SPACER:
                 // Hayalet Odak: Kumandadan [OK] veya dokunma ile doğrudan boyutlandırma/silme menüsünü aç
                 onTileLongClicked(tile);
                 break;
+        }
+    }
+
+    private void openNetworkSettings() {
+        try {
+            startActivity(new Intent(Settings.ACTION_WIFI_SETTINGS));
+        } catch (Exception e) {
+            try {
+                startActivity(new Intent(Settings.ACTION_WIRELESS_SETTINGS));
+            } catch (Exception e2) {
+                openSystemSettings();
+            }
+        }
+    }
+
+    private void openBluetoothSettings() {
+        try {
+            startActivity(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS));
+        } catch (Exception e) {
+            openSystemSettings();
         }
     }
 
@@ -301,6 +328,7 @@ public class MainActivity extends Activity {
         boolean hasRed = false, hasGreen = false, hasYellow = false, hasBlue = false;
         boolean hasSettings = false, hasClock = false, hasDate = false;
         boolean hasBattery = false, hasRam = false, hasStorage = false;
+        boolean hasNetwork = false, hasBluetooth = false;
         if (config != null && config.tiles != null) {
             for (Tile t : config.tiles) {
                 if (t.type == TileType.COLOR_RED) hasRed = true;
@@ -313,6 +341,8 @@ public class MainActivity extends Activity {
                 else if (t.type == TileType.BATTERY) hasBattery = true;
                 else if (t.type == TileType.RAM) hasRam = true;
                 else if (t.type == TileType.STORAGE) hasStorage = true;
+                else if (t.type == TileType.NETWORK) hasNetwork = true;
+                else if (t.type == TileType.BLUETOOTH) hasBluetooth = true;
             }
         }
         if (!hasClock) {
@@ -334,6 +364,14 @@ public class MainActivity extends Activity {
         if (!hasStorage) {
             Tile stg = new Tile(TileType.STORAGE, "Depolama", 0, 0, 1, 1);
             missing.add(stg);
+        }
+        if (!hasNetwork) {
+            Tile nw = new Tile(TileType.NETWORK, "Ağ", 0, 0, 1, 1);
+            missing.add(nw);
+        }
+        if (!hasBluetooth) {
+            Tile bt = new Tile(TileType.BLUETOOTH, "Bluetooth", 0, 0, 1, 1);
+            missing.add(bt);
         }
         if (!hasRed) {
             Tile r = new Tile(TileType.COLOR_RED, "🔴 Kırmızı Tuş", 0, 0, 1, 1);
@@ -618,6 +656,11 @@ public class MainActivity extends Activity {
     }
 
     private void onTileLongClicked(final Tile tile) {
+        if (config != null && config.isLayoutLocked) {
+            Toast.makeText(this, "🔒 Düzen kilitli! Kutu taşımak veya düzenlemek için Ayarlar'dan kilidi açın.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         if (tile.type == TileType.SPACER) {
             List<String> spacerOptions = new java.util.ArrayList<String>();
             spacerOptions.add("➡️ Genişlet (+1 Sütun)");
@@ -1116,6 +1159,17 @@ public class MainActivity extends Activity {
         updateButtonGroupHighlight(themeRow, config.themeMode);
         secTheme.addView(themeRow);
 
+        CheckBox cbAnim = new CheckBox(this);
+        cbAnim.setText("✨ Açılış Animasyonu (Windows Phone Süzülme)");
+        cbAnim.setTextColor(Color.parseColor("#80D8FF"));
+        cbAnim.setChecked(config.animationEnabled);
+        cbAnim.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                config.animationEnabled = isChecked;
+            }
+        });
+        secTheme.addView(cbAnim);
+
         // 5. Telefonda Kumanda Testi
         LinearLayout secRemote = addAccordionSection(layout, allSections, "5. TELEFONDA KUMANDA TESTİ", false);
         CheckBox cbRemote = new CheckBox(this);
@@ -1147,6 +1201,18 @@ public class MainActivity extends Activity {
 
         // 7. Düzen İşlemleri
         LinearLayout secLayoutOps = addAccordionSection(layout, allSections, "7. DÜZEN İŞLEMLERİ", false);
+
+        CheckBox cbLock = new CheckBox(this);
+        cbLock.setText("🔒 Düzeni Kilitle (Taşıma ve Silmeyi Engelle)");
+        cbLock.setTextColor(Color.parseColor("#FFD54F"));
+        cbLock.setChecked(config.isLayoutLocked);
+        cbLock.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                config.isLayoutLocked = isChecked;
+            }
+        });
+        secLayoutOps.addView(cbLock);
+
         Button addSpacerBtn = new Button(this);
         addSpacerBtn.setText("➕ Yeni Boşluk (Spacer) Ekle");
         addSpacerBtn.setBackgroundColor(Color.parseColor("#37474F"));

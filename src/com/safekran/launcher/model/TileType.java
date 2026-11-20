@@ -8,6 +8,8 @@ public enum TileType {
     BATTERY,
     RAM,
     STORAGE,
+    NETWORK,
+    BLUETOOTH,
     LAUNCHER_SETTINGS,
     SYSTEM_SETTINGS,
     COLOR_RED,
