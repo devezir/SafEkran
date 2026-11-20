@@ -146,28 +146,38 @@ public class TileView extends FrameLayout {
         LinearLayout.LayoutParams wrapperParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1.0f);
         clockWrapper.setLayoutParams(wrapperParams);
+        clockWrapper.setClipChildren(false);
+        clockWrapper.setClipToPadding(false);
 
         clockView = new TextClock(context);
-        clockView.setFormat24Hour(is24 ? "HH:mm" : "hh:mm a");
-        clockView.setFormat12Hour("hh:mm a");
+        String timeFormat = is24 ? "HH:mm" : "hh:mm a";
+        clockView.setFormat24Hour(timeFormat);
+        clockView.setFormat12Hour(timeFormat);
+        clockView.setSingleLine(true);
+        clockView.setMaxLines(1);
+        clockView.setEllipsize(null);
         clockView.setTextColor(getTextColor());
         clockView.setTextSize(26);
         clockView.setTypeface(Typeface.DEFAULT_BOLD);
         clockView.setGravity(Gravity.CENTER);
         clockView.setIncludeFontPadding(true);
         clockWrapper.addView(clockView, new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER));
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER));
         container.addView(clockWrapper);
 
         if (showDate) {
             dateClock = new TextClock(context);
             dateClock.setFormat24Hour("d MMMM EEEE");
             dateClock.setFormat12Hour("d MMMM EEEE");
+            dateClock.setSingleLine(true);
+            dateClock.setMaxLines(1);
+            dateClock.setEllipsize(TextUtils.TruncateAt.END);
             dateClock.setTextColor(isLightMode() ? Color.parseColor("#666666") : Color.parseColor("#AAAAAA"));
             dateClock.setTextSize(11);
             dateClock.setGravity(Gravity.CENTER);
             dateClock.setIncludeFontPadding(true);
-            dateClock.setPadding(0, 0, 0, dpToPx(context, 4));
+            int bottomPad = tile.rowSpan >= 2 ? dpToPx(context, 10) : dpToPx(context, 4);
+            dateClock.setPadding(0, 0, 0, bottomPad);
             LinearLayout.LayoutParams dateParams = new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
             container.addView(dateClock, dateParams);
@@ -498,11 +508,31 @@ public class TileView extends FrameLayout {
 
         // 3. Saat Kutusu Dinamik Tipografi (Tüm kartı ferah doldurur)
         if (clockView != null) {
-            float clockSp = Math.max(20f, Math.min(42f, (h / density) * 0.32f)) * fontMultiplier;
+            float maxCap;
+            if (tile.colSpan >= 3 && tile.rowSpan >= 2) {
+                maxCap = 68f;
+            } else if (tile.colSpan >= 2 && tile.rowSpan >= 2) {
+                maxCap = 56f;
+            } else if (tile.colSpan >= 2 || tile.rowSpan >= 2) {
+                maxCap = 46f;
+            } else {
+                maxCap = 36f;
+            }
+
+            float clockSp = Math.max(20f, Math.min(maxCap, (h / density) * 0.36f)) * fontMultiplier;
             clockView.setTextSize(TypedValue.COMPLEX_UNIT_SP, clockSp);
         }
         if (dateClock != null) {
-            float dateSp = Math.max(9.5f, Math.min(14.5f, (h / density) * 0.11f)) * fontMultiplier;
+            float maxDateCap;
+            if (tile.colSpan >= 3 && tile.rowSpan >= 2) {
+                maxDateCap = 18f;
+            } else if (tile.colSpan >= 2 || tile.rowSpan >= 2) {
+                maxDateCap = 16f;
+            } else {
+                maxDateCap = 13.5f;
+            }
+
+            float dateSp = Math.max(9.5f, Math.min(maxDateCap, (h / density) * 0.11f)) * fontMultiplier;
             dateClock.setTextSize(TypedValue.COMPLEX_UNIT_SP, dateSp);
         }
     }
