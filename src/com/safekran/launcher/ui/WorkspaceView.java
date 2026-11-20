@@ -830,4 +830,32 @@ public class WorkspaceView extends ViewGroup {
             canvas.drawRect(barRight - barW, barY, barRight, barY + barH, scrollbarPaint);
         }
     }
+
+    public void updateBatteryStatus(int pct, boolean isCharging) {
+        int count = getChildCount();
+        for (int i = 0; i < count; i++) {
+            View child = getChildAt(i);
+            if (child instanceof TileView) {
+                TileView tv = (TileView) child;
+                if (tv.getTile() != null && tv.getTile().type == TileType.BATTERY) {
+                    tv.updateBatteryData(pct, isCharging);
+                }
+            }
+        }
+    }
+
+    public void refreshStatusTiles() {
+        int count = getChildCount();
+        for (int i = 0; i < count; i++) {
+            View child = getChildAt(i);
+            if (child instanceof TileView) {
+                TileView tv = (TileView) child;
+                if (tv.getTile() != null && (tv.getTile().type == TileType.BATTERY ||
+                        tv.getTile().type == TileType.RAM ||
+                        tv.getTile().type == TileType.STORAGE)) {
+                    tv.refreshStatusData();
+                }
+            }
+        }
+    }
 }

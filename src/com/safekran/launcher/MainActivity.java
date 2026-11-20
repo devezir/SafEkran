@@ -2,15 +2,19 @@ package com.safekran.launcher;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.BroadcastReceiver;
 import android.content.ContentUris;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
+import android.os.BatteryManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -60,6 +64,9 @@ public class MainActivity extends Activity {
 
     // Sanal kumanda başlık göstergesi (Mini OSD)
     private TextView remoteTitleView = null;
+
+    // Canlı Pil Dinleyicisi (Ekran açıkken anlık güncelleme)
+    private BroadcastReceiver batteryReceiver = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -124,6 +131,52 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         hideSystemUI();
+        registerBatteryReceiver();
+        if (workspaceView != null) {
+            workspaceView.refreshStatusTiles();
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        unregisterBatteryReceiver();
+    }
+
+    private void registerBatteryReceiver() {
+        if (batteryReceiver != null) return;
+        batteryReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (intent == null || !Intent.ACTION_BATTERY_CHANGED.equals(intent.getAction())) return;
+                int level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+                int scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+                int status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
+                boolean isCharging = (status == BatteryManager.BATTERY_STATUS_CHARGING ||
+                        status == BatteryManager.BATTERY_STATUS_FULL);
+                int pct = (level >= 0 && scale > 0) ? Math.round((level / (float) scale) * 100) : 100;
+                if (workspaceView != null) {
+                    workspaceView.updateBatteryStatus(pct, isCharging);
+                }
+            }
+        };
+        try {
+            IntentFilter filter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+            if (Build.VERSION.SDK_INT >= 33) {
+                registerReceiver(batteryReceiver, filter, Context.RECEIVER_EXPORTED);
+            } else {
+                registerReceiver(batteryReceiver, filter);
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private void unregisterBatteryReceiver() {
+        if (batteryReceiver != null) {
+            try {
+                unregisterReceiver(batteryReceiver);
+            } catch (Exception ignored) {}
+            batteryReceiver = null;
+        }
     }
 
     private void setupTileClickListeners() {
@@ -259,15 +312,15 @@ public class MainActivity extends Activity {
             missing.add(d);
         }
         if (!hasBattery) {
-            Tile bt = new Tile(TileType.BATTERY, "🔋 Pil", 0, 0, 1, 1);
+            Tile bt = new Tile(TileType.BATTERY, "Pil", 0, 0, 1, 1);
             missing.add(bt);
         }
         if (!hasRam) {
-            Tile rm = new Tile(TileType.RAM, "📊 RAM", 0, 0, 1, 1);
+            Tile rm = new Tile(TileType.RAM, "RAM", 0, 0, 1, 1);
             missing.add(rm);
         }
         if (!hasStorage) {
-            Tile stg = new Tile(TileType.STORAGE, "💾 Depolama", 0, 0, 1, 1);
+            Tile stg = new Tile(TileType.STORAGE, "Depolama", 0, 0, 1, 1);
             missing.add(stg);
         }
         if (!hasRed) {

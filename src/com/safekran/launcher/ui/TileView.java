@@ -286,7 +286,14 @@ public class TileView extends FrameLayout {
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
         infoSecondaryView = new TextView(context);
-        infoSecondaryView.setText(isCharging ? "Şarj Oluyor" : (tile.label != null && !tile.label.isEmpty() ? tile.label : "Pil"));
+        String secLabel = "Pil";
+        if (isCharging) {
+            secLabel = "Şarj Oluyor";
+        } else if (tile.label != null && !tile.label.isEmpty()) {
+            secLabel = tile.label.replace("🔋", "").replace("⚡", "").trim();
+            if (secLabel.isEmpty()) secLabel = "Pil";
+        }
+        infoSecondaryView.setText(secLabel);
         infoSecondaryView.setTextColor(isLightMode() ? Color.parseColor("#666666") : Color.parseColor("#AAAAAA"));
         infoSecondaryView.setGravity(Gravity.CENTER);
         infoSecondaryView.setSingleLine(true);
@@ -295,6 +302,77 @@ public class TileView extends FrameLayout {
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
         addView(container, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+    }
+
+    public void updateBatteryData(int pct, boolean isCharging) {
+        if (tile.type != TileType.BATTERY || infoPrimaryView == null || infoSecondaryView == null) return;
+        String prefix = isCharging ? "⚡ " : "🔋 ";
+        infoPrimaryView.setText(prefix + "%" + pct);
+        infoPrimaryView.setTextColor(isCharging ? Color.parseColor("#4CAF50") : (pct <= 20 ? Color.parseColor("#E53935") : getTextColor()));
+        String secLabel = "Pil";
+        if (isCharging) {
+            secLabel = "Şarj Oluyor";
+        } else if (tile.label != null && !tile.label.isEmpty()) {
+            secLabel = tile.label.replace("🔋", "").replace("⚡", "").trim();
+            if (secLabel.isEmpty()) secLabel = "Pil";
+        }
+        infoSecondaryView.setText(secLabel);
+    }
+
+    public void refreshStatusData() {
+        if (tile.type == TileType.BATTERY) {
+            int level = -1, scale = -1, status = -1;
+            try {
+                IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+                Intent batteryStatus = getContext().registerReceiver(null, ifilter);
+                if (batteryStatus != null) {
+                    level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+                    scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+                    status = batteryStatus.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
+                }
+            } catch (Exception ignored) {}
+            boolean isCharging = (status == BatteryManager.BATTERY_STATUS_CHARGING ||
+                    status == BatteryManager.BATTERY_STATUS_FULL);
+            int pct = (level >= 0 && scale > 0) ? Math.round((level / (float) scale) * 100) : 100;
+            updateBatteryData(pct, isCharging);
+        } else if (tile.type == TileType.RAM) {
+            if (infoPrimaryView == null || infoSecondaryView == null) return;
+            int usedPct = 0;
+            double usedGb = 0, totalGb = 0;
+            try {
+                ActivityManager am = (ActivityManager) getContext().getSystemService(Context.ACTIVITY_SERVICE);
+                ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
+                if (am != null) {
+                    am.getMemoryInfo(mi);
+                    long totalMem = mi.totalMem;
+                    long availMem = mi.availMem;
+                    long usedMem = totalMem - availMem;
+                    usedPct = (totalMem > 0) ? (int) Math.round((usedMem / (double) totalMem) * 100) : 0;
+                    usedGb = usedMem / (1024.0 * 1024.0 * 1024.0);
+                    totalGb = totalMem / (1024.0 * 1024.0 * 1024.0);
+                }
+            } catch (Exception ignored) {}
+            infoPrimaryView.setText("RAM: %" + usedPct);
+            infoPrimaryView.setTextColor(usedPct > 85 ? Color.parseColor("#E53935") : getTextColor());
+            infoSecondaryView.setText(String.format(java.util.Locale.US, "%.1f / %.1f GB", usedGb, totalGb));
+        } else if (tile.type == TileType.STORAGE) {
+            if (infoPrimaryView == null) return;
+            long freeGb = 0;
+            try {
+                File path = Environment.getDataDirectory();
+                StatFs stat = new StatFs(path.getPath());
+                long blockSize, availableBlocks;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+                    blockSize = stat.getBlockSizeLong();
+                    availableBlocks = stat.getAvailableBlocksLong();
+                } else {
+                    blockSize = stat.getBlockSize();
+                    availableBlocks = stat.getAvailableBlocks();
+                }
+                freeGb = (availableBlocks * blockSize) / (1024L * 1024L * 1024L);
+            } catch (Exception ignored) {}
+            infoPrimaryView.setText(freeGb + " GB Boş");
+        }
     }
 
     private void initRamTile(Context context) {
