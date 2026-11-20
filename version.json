@@ -1,12 +1,12 @@
 {
   "appName": "Saf Ekran",
   "packageName": "com.safekran.launcher",
-  "versionCode": 22,
-  "versionName": "2.13.0",
+  "versionCode": 23,
+  "versionName": "2.14.0",
   "developer": "Vezir",
   "schemaVersion": 1,
   "createdDate": "2026-11-19",
-  "apkName": "SafEkran_v2.13.0_vc22.apk",
+  "apkName": "SafEkran_v2.14.0_vc23.apk",
   "history": [
     {
       "versionCode": 1,
@@ -139,6 +139,12 @@
       "versionName": "2.13.0",
       "date": "2026-11-20",
       "description": "Feat: Android TV Derin Uyumluluk, Leanback Baslatma, Bellek Guvenligi (largeHeap), Ayarlar Tiklama Koruma ve Mimari Temizlik (v2.13.0)"
+    },
+    {
+      "versionCode": 23,
+      "versionName": "2.14.0",
+      "date": "2026-11-20",
+      "description": "Feat: Tam Kutu Alani Kullanimi (Full Area Utilization), Harf Kuyrugu Korumasi (Descender Safe Padding), Dashboard Saat Karti ve Dikey Telefon Sutun Dengesi (v2.14.0)"
     }
   ]
 }

@@ -263,14 +263,18 @@ public class WorkspaceView extends ViewGroup {
             int usableWidth = Math.max(100, width - safeLeft - safeRight);
             int usableHeight = Math.max(100, height - safeTop - safeBottom);
 
-            int refDim = Math.max(width, height);
+            // TV (Yatay) ve Telefon (Dikey) Ekran Oranı Dengesi:
+            // Telefonda dikey modda aşırı yüksek ekran boyu nedeniyle kutuların yapay büyümesini önlemek için
+            // referans boyut genişliğe normalize edilir (16:9 standardı).
+            int refDim = (width >= height) ? width : (int) (width * 1.777f);
             int targetTileW = Math.max(60, (int) (refDim * config.tileScale));
 
             gutterXPx = Math.max(0, (int) (usableWidth * config.gutterPercent));
             gutterYPx = Math.max(0, (int) (usableHeight * config.gutterPercent));
 
-            // Türetilen Sütun Sayısı
-            calculatedCols = Math.max(1, (usableWidth + gutterXPx) / (targetTileW + gutterXPx));
+            // Türetilen Sütun Sayısı (Dikey telefon modunda asgari 4 sütun güvencesi)
+            int minCols = (height > width) ? 4 : 2;
+            calculatedCols = Math.max(minCols, (usableWidth + gutterXPx) / (targetTileW + gutterXPx));
 
             // Hücre Genişliği
             int totalGuttersW = (calculatedCols - 1) * gutterXPx;

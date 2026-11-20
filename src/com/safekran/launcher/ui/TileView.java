@@ -45,8 +45,11 @@ public class TileView extends FrameLayout {
     }
 
     private void init(Context context, Drawable appIcon) {
-        int padding = dpToPx(context, 4);
-        setPadding(padding, padding, padding, padding);
+        int paddingH = dpToPx(context, 4);
+        int paddingV = dpToPx(context, 4);
+        setPadding(paddingH, paddingV, paddingH, paddingV);
+        setClipChildren(false);
+        setClipToPadding(false);
 
         if (tile.type == TileType.SPACER) {
             initSpacerTile(context);
@@ -75,8 +78,16 @@ public class TileView extends FrameLayout {
 
         spacerContainer = new LinearLayout(context);
         spacerContainer.setOrientation(LinearLayout.VERTICAL);
-        spacerContainer.setGravity(Gravity.CENTER);
+        spacerContainer.setGravity(Gravity.CENTER_HORIZONTAL);
+        spacerContainer.setClipChildren(false);
+        spacerContainer.setClipToPadding(false);
         spacerContainer.setAlpha(0.0f); // Varsayılan olarak %100 hayalet
+
+        // Üst Alan: Simge Gövdesi (weight=1 ile kutunun üst-orta bölgesini doldurur)
+        FrameLayout iconWrapper = new FrameLayout(context);
+        LinearLayout.LayoutParams wrapperParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1.0f);
+        iconWrapper.setLayoutParams(wrapperParams);
 
         iconView = new ImageView(context);
         iconView.setImageResource(R.drawable.ic_spacer);
@@ -84,19 +95,23 @@ public class TileView extends FrameLayout {
             iconView.setColorFilter(Color.parseColor("#555555"));
         }
         int iconSize = dpToPx(context, 26);
-        spacerContainer.addView(iconView, new LinearLayout.LayoutParams(iconSize, iconSize));
+        iconWrapper.addView(iconView, new FrameLayout.LayoutParams(
+                iconSize, iconSize, Gravity.CENTER));
+        spacerContainer.addView(iconWrapper);
 
+        // Alt Alan: Metin (Tabanda ferah güvenlik payı ile)
         labelView = new TextView(context);
         labelView.setText(tile.colSpan + "x" + tile.rowSpan + " " + context.getString(R.string.tile_spacer));
         labelView.setTextColor(isLightMode() ? Color.parseColor("#333333") : Color.parseColor("#CCCCCC"));
         labelView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10.5f);
         labelView.setGravity(Gravity.CENTER);
+        labelView.setIncludeFontPadding(true);
+        labelView.setPadding(0, 0, 0, dpToPx(context, 4));
         LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        labelParams.topMargin = dpToPx(context, 2);
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         spacerContainer.addView(labelView, labelParams);
 
-        addView(spacerContainer, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT, Gravity.CENTER));
+        addView(spacerContainer, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
     }
 
     public void updateSpacerGhostVisuals(boolean focused) {
@@ -119,31 +134,46 @@ public class TileView extends FrameLayout {
 
         LinearLayout container = new LinearLayout(context);
         container.setOrientation(LinearLayout.VERTICAL);
-        container.setGravity(Gravity.CENTER);
+        container.setGravity(Gravity.CENTER_HORIZONTAL);
+        container.setClipChildren(false);
+        container.setClipToPadding(false);
 
         boolean is24 = (config != null) ? config.is24Hour : true;
         boolean showDate = (config != null) ? config.showDate : true;
+
+        // Üst / Gövde Alanı: Saat (weight=1 ile tüm kutuyu ferahça kaplar)
+        FrameLayout clockWrapper = new FrameLayout(context);
+        LinearLayout.LayoutParams wrapperParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1.0f);
+        clockWrapper.setLayoutParams(wrapperParams);
 
         clockView = new TextClock(context);
         clockView.setFormat24Hour(is24 ? "HH:mm" : "hh:mm a");
         clockView.setFormat12Hour("hh:mm a");
         clockView.setTextColor(getTextColor());
-        clockView.setTextSize(22);
+        clockView.setTextSize(26);
         clockView.setTypeface(Typeface.DEFAULT_BOLD);
         clockView.setGravity(Gravity.CENTER);
-        container.addView(clockView);
+        clockView.setIncludeFontPadding(true);
+        clockWrapper.addView(clockView, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER));
+        container.addView(clockWrapper);
 
         if (showDate) {
             dateClock = new TextClock(context);
             dateClock.setFormat24Hour("d MMMM EEEE");
             dateClock.setFormat12Hour("d MMMM EEEE");
             dateClock.setTextColor(isLightMode() ? Color.parseColor("#666666") : Color.parseColor("#AAAAAA"));
-            dateClock.setTextSize(10);
+            dateClock.setTextSize(11);
             dateClock.setGravity(Gravity.CENTER);
-            container.addView(dateClock);
+            dateClock.setIncludeFontPadding(true);
+            dateClock.setPadding(0, 0, 0, dpToPx(context, 4));
+            LinearLayout.LayoutParams dateParams = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            container.addView(dateClock, dateParams);
         }
 
-        addView(container, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT, Gravity.CENTER));
+        addView(container, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
     }
 
     private void initActionOrAppTile(Context context, Drawable appIcon) {
@@ -155,12 +185,21 @@ public class TileView extends FrameLayout {
 
         LinearLayout container = new LinearLayout(context);
         container.setOrientation(LinearLayout.VERTICAL);
-        container.setGravity(Gravity.CENTER);
+        container.setGravity(Gravity.CENTER_HORIZONTAL);
+        container.setClipChildren(false);
+        container.setClipToPadding(false);
+
+        // 1. Üst / Gövde Alanı: Simge Alanı (Kutunun vitrin alanını doldurur, weight=1 ile esnek)
+        FrameLayout iconWrapper = new FrameLayout(context);
+        LinearLayout.LayoutParams wrapperParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1.0f);
+        iconWrapper.setLayoutParams(wrapperParams);
 
         iconView = new ImageView(context);
         int iconSize = dpToPx(context, 34);
-        LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(iconSize, iconSize);
-        iconParams.bottomMargin = dpToPx(context, 2);
+        FrameLayout.LayoutParams iconParams = new FrameLayout.LayoutParams(
+                iconSize, iconSize, Gravity.CENTER);
+        iconView.setLayoutParams(iconParams);
 
         if (tile.type == TileType.LAUNCHER_SETTINGS) {
             iconView.setImageResource(R.drawable.ic_settings);
@@ -203,8 +242,10 @@ public class TileView extends FrameLayout {
                 iconView.setImageResource(R.mipmap.ic_launcher);
             }
         }
-        container.addView(iconView, iconParams);
+        iconWrapper.addView(iconView);
+        container.addView(iconWrapper);
 
+        // 2. Alt Taban Alanı: Metin Alanı (Tabanda ferah ve kuyruk payı garantili)
         labelView = new TextView(context);
         labelView.setText(tile.label);
         labelView.setTextColor(getTextColor());
@@ -213,12 +254,13 @@ public class TileView extends FrameLayout {
         labelView.setEllipsize(TextUtils.TruncateAt.END);
         labelView.setGravity(Gravity.CENTER);
         labelView.setIncludeFontPadding(true);
+        // Harf kuyruklarının (y, g, ş, ç) kesilmesini önleyen taban dolgusu
+        labelView.setPadding(dpToPx(context, 2), 0, dpToPx(context, 2), dpToPx(context, 4));
         LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        labelParams.topMargin = dpToPx(context, 2);
         container.addView(labelView, labelParams);
 
-        addView(container, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT, Gravity.CENTER));
+        addView(container, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
     }
 
     private void applyTileBackground() {
@@ -404,19 +446,19 @@ public class TileView extends FrameLayout {
             else if ("LARGE".equals(config.fontScaleMode)) fontMultiplier = 1.25f;
         }
 
-        // 1. Dinamik Simge Boyutu (Kutu boyutlarına göre doygun ölçekleme)
+        // 1. Dinamik Simge Boyutu (Kutunun üst vitrin alanını cömertçe doldurur)
         if (iconView != null && tile.type != TileType.CLOCK) {
             int maxCap;
             if (tile.colSpan >= 2 && tile.rowSpan >= 2) {
-                maxCap = (int) (104 * density);
+                maxCap = (int) (112 * density);
             } else if (tile.colSpan >= 2 || tile.rowSpan >= 2) {
-                maxCap = (int) (76 * density);
+                maxCap = (int) (84 * density);
             } else {
-                maxCap = (int) (52 * density);
+                maxCap = (int) (58 * density);
             }
 
-            int targetIconSize = Math.max((int) (26 * density),
-                    Math.min(maxCap, (int) (Math.min(w * 0.45f, h * 0.44f))));
+            int targetIconSize = Math.max((int) (28 * density),
+                    Math.min(maxCap, (int) (Math.min(w * 0.52f, h * 0.50f))));
 
             ViewGroup.LayoutParams lp = iconView.getLayoutParams();
             if (lp != null && (lp.width != targetIconSize || lp.height != targetIconSize)) {
@@ -426,9 +468,9 @@ public class TileView extends FrameLayout {
             }
         }
 
-        // 2. Dinamik Yazı Boyutu (TV Orantılı Tipografi)
+        // 2. Dinamik Yazı Boyutu (TV Orantılı Ferah Tipografi)
         if (labelView != null) {
-            float baseSp = Math.max(9.5f, Math.min(16f, (h / density) * 0.12f));
+            float baseSp = Math.max(10f, Math.min(15.5f, (h / density) * 0.125f));
             float finalSp = baseSp * fontMultiplier;
             labelView.setTextSize(TypedValue.COMPLEX_UNIT_SP, finalSp);
 
@@ -440,13 +482,13 @@ public class TileView extends FrameLayout {
             }
         }
 
-        // 3. Saat Kutusu Dinamik Tipografi
+        // 3. Saat Kutusu Dinamik Tipografi (Tüm kartı ferah doldurur)
         if (clockView != null) {
-            float clockSp = Math.max(16f, Math.min(36f, (h / density) * 0.28f)) * fontMultiplier;
+            float clockSp = Math.max(20f, Math.min(42f, (h / density) * 0.32f)) * fontMultiplier;
             clockView.setTextSize(TypedValue.COMPLEX_UNIT_SP, clockSp);
         }
         if (dateClock != null) {
-            float dateSp = Math.max(9f, Math.min(14f, (h / density) * 0.11f)) * fontMultiplier;
+            float dateSp = Math.max(9.5f, Math.min(14.5f, (h / density) * 0.11f)) * fontMultiplier;
             dateClock.setTextSize(TypedValue.COMPLEX_UNIT_SP, dateSp);
         }
     }
