@@ -1,12 +1,12 @@
 {
   "appName": "Saf Ekran",
   "packageName": "com.safekran.launcher",
-  "versionCode": 18,
-  "versionName": "2.10.0",
+  "versionCode": 19,
+  "versionName": "2.10.1",
   "developer": "Vezir",
   "schemaVersion": 1,
   "createdDate": "2026-11-19",
-  "apkName": "SafEkran_v2.10.0_vc18.apk",
+  "apkName": "SafEkran_v2.10.1_vc19.apk",
   "history": [
     {
       "versionCode": 1,
@@ -115,6 +115,12 @@
       "versionName": "2.10.0",
       "date": "2026-11-20",
       "description": "Feat: Kusursuz TV Odak İmleci & 2D Uzaysal Gezinti (TV Focus Cursor & 2D Spatial Engine) v2.10.0"
+    },
+    {
+      "versionCode": 19,
+      "versionName": "2.10.1",
+      "date": "2026-11-20",
+      "description": "Feat: Sanal ve Fiziksel Kumanda [OK] Tuşuna Uzun Basma (Long-Press Kutu Menüsü) Desteği (v2.10.1)"
     }
   ]
 }

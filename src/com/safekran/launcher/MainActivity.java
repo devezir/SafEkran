@@ -1036,15 +1036,46 @@ public class MainActivity extends Activity {
             if (keyCode == KeyEvent.KEYCODE_DPAD_UP ||
                     keyCode == KeyEvent.KEYCODE_DPAD_DOWN ||
                     keyCode == KeyEvent.KEYCODE_DPAD_LEFT ||
-                    keyCode == KeyEvent.KEYCODE_DPAD_RIGHT ||
-                    keyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
-                    keyCode == KeyEvent.KEYCODE_ENTER) {
+                    keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
                 handleDpadNavigation(keyCode);
+                return true;
+            }
+            if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
+                event.startTracking();
                 return true;
             }
         }
 
         return super.onKeyDown(keyCode, event);
+    }
+
+    private boolean isLongPressHandled = false;
+
+    @Override
+    public boolean onKeyLongPress(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
+            isLongPressHandled = true;
+            if (workspaceView != null) {
+                workspaceView.executeTvSelectedLongClick();
+            }
+            return true;
+        }
+        return super.onKeyLongPress(keyCode, event);
+    }
+
+    @Override
+    public boolean onKeyUp(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
+            if (isLongPressHandled) {
+                isLongPressHandled = false;
+                return true;
+            }
+            if (workspaceView != null) {
+                workspaceView.executeTvSelected();
+                return true;
+            }
+        }
+        return super.onKeyUp(keyCode, event);
     }
 
     // ==========================================
@@ -1214,7 +1245,22 @@ public class MainActivity extends Activity {
         LinearLayout rowMid = new LinearLayout(this);
         rowMid.setGravity(Gravity.CENTER);
         rowMid.addView(createRemoteButton("◀", KeyEvent.KEYCODE_DPAD_LEFT));
-        rowMid.addView(createRemoteButton("OK", KeyEvent.KEYCODE_DPAD_CENTER));
+
+        Button okBtn = createRemoteButton("OK", KeyEvent.KEYCODE_DPAD_CENTER);
+        okBtn.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                v.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
+                v.setAlpha(0.2f);
+                v.animate().alpha(1.0f).setDuration(200).start();
+                if (workspaceView != null) {
+                    workspaceView.executeTvSelectedLongClick();
+                }
+                return true;
+            }
+        });
+        rowMid.addView(okBtn);
+
         rowMid.addView(createRemoteButton("▶", KeyEvent.KEYCODE_DPAD_RIGHT));
         remoteLayout.addView(rowMid);
 

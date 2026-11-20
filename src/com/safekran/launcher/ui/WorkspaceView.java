@@ -615,6 +615,17 @@ public class WorkspaceView extends ViewGroup {
         }
     }
 
+    public void executeTvSelectedLongClick() {
+        if (tvSelectedTile != null) {
+            tvSelectedTile.performLongClick();
+        } else {
+            selectFirstVisibleTile();
+            if (tvSelectedTile != null) {
+                tvSelectedTile.performLongClick();
+            }
+        }
+    }
+
     public void navigateTv(int keyCode) {
         int count = getChildCount();
         if (count == 0) return;
