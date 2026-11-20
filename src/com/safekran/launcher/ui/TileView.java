@@ -1,11 +1,18 @@
 package com.safekran.launcher.ui;
 
+import android.app.ActivityManager;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.StateListDrawable;
+import android.os.BatteryManager;
+import android.os.Build;
+import android.os.Environment;
+import android.os.StatFs;
 import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -22,6 +29,8 @@ import com.safekran.launcher.model.Tile;
 import com.safekran.launcher.model.TileType;
 import com.safekran.launcher.model.WorkspaceConfig;
 
+import java.io.File;
+
 public class TileView extends FrameLayout {
 
     private final Tile tile;
@@ -34,6 +43,8 @@ public class TileView extends FrameLayout {
     private LinearLayout dateTextGroup;
     private TextClock dateMonthView;
     private TextClock dateWeekView;
+    private TextView infoPrimaryView;
+    private TextView infoSecondaryView;
     private LinearLayout spacerContainer;
 
     public TileView(Context context, Tile tile, WorkspaceConfig config, Drawable appIcon) {
@@ -61,6 +72,12 @@ public class TileView extends FrameLayout {
             initClockTile(context);
         } else if (tile.type == TileType.DATE) {
             initDateTile(context);
+        } else if (tile.type == TileType.BATTERY) {
+            initBatteryTile(context);
+        } else if (tile.type == TileType.RAM) {
+            initRamTile(context);
+        } else if (tile.type == TileType.STORAGE) {
+            initStorageTile(context);
         } else {
             initActionOrAppTile(context, appIcon);
         }
@@ -185,7 +202,7 @@ public class TileView extends FrameLayout {
         dateDayView.setTextColor(getTextColor());
         dateDayView.setTypeface(Typeface.DEFAULT_BOLD);
         dateDayView.setGravity(Gravity.CENTER);
-        dateDayView.setIncludeFontPadding(true);
+        dateDayView.setIncludeFontPadding(false);
         LinearLayout.LayoutParams dayParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         dateContainer.addView(dateDayView, dayParams);
@@ -205,7 +222,7 @@ public class TileView extends FrameLayout {
         dateMonthView.setTextColor(getTextColor());
         dateMonthView.setTypeface(Typeface.DEFAULT_BOLD);
         dateMonthView.setGravity(Gravity.CENTER);
-        dateMonthView.setIncludeFontPadding(true);
+        dateMonthView.setIncludeFontPadding(false);
         LinearLayout.LayoutParams monthParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         dateTextGroup.addView(dateMonthView, monthParams);
@@ -218,7 +235,7 @@ public class TileView extends FrameLayout {
         dateWeekView.setEllipsize(TextUtils.TruncateAt.END);
         dateWeekView.setTextColor(isLightMode() ? Color.parseColor("#666666") : Color.parseColor("#AAAAAA"));
         dateWeekView.setGravity(Gravity.CENTER);
-        dateWeekView.setIncludeFontPadding(true);
+        dateWeekView.setIncludeFontPadding(false);
         LinearLayout.LayoutParams weekParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         dateTextGroup.addView(dateWeekView, weekParams);
@@ -228,6 +245,154 @@ public class TileView extends FrameLayout {
         dateContainer.addView(dateTextGroup, tgParams);
 
         addView(dateContainer, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+    }
+
+    private void initBatteryTile(Context context) {
+        setVisibility(View.VISIBLE);
+        setFocusable(true);
+        setFocusableInTouchMode(false);
+        setClickable(true);
+        applyTileBackground();
+
+        LinearLayout container = new LinearLayout(context);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setGravity(Gravity.CENTER);
+        container.setClipChildren(false);
+        container.setClipToPadding(false);
+
+        int level = -1, scale = -1, status = -1;
+        try {
+            IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+            Intent batteryStatus = context.registerReceiver(null, ifilter);
+            if (batteryStatus != null) {
+                level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+                scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+                status = batteryStatus.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
+            }
+        } catch (Exception ignored) {}
+
+        boolean isCharging = (status == BatteryManager.BATTERY_STATUS_CHARGING ||
+                status == BatteryManager.BATTERY_STATUS_FULL);
+        int pct = (level >= 0 && scale > 0) ? Math.round((level / (float) scale) * 100) : 100;
+
+        infoPrimaryView = new TextView(context);
+        String prefix = isCharging ? "⚡ " : "🔋 ";
+        infoPrimaryView.setText(prefix + "%" + pct);
+        infoPrimaryView.setTypeface(Typeface.DEFAULT_BOLD);
+        infoPrimaryView.setTextColor(isCharging ? Color.parseColor("#4CAF50") : (pct <= 20 ? Color.parseColor("#E53935") : getTextColor()));
+        infoPrimaryView.setGravity(Gravity.CENTER);
+        infoPrimaryView.setSingleLine(true);
+        container.addView(infoPrimaryView, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        infoSecondaryView = new TextView(context);
+        infoSecondaryView.setText(isCharging ? "Şarj Oluyor" : (tile.label != null && !tile.label.isEmpty() ? tile.label : "Pil"));
+        infoSecondaryView.setTextColor(isLightMode() ? Color.parseColor("#666666") : Color.parseColor("#AAAAAA"));
+        infoSecondaryView.setGravity(Gravity.CENTER);
+        infoSecondaryView.setSingleLine(true);
+        infoSecondaryView.setEllipsize(TextUtils.TruncateAt.END);
+        container.addView(infoSecondaryView, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        addView(container, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+    }
+
+    private void initRamTile(Context context) {
+        setVisibility(View.VISIBLE);
+        setFocusable(true);
+        setFocusableInTouchMode(false);
+        setClickable(true);
+        applyTileBackground();
+
+        LinearLayout container = new LinearLayout(context);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setGravity(Gravity.CENTER);
+        container.setClipChildren(false);
+        container.setClipToPadding(false);
+
+        int usedPct = 0;
+        double usedGb = 0, totalGb = 0;
+        try {
+            ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+            ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
+            if (am != null) {
+                am.getMemoryInfo(mi);
+                long totalMem = mi.totalMem;
+                long availMem = mi.availMem;
+                long usedMem = totalMem - availMem;
+                usedPct = (totalMem > 0) ? (int) Math.round((usedMem / (double) totalMem) * 100) : 0;
+                usedGb = usedMem / (1024.0 * 1024.0 * 1024.0);
+                totalGb = totalMem / (1024.0 * 1024.0 * 1024.0);
+            }
+        } catch (Exception ignored) {}
+
+        infoPrimaryView = new TextView(context);
+        infoPrimaryView.setText("RAM: %" + usedPct);
+        infoPrimaryView.setTypeface(Typeface.DEFAULT_BOLD);
+        infoPrimaryView.setTextColor(usedPct > 85 ? Color.parseColor("#E53935") : getTextColor());
+        infoPrimaryView.setGravity(Gravity.CENTER);
+        infoPrimaryView.setSingleLine(true);
+        container.addView(infoPrimaryView, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        infoSecondaryView = new TextView(context);
+        String detailText = String.format(java.util.Locale.US, "%.1f / %.1f GB", usedGb, totalGb);
+        infoSecondaryView.setText(detailText);
+        infoSecondaryView.setTextColor(isLightMode() ? Color.parseColor("#666666") : Color.parseColor("#AAAAAA"));
+        infoSecondaryView.setGravity(Gravity.CENTER);
+        infoSecondaryView.setSingleLine(true);
+        container.addView(infoSecondaryView, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        addView(container, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+    }
+
+    private void initStorageTile(Context context) {
+        setVisibility(View.VISIBLE);
+        setFocusable(true);
+        setFocusableInTouchMode(false);
+        setClickable(true);
+        applyTileBackground();
+
+        LinearLayout container = new LinearLayout(context);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setGravity(Gravity.CENTER);
+        container.setClipChildren(false);
+        container.setClipToPadding(false);
+
+        long freeGb = 0;
+        try {
+            File path = Environment.getDataDirectory();
+            StatFs stat = new StatFs(path.getPath());
+            long blockSize, availableBlocks;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+                blockSize = stat.getBlockSizeLong();
+                availableBlocks = stat.getAvailableBlocksLong();
+            } else {
+                blockSize = stat.getBlockSize();
+                availableBlocks = stat.getAvailableBlocks();
+            }
+            freeGb = (availableBlocks * blockSize) / (1024L * 1024L * 1024L);
+        } catch (Exception ignored) {}
+
+        infoPrimaryView = new TextView(context);
+        infoPrimaryView.setText(freeGb + " GB Boş");
+        infoPrimaryView.setTypeface(Typeface.DEFAULT_BOLD);
+        infoPrimaryView.setTextColor(getTextColor());
+        infoPrimaryView.setGravity(Gravity.CENTER);
+        infoPrimaryView.setSingleLine(true);
+        container.addView(infoPrimaryView, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        infoSecondaryView = new TextView(context);
+        infoSecondaryView.setText("Depolama");
+        infoSecondaryView.setTextColor(isLightMode() ? Color.parseColor("#666666") : Color.parseColor("#AAAAAA"));
+        infoSecondaryView.setGravity(Gravity.CENTER);
+        infoSecondaryView.setSingleLine(true);
+        container.addView(infoSecondaryView, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        addView(container, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
     }
 
     private void initActionOrAppTile(Context context, Drawable appIcon) {
@@ -517,7 +682,8 @@ public class TileView extends FrameLayout {
         float availHDp = Math.max(10, (h - dpToPx(getContext(), 8)) / density);
 
         // 1. Dinamik Simge Boyutu (Kutunun üst vitrin alanını cömertçe doldurur)
-        if (iconView != null && tile.type != TileType.CLOCK && tile.type != TileType.DATE) {
+        if (iconView != null && tile.type != TileType.CLOCK && tile.type != TileType.DATE &&
+                tile.type != TileType.BATTERY && tile.type != TileType.RAM && tile.type != TileType.STORAGE) {
             int maxCap;
             if (tile.colSpan >= 2 && tile.rowSpan >= 2) {
                 maxCap = (int) (112 * density);
@@ -577,6 +743,7 @@ public class TileView extends FrameLayout {
                 }
                 dateMonthView.setGravity(Gravity.START);
                 dateWeekView.setGravity(Gravity.START);
+                dateWeekView.setVisibility(View.VISIBLE);
 
                 float daySp = Math.max(16f, Math.min(68f, availHDp * 0.56f));
                 float monthSp = Math.max(10f, Math.min(20f, availHDp * 0.22f));
@@ -586,7 +753,7 @@ public class TileView extends FrameLayout {
                 dateMonthView.setTextSize(TypedValue.COMPLEX_UNIT_SP, monthSp);
                 dateWeekView.setTextSize(TypedValue.COMPLEX_UNIT_SP, weekSp);
             } else {
-                // 1x Dar Kart Modu: Üstte Gün Sayısı ("20"), Altta Ay ("Kasım"), En Altta Gün Adı ("Cuma")
+                // 1x Dar Kart Modu: Üstte Gün Sayısı ("20"), Altta Ay ("Kasım"), Alan yeterse Gün Adı ("Cuma")
                 if (dateContainer.getOrientation() != LinearLayout.VERTICAL) {
                     dateContainer.setOrientation(LinearLayout.VERTICAL);
                 }
@@ -601,14 +768,32 @@ public class TileView extends FrameLayout {
                 dateMonthView.setGravity(Gravity.CENTER);
                 dateWeekView.setGravity(Gravity.CENTER);
 
-                float daySp = Math.max(11f, Math.min(36f, Math.min(availHDp * 0.36f, availWDp / 1.6f)));
-                float monthSp = Math.max(8.5f, Math.min(15f, Math.min(availHDp * 0.18f, availWDp / 4.0f)));
-                float weekSp = Math.max(7.5f, Math.min(13f, Math.min(availHDp * 0.15f, availWDp / 4.0f)));
-
-                dateDayView.setTextSize(TypedValue.COMPLEX_UNIT_SP, daySp);
-                dateMonthView.setTextSize(TypedValue.COMPLEX_UNIT_SP, monthSp);
-                dateWeekView.setTextSize(TypedValue.COMPLEX_UNIT_SP, weekSp);
+                if (availHDp < 68) {
+                    dateWeekView.setVisibility(View.GONE);
+                    float daySp = Math.max(11f, Math.min(30f, Math.min(availHDp * 0.42f, availWDp / 1.7f)));
+                    float monthSp = Math.max(8.5f, Math.min(14f, Math.min(availHDp * 0.22f, availWDp / 3.8f)));
+                    dateDayView.setTextSize(TypedValue.COMPLEX_UNIT_SP, daySp);
+                    dateMonthView.setTextSize(TypedValue.COMPLEX_UNIT_SP, monthSp);
+                } else {
+                    dateWeekView.setVisibility(View.VISIBLE);
+                    float daySp = Math.max(11f, Math.min(28f, Math.min(availHDp * 0.30f, availWDp / 1.8f)));
+                    float monthSp = Math.max(8f, Math.min(12.5f, Math.min(availHDp * 0.16f, availWDp / 4.2f)));
+                    float weekSp = Math.max(7.5f, Math.min(11f, Math.min(availHDp * 0.14f, availWDp / 4.5f)));
+                    dateDayView.setTextSize(TypedValue.COMPLEX_UNIT_SP, daySp);
+                    dateMonthView.setTextSize(TypedValue.COMPLEX_UNIT_SP, monthSp);
+                    dateWeekView.setTextSize(TypedValue.COMPLEX_UNIT_SP, weekSp);
+                }
             }
+        }
+
+        // 5. Bilgi ve Durum Kutuları (Pil, RAM, Depolama) Dinamik Tipografi
+        if (infoPrimaryView != null) {
+            float primSp = Math.max(11f, Math.min(26f, Math.min(availHDp * 0.28f, availWDp / 4.8f)));
+            infoPrimaryView.setTextSize(TypedValue.COMPLEX_UNIT_SP, primSp);
+        }
+        if (infoSecondaryView != null) {
+            float secSp = Math.max(8.5f, Math.min(14f, Math.min(availHDp * 0.16f, availWDp / 5.5f)));
+            infoSecondaryView.setTextSize(TypedValue.COMPLEX_UNIT_SP, secSp);
         }
     }
 

@@ -5,6 +5,7 @@ import android.app.AlertDialog;
 import android.content.ContentUris;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
@@ -187,10 +188,22 @@ public class MainActivity extends Activity {
                 executeColorAction(tile, tv);
                 break;
             case CLOCK:
-                openClockApp();
+                config.is24Hour = !config.is24Hour;
+                WorkspaceStorage.saveWorkspace(MainActivity.this, config);
+                workspaceView.rebuildViews();
+                setupTileClickListeners();
                 break;
             case DATE:
                 openCalendarApp();
+                break;
+            case BATTERY:
+                openBatterySettings();
+                break;
+            case RAM:
+                openRamSettings();
+                break;
+            case STORAGE:
+                openStorageSettings();
                 break;
             case SPACER:
                 // Hayalet Odak: Kumandadan [OK] veya dokunma ile doğrudan boyutlandırma/silme menüsünü aç
@@ -222,6 +235,7 @@ public class MainActivity extends Activity {
         List<Tile> missing = new java.util.ArrayList<Tile>();
         boolean hasRed = false, hasGreen = false, hasYellow = false, hasBlue = false;
         boolean hasSettings = false, hasClock = false, hasDate = false;
+        boolean hasBattery = false, hasRam = false, hasStorage = false;
         if (config != null && config.tiles != null) {
             for (Tile t : config.tiles) {
                 if (t.type == TileType.COLOR_RED) hasRed = true;
@@ -231,6 +245,9 @@ public class MainActivity extends Activity {
                 else if (t.type == TileType.LAUNCHER_SETTINGS) hasSettings = true;
                 else if (t.type == TileType.CLOCK) hasClock = true;
                 else if (t.type == TileType.DATE) hasDate = true;
+                else if (t.type == TileType.BATTERY) hasBattery = true;
+                else if (t.type == TileType.RAM) hasRam = true;
+                else if (t.type == TileType.STORAGE) hasStorage = true;
             }
         }
         if (!hasClock) {
@@ -240,6 +257,18 @@ public class MainActivity extends Activity {
         if (!hasDate) {
             Tile d = new Tile(TileType.DATE, "Tarih", 0, 0, 2, 1);
             missing.add(d);
+        }
+        if (!hasBattery) {
+            Tile bt = new Tile(TileType.BATTERY, "🔋 Pil", 0, 0, 1, 1);
+            missing.add(bt);
+        }
+        if (!hasRam) {
+            Tile rm = new Tile(TileType.RAM, "📊 RAM", 0, 0, 1, 1);
+            missing.add(rm);
+        }
+        if (!hasStorage) {
+            Tile stg = new Tile(TileType.STORAGE, "💾 Depolama", 0, 0, 1, 1);
+            missing.add(stg);
         }
         if (!hasRed) {
             Tile r = new Tile(TileType.COLOR_RED, "🔴 Kırmızı Tuş", 0, 0, 1, 1);
@@ -568,11 +597,15 @@ public class MainActivity extends Activity {
                 tile.type == TileType.COLOR_GREEN ||
                 tile.type == TileType.COLOR_YELLOW ||
                 tile.type == TileType.COLOR_BLUE);
+        final boolean isClockTile = (tile.type == TileType.CLOCK);
 
         final List<AppInfo> hiddenApps = getHiddenOrMissingApps();
         String addAppOption = hiddenApps.isEmpty() ? "➕ Sağına Uygulama Ekle (Gizlenen yok)" : "➕ Sağına Uygulama Ekle (" + hiddenApps.size() + " gizlenen)";
 
         List<String> optionsList = new java.util.ArrayList<String>();
+        if (isClockTile) {
+            optionsList.add("⏰ Sistem Alarm / Saat Uygulamasını Aç");
+        }
         if (isColorTile) {
             optionsList.add("🎯 İşlem / Uygulama Ata");
         }
@@ -593,11 +626,20 @@ public class MainActivity extends Activity {
         builder.setItems(options, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                int shift = isColorTile ? 1 : 0;
-
-                if (isColorTile && which == 0) {
-                    openColorAssignmentDialog(tile);
-                    return;
+                int shift = 0;
+                if (isClockTile) {
+                    if (which == 0) {
+                        openClockApp();
+                        return;
+                    }
+                    shift++;
+                }
+                if (isColorTile) {
+                    if (which == shift) {
+                        openColorAssignmentDialog(tile);
+                        return;
+                    }
+                    shift++;
                 }
 
                 int effectiveWhich = which - shift;
@@ -814,6 +856,42 @@ public class MainActivity extends Activity {
         Toast.makeText(this, "Takvim uygulaması bulunamadı.", Toast.LENGTH_SHORT).show();
     }
 
+    private void openBatterySettings() {
+        try {
+            Intent bIntent = new Intent(Intent.ACTION_POWER_USAGE_SUMMARY);
+            bIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (getPackageManager().resolveActivity(bIntent, 0) != null) {
+                startActivity(bIntent);
+                return;
+            }
+        } catch (Exception ignored) {}
+        openSystemSettings();
+    }
+
+    private void openRamSettings() {
+        try {
+            Intent rIntent = new Intent(Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS);
+            rIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (getPackageManager().resolveActivity(rIntent, 0) != null) {
+                startActivity(rIntent);
+                return;
+            }
+        } catch (Exception ignored) {}
+        openSystemSettings();
+    }
+
+    private void openStorageSettings() {
+        try {
+            Intent sIntent = new Intent(Settings.ACTION_INTERNAL_STORAGE_SETTINGS);
+            sIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (getPackageManager().resolveActivity(sIntent, 0) != null) {
+                startActivity(sIntent);
+                return;
+            }
+        } catch (Exception ignored) {}
+        openSystemSettings();
+    }
+
     private void openSystemSettings() {
         try {
             Intent intent = new Intent(Settings.ACTION_SETTINGS);
@@ -834,105 +912,147 @@ public class MainActivity extends Activity {
     // KAPSAMLI BAŞLATICI AYARLARI MENÜSÜ
     // ==========================================
 
+    private static class AccordionSection {
+        Button header;
+        LinearLayout content;
+        boolean isExpanded;
+    }
+
+    private LinearLayout addAccordionSection(LinearLayout container, final List<AccordionSection> allSections,
+                                             final String title, boolean defaultExpanded) {
+        final AccordionSection section = new AccordionSection();
+        section.isExpanded = defaultExpanded;
+
+        final Button header = new Button(this);
+        header.setText((defaultExpanded ? "▼ " : "► ") + title);
+        header.setTextColor(Color.parseColor("#80D8FF"));
+        header.setTextSize(11);
+        header.setTypeface(Typeface.DEFAULT_BOLD);
+        header.setBackgroundColor(Color.parseColor("#263238"));
+        header.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+        header.setPadding(dpToPx(12), dpToPx(8), dpToPx(12), dpToPx(8));
+        LinearLayout.LayoutParams hLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        hLp.topMargin = dpToPx(6);
+        header.setLayoutParams(hLp);
+
+        final LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(dpToPx(6), dpToPx(4), dpToPx(6), dpToPx(8));
+        content.setVisibility(defaultExpanded ? View.VISIBLE : View.GONE);
+
+        section.header = header;
+        section.content = content;
+        allSections.add(section);
+
+        header.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                boolean target = !section.isExpanded;
+                for (AccordionSection s : allSections) {
+                    s.isExpanded = false;
+                    s.content.setVisibility(View.GONE);
+                    String hText = s.header.getText().toString();
+                    if (hText.startsWith("▼ ")) {
+                        s.header.setText("► " + hText.substring(2));
+                    }
+                }
+                section.isExpanded = target;
+                section.content.setVisibility(target ? View.VISIBLE : View.GONE);
+                header.setText((target ? "▼ " : "► ") + title);
+            }
+        });
+
+        container.addView(header);
+        container.addView(content);
+        return content;
+    }
+
     private void openLauncherSettingsDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Saf Ekran — Dinamik Izgara Ayarları");
 
         ScrollView scroll = new ScrollView(this);
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setPadding(32, 24, 32, 24);
+        layout.setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16));
 
         // 1. İmza & Sürüm Başlığı
         TextView authorText = new TextView(this);
-        String currentVersion = "2.12.0";
+        String currentVersion = "2.18.1";
         try {
             currentVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception ignored) {}
-        authorText.setText("Geliştirici: Vezir | v" + currentVersion + " (TV Focus & 2D Spatial Engine)");
+        authorText.setText("Saf Ekran v" + currentVersion + " | Geliştirici: Vezir");
         authorText.setTextColor(Color.parseColor("#4CAF50"));
-        authorText.setTextSize(13);
-        authorText.setPadding(0, 0, 0, 16);
+        authorText.setTextSize(12);
+        authorText.setPadding(0, 0, 0, dpToPx(8));
         layout.addView(authorText);
 
-        // 2. Güvenli Alan
-        addSectionHeader(layout, "1. GÜVENLİ ALAN (OVERSCAN)");
-        addPercentSlider(layout, "Üst Güvenli Alan", config.safeArea.top, 0, 20, new ValueCallback() {
-            @Override public void onValueChanged(float val) { config.safeArea.top = val; workspaceView.requestLayout(); }
-        });
-        addPercentSlider(layout, "Alt Güvenli Alan", config.safeArea.bottom, 0, 20, new ValueCallback() {
-            @Override public void onValueChanged(float val) { config.safeArea.bottom = val; workspaceView.requestLayout(); }
-        });
-        addPercentSlider(layout, "Sol Güvenli Alan", config.safeArea.left, 0, 20, new ValueCallback() {
-            @Override public void onValueChanged(float val) { config.safeArea.left = val; workspaceView.requestLayout(); }
-        });
-        addPercentSlider(layout, "Sağ Güvenli Alan", config.safeArea.right, 0, 20, new ValueCallback() {
-            @Override public void onValueChanged(float val) { config.safeArea.right = val; workspaceView.requestLayout(); }
-        });
+        final List<AccordionSection> allSections = new java.util.ArrayList<AccordionSection>();
 
-        // 3. Kutu Boyutları (Sütun Sayısı Artık Otomatik Çıkıyor!)
-        addSectionHeader(layout, "2. KUTU GEOMETRİSİ (SÜTUN OTOMATİK HESAPLANIR)");
-        addPercentSlider(layout, "Kutu Boyutu (Genişlik)", config.tileScale, 6, 20, new ValueCallback() {
+        // 1. Kutu Geometrisi (Canlı Önizleme — Varsayılan AÇIK)
+        LinearLayout secGeometry = addAccordionSection(layout, allSections, "1. KUTU GEOMETRİSİ (CANLI ÖNİZLEME)", true);
+        addPercentSlider(secGeometry, "Kutu Boyutu (Genişlik)", config.tileScale, 6, 20, new ValueCallback() {
             @Override public void onValueChanged(float val) { 
                 config.tileScale = val; 
                 workspaceView.requestLayout(); 
             }
         });
-        addPercentSlider(layout, "Kutu Yükseklik Oranı (%75 = TV, %100 = Kare)", config.tileHeightRatio, 50, 100, new ValueCallback() {
+        addPercentSlider(secGeometry, "Kutu Yükseklik Oranı (%75=TV, %100=Kare)", config.tileHeightRatio, 50, 100, new ValueCallback() {
             @Override public void onValueChanged(float val) { 
                 config.tileHeightRatio = val; 
                 workspaceView.requestLayout(); 
             }
         });
-        addPercentSlider(layout, "Kutular Arası Boşluk (Gutter)", config.gutterPercent, 0, 5, new ValueCallback() {
+        addPercentSlider(secGeometry, "Kutular Arası Boşluk (Gutter)", config.gutterPercent, 0, 5, new ValueCallback() {
             @Override public void onValueChanged(float val) { 
                 config.gutterPercent = val; 
                 workspaceView.requestLayout(); 
             }
         });
 
-        // 4. Odaklanma Genişleme Değeri
-        addSectionHeader(layout, "3. ODAK VE ETKİLEŞİM");
+        // 2. Güvenli Alan (Overscan)
+        LinearLayout secSafeArea = addAccordionSection(layout, allSections, "2. GÜVENLİ ALAN (OVERSCAN)", false);
+        addPercentSlider(secSafeArea, "Üst Güvenli Alan", config.safeArea.top, 0, 20, new ValueCallback() {
+            @Override public void onValueChanged(float val) { config.safeArea.top = val; workspaceView.requestLayout(); }
+        });
+        addPercentSlider(secSafeArea, "Alt Güvenli Alan", config.safeArea.bottom, 0, 20, new ValueCallback() {
+            @Override public void onValueChanged(float val) { config.safeArea.bottom = val; workspaceView.requestLayout(); }
+        });
+        addPercentSlider(secSafeArea, "Sol Güvenli Alan", config.safeArea.left, 0, 20, new ValueCallback() {
+            @Override public void onValueChanged(float val) { config.safeArea.left = val; workspaceView.requestLayout(); }
+        });
+        addPercentSlider(secSafeArea, "Sağ Güvenli Alan", config.safeArea.right, 0, 20, new ValueCallback() {
+            @Override public void onValueChanged(float val) { config.safeArea.right = val; workspaceView.requestLayout(); }
+        });
+
+        // 3. Odak ve Etkileşim
+        LinearLayout secFocus = addAccordionSection(layout, allSections, "3. ODAK VE ETKİLEŞİM", false);
         float currentFocusPercent = (config.focusScale - 1.0f);
-        addPercentSlider(layout, "Odaklanınca Büyüme Oranı", currentFocusPercent, 0, 15, new ValueCallback() {
+        addPercentSlider(secFocus, "Odaklanınca Büyüme Oranı", currentFocusPercent, 0, 15, new ValueCallback() {
             @Override public void onValueChanged(float val) { config.focusScale = 1.0f + val; }
         });
 
-        // 4. Kutu Çerçeve Stili
-        addSectionHeader(layout, "4. KUTU ÇERÇEVE STİLİ");
+        // 4. Çerçeve ve Tema Stili
+        LinearLayout secTheme = addAccordionSection(layout, allSections, "4. ÇERÇEVE VE TEMA STİLİ", false);
         LinearLayout styleRow = new LinearLayout(this);
         styleRow.setOrientation(LinearLayout.HORIZONTAL);
-        addStyleButton(styleRow, "Sadece Odakta (Önerilen)", "FOCUS_ONLY");
-        addStyleButton(styleRow, "Her Zaman Çerçeveli", "ALWAYS");
-        addStyleButton(styleRow, "Yüzen (Çerçevesiz)", "FLOATING");
+        addStyleButton(styleRow, "Sadece Odakta", "FOCUS_ONLY");
+        addStyleButton(styleRow, "Her Zaman", "ALWAYS");
+        addStyleButton(styleRow, "Yüzen", "FLOATING");
         updateButtonGroupHighlight(styleRow, config.tileStyle);
-        layout.addView(styleRow);
+        secTheme.addView(styleRow);
 
-        // 5. Tema Seçimi
-        addSectionHeader(layout, "5. TEMA MODU");
         LinearLayout themeRow = new LinearLayout(this);
         themeRow.setOrientation(LinearLayout.HORIZONTAL);
         addThemeButton(themeRow, "Saf Siyah", "BLACK");
         addThemeButton(themeRow, "Koyu Gri", "DARK_GRAY");
         addThemeButton(themeRow, "Aydınlık", "LIGHT");
         updateButtonGroupHighlight(themeRow, config.themeMode);
-        layout.addView(themeRow);
+        secTheme.addView(themeRow);
 
-        // 6. Saat Ayarları
-        addSectionHeader(layout, "6. SAAT AYARLARI");
-        CheckBox cb24 = new CheckBox(this);
-        cb24.setText("24 Saat Formatı (Örn: 22:30)");
-        cb24.setTextColor(Color.WHITE);
-        cb24.setChecked(config.is24Hour);
-        cb24.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                config.is24Hour = isChecked;
-            }
-        });
-        layout.addView(cb24);
-
-        // 7. Geliştirici ve Kumanda Testi
-        addSectionHeader(layout, "7. TELEFONDA KUMANDA TESTİ");
+        // 5. Telefonda Kumanda Testi
+        LinearLayout secRemote = addAccordionSection(layout, allSections, "5. TELEFONDA KUMANDA TESTİ", false);
         CheckBox cbRemote = new CheckBox(this);
         cbRemote.setText("🕹️ Sanal TV Kumandası (Ekranda Test Pedi)");
         cbRemote.setTextColor(Color.parseColor("#80D8FF"));
@@ -943,13 +1063,13 @@ public class MainActivity extends Activity {
                 updateVirtualRemoteOverlay();
             }
         });
-        layout.addView(cbRemote);
+        secRemote.addView(cbRemote);
 
-        // 8. Gizlenen ve Eksik Uygulamalar
-        addSectionHeader(layout, "8. GİZLENEN UYGULAMALAR");
+        // 6. Gizlenen ve Özel Kutular
+        LinearLayout secHidden = addAccordionSection(layout, allSections, "6. GİZLENEN VE ÖZEL KUTULAR", false);
         final List<AppInfo> currentHidden = getHiddenOrMissingApps();
         Button hiddenBtn = new Button(this);
-        hiddenBtn.setText("👁️ Gizlenen Uygulamaları Yönet (" + currentHidden.size() + " adet)");
+        hiddenBtn.setText("👁️ Gizlenen Uygulamaları ve Özel Kutuları Yönet");
         hiddenBtn.setBackgroundColor(currentHidden.isEmpty() ? Color.parseColor("#37474F") : Color.parseColor("#00695C"));
         hiddenBtn.setTextColor(Color.WHITE);
         hiddenBtn.setOnClickListener(new View.OnClickListener() {
@@ -958,11 +1078,10 @@ public class MainActivity extends Activity {
                 openHiddenAppsDialog(null);
             }
         });
-        layout.addView(hiddenBtn);
+        secHidden.addView(hiddenBtn);
 
-        // 9. Düzen İşlemleri
-        addSectionHeader(layout, "9. DÜZEN İŞLEMLERİ");
-
+        // 7. Düzen İşlemleri
+        LinearLayout secLayoutOps = addAccordionSection(layout, allSections, "7. DÜZEN İŞLEMLERİ", false);
         Button addSpacerBtn = new Button(this);
         addSpacerBtn.setText("➕ Yeni Boşluk (Spacer) Ekle");
         addSpacerBtn.setBackgroundColor(Color.parseColor("#37474F"));
@@ -979,10 +1098,10 @@ public class MainActivity extends Activity {
                 WorkspaceStorage.saveWorkspace(MainActivity.this, config);
                 workspaceView.rebuildViews();
                 setupTileClickListeners();
-                Toast.makeText(MainActivity.this, "Yeni boşluk eklendi. Kumandayla üzerine gelerek veya dokunarak boyutunu ayarlayabilirsiniz.", Toast.LENGTH_LONG).show();
+                Toast.makeText(MainActivity.this, "Yeni boşluk eklendi.", Toast.LENGTH_SHORT).show();
             }
         });
-        layout.addView(addSpacerBtn);
+        secLayoutOps.addView(addSpacerBtn);
 
         Button reflowBtn = new Button(this);
         reflowBtn.setText("🔄 Sıralamayı Varsayılana Sıfırla (Alfabeye Göre Sırala)");
@@ -1000,12 +1119,12 @@ public class MainActivity extends Activity {
                 Toast.makeText(MainActivity.this, "Sıralama varsayılana sıfırlandı.", Toast.LENGTH_SHORT).show();
             }
         });
-        layout.addView(reflowBtn);
+        secLayoutOps.addView(reflowBtn);
 
-        // Özel TV Uyumlu 2 Katlı Eylem Butonları Bloğu (Asla kaymaz, taşmaz!)
+        // Alt Eylem Butonları
         LinearLayout actionBlock = new LinearLayout(this);
         actionBlock.setOrientation(LinearLayout.VERTICAL);
-        actionBlock.setPadding(0, dpToPx(24), 0, dpToPx(8));
+        actionBlock.setPadding(0, dpToPx(16), 0, dpToPx(8));
 
         Button saveBtn = new Button(this);
         saveBtn.setText("💾 Ayarları Kaydet");
@@ -1059,7 +1178,6 @@ public class MainActivity extends Activity {
                 workspaceView.rebuildViews();
                 setupTileClickListeners();
                 dialog.dismiss();
-                Toast.makeText(MainActivity.this, "Ayarlar kaydedildi.", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -1090,6 +1208,30 @@ public class MainActivity extends Activity {
         });
 
         dialog.show();
+
+        // Kenara yaslı ve canlı görüşü engellemeyen pencere ayarları
+        Window window = dialog.getWindow();
+        if (window != null) {
+            boolean isLandscape = (getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE);
+            android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+            WindowManager.LayoutParams wlp = window.getAttributes();
+            wlp.dimAmount = 0.05f; // Saydama yakın: Arka plandaki kutuların canlı akışı %100 görünür!
+            if (isLandscape) {
+                wlp.gravity = Gravity.END | Gravity.CENTER_VERTICAL;
+                wlp.width = (int) (dm.widthPixels * 0.40f);
+                wlp.height = WindowManager.LayoutParams.MATCH_PARENT;
+            } else {
+                wlp.gravity = Gravity.BOTTOM;
+                wlp.width = WindowManager.LayoutParams.MATCH_PARENT;
+                wlp.height = (int) (dm.heightPixels * 0.70f);
+            }
+            window.setAttributes(wlp);
+
+            GradientDrawable bg = new GradientDrawable();
+            bg.setColor(Color.parseColor("#F0121212"));
+            bg.setCornerRadius(dpToPx(8));
+            window.setBackgroundDrawable(bg);
+        }
     }
 
     private void addSectionHeader(LinearLayout layout, String title) {

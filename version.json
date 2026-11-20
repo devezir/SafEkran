@@ -1,12 +1,12 @@
 {
   "appName": "Saf Ekran",
   "packageName": "com.safekran.launcher",
-  "versionCode": 28,
-  "versionName": "2.18.1",
+  "versionCode": 29,
+  "versionName": "2.19.0",
   "developer": "Vezir",
   "schemaVersion": 1,
   "createdDate": "2026-11-19",
-  "apkName": "SafEkran_v2.18.1_vc28.apk",
+  "apkName": "SafEkran_v2.19.0_vc29.apk",
   "history": [
     {
       "versionCode": 1,
@@ -175,6 +175,12 @@
       "versionName": "2.18.1",
       "date": "2026-11-20",
       "description": "Fix: Tarih Kutusu Varsayilan 2x, 1x Adaptif Tipografi ve onMeasure Tuval Kirpilmasi Onarimi (v2.18.1)"
+    },
+    {
+      "versionCode": 29,
+      "versionName": "2.19.0",
+      "date": "2026-11-20",
+      "description": "Feat: Hizli Saat Formati, Pil-RAM-Depolama Kutulari, Canli Akordeon Ayarlar Menusu (v2.19.0)"
     }
   ]
 }

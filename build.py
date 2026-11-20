@@ -93,7 +93,7 @@ if os.path.exists(res_zip):
     os.remove(res_zip)
 
 cmd_compile = [aapt2, "compile", "--dir", "res", "-o", res_zip]
-res = subprocess.run(cmd_compile, capture_output=True, text=True)
+res = subprocess.run(cmd_compile, capture_output=True, text=True, encoding="utf-8", errors="replace")
 if res.returncode != 0:
     print("AAPT2 derleme hatası:", res.stderr)
     sys.exit(1)
@@ -117,7 +117,7 @@ cmd_link = [
     "--java", "gen",
     "--auto-add-overlay"
 ]
-res = subprocess.run(cmd_link, capture_output=True, text=True)
+res = subprocess.run(cmd_link, capture_output=True, text=True, encoding="utf-8", errors="replace")
 if res.returncode != 0:
     print("AAPT2 link hatası:", res.stderr)
     sys.exit(1)
@@ -138,7 +138,7 @@ cmd_javac = [
     "-cp", android_jar,
     "-d", obj_dir
 ] + java_files
-res = subprocess.run(cmd_javac, capture_output=True, text=True)
+res = subprocess.run(cmd_javac, capture_output=True, text=True, encoding="utf-8", errors="replace")
 if res.returncode != 0:
     print("javac hatası:", res.stderr)
     print("stdout:", res.stdout)
@@ -159,7 +159,7 @@ cmd_d8 = [
     "--min-api", "21",
     "--output", bin_dir
 ] + class_files
-res = subprocess.run(cmd_d8, capture_output=True, text=True)
+res = subprocess.run(cmd_d8, capture_output=True, text=True, encoding="utf-8", errors="replace")
 if res.returncode != 0:
     print("D8 hatası:", res.stderr)
     sys.exit(1)
@@ -195,7 +195,7 @@ if os.path.exists(keystore_file):
     ]
     print("[*] Resmi Vezir Keystore ile imzalanıyor: safekran-release.jks")
 
-res = subprocess.run(cmd_sign, capture_output=True, text=True)
+res = subprocess.run(cmd_sign, capture_output=True, text=True, encoding="utf-8", errors="replace")
 if res.returncode != 0:
     print("İmzalama hatası:", res.stderr)
     sys.exit(1)
