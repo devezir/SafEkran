@@ -1,12 +1,12 @@
 {
   "appName": "Saf Ekran",
   "packageName": "com.safekran.launcher",
-  "versionCode": 21,
-  "versionName": "2.12.0",
+  "versionCode": 22,
+  "versionName": "2.13.0",
   "developer": "Vezir",
   "schemaVersion": 1,
   "createdDate": "2026-11-19",
-  "apkName": "SafEkran_v2.12.0_vc21.apk",
+  "apkName": "SafEkran_v2.13.0_vc22.apk",
   "history": [
     {
       "versionCode": 1,
@@ -133,6 +133,12 @@
       "versionName": "2.12.0",
       "date": "2026-11-20",
       "description": "Feat: Hayalet Odak (Ghost Focus) Boşluk Mimarisi, Düzenleme Modunun Kaldırılması, Çoklu Hücre Simge Ölçekleme ve Metin Kesilme Düzeltmesi (v2.12.0)"
+    },
+    {
+      "versionCode": 22,
+      "versionName": "2.13.0",
+      "date": "2026-11-20",
+      "description": "Feat: Android TV Derin Uyumluluk, Leanback Baslatma, Bellek Guvenligi (largeHeap), Ayarlar Tiklama Koruma ve Mimari Temizlik (v2.13.0)"
     }
   ]
 }

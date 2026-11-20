@@ -26,19 +26,22 @@ public class TileView extends FrameLayout {
 
     private final Tile tile;
     private final WorkspaceConfig config;
-    private final boolean isEditMode;
     private ImageView iconView;
     private TextView labelView;
     private TextClock clockView;
     private TextClock dateClock;
     private LinearLayout spacerContainer;
 
-    public TileView(Context context, Tile tile, WorkspaceConfig config, boolean isEditMode, Drawable appIcon) {
+    public TileView(Context context, Tile tile, WorkspaceConfig config, Drawable appIcon) {
         super(context);
         this.tile = tile;
         this.config = config;
-        this.isEditMode = isEditMode;
         init(context, appIcon);
+    }
+
+    @Deprecated
+    public TileView(Context context, Tile tile, WorkspaceConfig config, boolean isEditMode, Drawable appIcon) {
+        this(context, tile, config, appIcon);
     }
 
     private void init(Context context, Drawable appIcon) {
@@ -159,12 +162,7 @@ public class TileView extends FrameLayout {
         LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(iconSize, iconSize);
         iconParams.bottomMargin = dpToPx(context, 2);
 
-        if (tile.type == TileType.EDIT_MODE) {
-            iconView.setImageResource(R.drawable.ic_edit);
-            if (isLightMode()) {
-                iconView.setColorFilter(Color.parseColor("#111111"));
-            }
-        } else if (tile.type == TileType.LAUNCHER_SETTINGS) {
+        if (tile.type == TileType.LAUNCHER_SETTINGS) {
             iconView.setImageResource(R.drawable.ic_settings);
             if (isLightMode()) {
                 iconView.setColorFilter(Color.parseColor("#111111"));

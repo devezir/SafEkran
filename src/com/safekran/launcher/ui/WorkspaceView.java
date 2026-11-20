@@ -32,7 +32,6 @@ import java.util.Map;
 public class WorkspaceView extends ViewGroup {
 
     private WorkspaceConfig config;
-    private boolean isEditMode = false;
     private final Map<String, Drawable> iconCache = new HashMap<String, Drawable>();
 
     // Dokunmatik ve Fiziksel Kaydırma (Touch & Fling)
@@ -64,10 +63,6 @@ public class WorkspaceView extends ViewGroup {
     private int maxRow = 0;
 
     // Çizim fırçaları
-    private Paint safeAreaPaint;
-    private Paint cellGridPaint;
-    private Paint hudBgPaint;
-    private Paint hudTextPaint;
     private Paint scrollbarPaint;
 
     // TV Seçim İmleci (TV Focus Cursor)
@@ -91,26 +86,6 @@ public class WorkspaceView extends ViewGroup {
     }
 
     private void initPaints() {
-        safeAreaPaint = new Paint();
-        safeAreaPaint.setColor(Color.parseColor("#4DFF5722"));
-        safeAreaPaint.setStyle(Paint.Style.STROKE);
-        safeAreaPaint.setStrokeWidth(3f);
-        safeAreaPaint.setPathEffect(new DashPathEffect(new float[]{15f, 10f}, 0));
-
-        cellGridPaint = new Paint();
-        cellGridPaint.setColor(Color.parseColor("#15FFFFFF"));
-        cellGridPaint.setStyle(Paint.Style.STROKE);
-        cellGridPaint.setStrokeWidth(1f);
-
-        hudBgPaint = new Paint();
-        hudBgPaint.setColor(Color.parseColor("#E60D0D0D"));
-        hudBgPaint.setStyle(Paint.Style.FILL);
-
-        hudTextPaint = new Paint();
-        hudTextPaint.setColor(Color.WHITE);
-        hudTextPaint.setTextSize(24f);
-        hudTextPaint.setAntiAlias(true);
-
         scrollbarPaint = new Paint();
         scrollbarPaint.setColor(Color.parseColor("#66FFFFFF"));
         scrollbarPaint.setStyle(Paint.Style.FILL);
@@ -131,24 +106,17 @@ public class WorkspaceView extends ViewGroup {
         return dp * getContext().getResources().getDisplayMetrics().density;
     }
 
-    public void setConfig(WorkspaceConfig config, Map<String, Drawable> icons, boolean editMode) {
+    public void setConfig(WorkspaceConfig config, Map<String, Drawable> icons) {
         this.config = config;
-        this.isEditMode = editMode;
         if (icons != null) {
             this.iconCache.putAll(icons);
         }
         rebuildViews();
     }
 
-    public void setEditMode(boolean editMode) {
-        if (this.isEditMode != editMode) {
-            this.isEditMode = editMode;
-            rebuildViews();
-        }
-    }
-
-    public boolean isEditMode() {
-        return isEditMode;
+    @Deprecated
+    public void setConfig(WorkspaceConfig config, Map<String, Drawable> icons, boolean editMode) {
+        setConfig(config, icons);
     }
 
     public WorkspaceConfig getConfig() {
@@ -166,7 +134,7 @@ public class WorkspaceView extends ViewGroup {
 
         for (Tile t : config.tiles) {
             Drawable icon = iconCache.get(t.packageName);
-            TileView tv = new TileView(getContext(), t, config, isEditMode, icon);
+            TileView tv = new TileView(getContext(), t, config, icon);
             addView(tv);
         }
         requestLayout();
@@ -694,18 +662,19 @@ public class WorkspaceView extends ViewGroup {
             targetTile = (prevInRow != null) ? prevInRow : prevWrap;
 
         } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+            int curBottomRow = curTile.row + curTile.rowSpan - 1;
             int minDeltaRow = Integer.MAX_VALUE;
             for (TileView tv : validTiles) {
                 Tile t = tv.getTile();
-                if (t.row > curTile.row) {
-                    int dRow = t.row - curTile.row;
+                if (t.row > curBottomRow) {
+                    int dRow = t.row - curBottomRow;
                     if (dRow < minDeltaRow) {
                         minDeltaRow = dRow;
                     }
                 }
             }
             if (minDeltaRow != Integer.MAX_VALUE) {
-                int targetRow = curTile.row + minDeltaRow;
+                int targetRow = curBottomRow + minDeltaRow;
                 int minColDist = Integer.MAX_VALUE;
                 for (TileView tv : validTiles) {
                     Tile t = tv.getTile();
@@ -723,19 +692,21 @@ public class WorkspaceView extends ViewGroup {
             int minDeltaRow = Integer.MAX_VALUE;
             for (TileView tv : validTiles) {
                 Tile t = tv.getTile();
-                if (t.row < curTile.row) {
-                    int dRow = curTile.row - t.row;
+                int tBottomRow = t.row + t.rowSpan - 1;
+                if (tBottomRow < curTile.row) {
+                    int dRow = curTile.row - tBottomRow;
                     if (dRow < minDeltaRow) {
                         minDeltaRow = dRow;
                     }
                 }
             }
             if (minDeltaRow != Integer.MAX_VALUE) {
-                int targetRow = curTile.row - minDeltaRow;
+                int targetBottomRow = curTile.row - minDeltaRow;
                 int minColDist = Integer.MAX_VALUE;
                 for (TileView tv : validTiles) {
                     Tile t = tv.getTile();
-                    if (t.row == targetRow) {
+                    int tBottomRow = t.row + t.rowSpan - 1;
+                    if (tBottomRow == targetBottomRow) {
                         int dist = Math.abs(t.col - curTile.col);
                         if (dist < minColDist) {
                             minColDist = dist;
@@ -824,40 +795,6 @@ public class WorkspaceView extends ViewGroup {
             float barW = 5f;
             float barRight = (w - safeRight) - 2f;
             canvas.drawRect(barRight - barW, barY, barRight, barY + barH, scrollbarPaint);
-        }
-
-        // 4. DÜZENLEME MODU: CAMA ÇAKILI KILAVUZ ÇİZGİLERİ VE HUD
-        if (isEditMode && config != null) {
-            boolean isLight = "LIGHT".equals(config.themeMode);
-            cellGridPaint.setColor(isLight ? Color.parseColor("#25000000") : Color.parseColor("#15FFFFFF"));
-
-            // DİKKAT: Kırmızı çerçeve ekran camına çakılıdır (scrollY EKLENMEZ!)
-            canvas.drawRect(safeLeft, safeTop + scrollY, w - safeRight, (h - safeBottom) + scrollY, safeAreaPaint);
-
-            // Kılavuz Hücre Çizgileri
-            int rowsToDraw = Math.max(10, maxRow + 2);
-            for (int rIndex = 0; rIndex < rowsToDraw; rIndex++) {
-                int cellTop = safeTop + rIndex * (cellHeight + gutterYPx);
-                for (int cIndex = 0; cIndex < calculatedCols; cIndex++) {
-                    int cLeft = startLeft + cIndex * (cellWidth + gutterXPx);
-                    canvas.drawRect(cLeft, cellTop, cLeft + cellWidth, cellTop + cellHeight, cellGridPaint);
-                }
-            }
-
-            // TV Ergonomisi HUD
-            String hudText1 = "DÜZENLEME MODU | Kilitli Pencere: " + calculatedCols + " Sütun";
-            String hudText2 = "Alt Güvenlik: %" + (int)(config.safeArea.bottom * 100) + " | Cam Tabanına Çakılı";
-
-            float cardW = 760f;
-            float cardH = 90f;
-            float cardRight = (w - safeRight) - 10f;
-            float cardLeft = cardRight - cardW;
-            float cardTop = safeTop + scrollY + 10f;
-            float cardBottom = cardTop + cardH;
-
-            canvas.drawRect(cardLeft, cardTop, cardRight, cardBottom, hudBgPaint);
-            canvas.drawText(hudText1, cardLeft + 20f, cardTop + 35f, hudTextPaint);
-            canvas.drawText(hudText2, cardLeft + 20f, cardTop + 70f, hudTextPaint);
         }
     }
 }

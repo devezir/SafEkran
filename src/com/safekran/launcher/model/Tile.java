@@ -15,7 +15,7 @@ public class Tile {
     public String packageName;
     public String activityName;
     public String label;
-    public String actionType; // "APP", "EDIT_MODE", "LAUNCHER_SETTINGS", "SYSTEM_SETTINGS", "THEME_TOGGLE", "HIDDEN_APPS", "NONE"
+    public String actionType; // "APP", "LAUNCHER_SETTINGS", "SYSTEM_SETTINGS", "THEME_TOGGLE", "HIDDEN_APPS", "NONE"
 
     // 2D Sanal Matris Hücre Koordinatları
     public int col;      // 0-tabanlı sütun indeksi (0..colCount-1)
@@ -60,10 +60,16 @@ public class Tile {
         Tile t = new Tile();
         t.id = obj.optString("id", UUID.randomUUID().toString());
         String typeStr = obj.optString("type", "APP");
-        try {
-            t.type = TileType.valueOf(typeStr);
-        } catch (Exception e) {
-            t.type = TileType.APP;
+        if ("EDIT_MODE".equals(typeStr)) {
+            t.type = TileType.COLOR_RED;
+            t.actionType = "NONE";
+            t.label = "🔴 Kırmızı Tuş";
+        } else {
+            try {
+                t.type = TileType.valueOf(typeStr);
+            } catch (Exception e) {
+                t.type = TileType.APP;
+            }
         }
         t.packageName = obj.optString("packageName", "");
         t.activityName = obj.optString("activityName", "");
