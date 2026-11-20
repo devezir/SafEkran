@@ -5,6 +5,7 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
@@ -175,7 +176,11 @@ public class MainActivity extends Activity {
                 launchApp(tile.packageName);
                 break;
             case EDIT_MODE:
-                toggleEditMode();
+                if (workspaceView.isEditMode()) {
+                    showEditModeActionDialog();
+                } else {
+                    toggleEditMode();
+                }
                 break;
             case LAUNCHER_SETTINGS:
                 openLauncherSettingsDialog();
@@ -193,6 +198,9 @@ public class MainActivity extends Activity {
                 Toast.makeText(this, "Saat kutusu. Düzenle modunda taşınabilir.", Toast.LENGTH_SHORT).show();
                 break;
             case SPACER:
+                if (workspaceView.isEditMode()) {
+                    onTileLongClicked(tile);
+                }
                 break;
         }
     }
@@ -521,6 +529,42 @@ public class MainActivity extends Activity {
     }
 
     private void onTileLongClicked(final Tile tile) {
+        if (tile.type == TileType.SPACER) {
+            List<String> spacerOptions = new java.util.ArrayList<String>();
+            spacerOptions.add("➡️ Genişlet (+1 Sütun)");
+            spacerOptions.add("⬅️ Daralt (-1 Sütun)");
+            spacerOptions.add("⬆️ Yükselt (+1 Satır)");
+            spacerOptions.add("⬇️ Alçalt (-1 Satır)");
+            spacerOptions.add("🗑️ Boşluğu Kaldır (Sil)");
+
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setTitle("Boşluk (" + tile.colSpan + "x" + tile.rowSpan + ") — Düzenle");
+            builder.setItems(spacerOptions.toArray(new String[0]), new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    int maxC = workspaceView.getCalculatedCols();
+                    if (which == 0) {
+                        tile.colSpan = Math.min(maxC, tile.colSpan + 1);
+                        saveAndRefresh("Boşluk genişletildi (" + tile.colSpan + " sütun).");
+                    } else if (which == 1) {
+                        tile.colSpan = Math.max(1, tile.colSpan - 1);
+                        saveAndRefresh("Boşluk daraltıldı (" + tile.colSpan + " sütun).");
+                    } else if (which == 2) {
+                        tile.rowSpan = Math.min(4, tile.rowSpan + 1);
+                        saveAndRefresh("Boşluk yükseltildi (" + tile.rowSpan + " satır).");
+                    } else if (which == 3) {
+                        tile.rowSpan = Math.max(1, tile.rowSpan - 1);
+                        saveAndRefresh("Boşluk alçaltıldı (" + tile.rowSpan + " satır).");
+                    } else if (which == 4) {
+                        config.tiles.remove(tile);
+                        saveAndRefresh("Boşluk kaldırıldı.");
+                    }
+                }
+            });
+            builder.show();
+            return;
+        }
+
         final boolean isColorTile = (tile.type == TileType.COLOR_RED ||
                 tile.type == TileType.COLOR_GREEN ||
                 tile.type == TileType.COLOR_YELLOW ||
@@ -537,10 +581,9 @@ public class MainActivity extends Activity {
         optionsList.add("Daralt (-1 Sütun)");
         optionsList.add("Yükselt (+1 Satır)");
         optionsList.add("Alçalt (-1 Satır)");
-        optionsList.add("Sağına Boşluk (Spacer) Ekle");
-        optionsList.add("Soluna Boşluk (Spacer) Ekle");
-        optionsList.add("Üstüne Boşluk (Spacer) Ekle");
-        optionsList.add("Altına Boşluk (Spacer) Ekle");
+        if (workspaceView.isEditMode()) {
+            optionsList.add("➕ Araya Boşluk Ekle");
+        }
         optionsList.add(addAppOption);
         optionsList.add("Kutuyu Kaldır (Gizle)");
         optionsList.add("⚙️ Başlatıcı Ayarları");
@@ -573,47 +616,35 @@ public class MainActivity extends Activity {
                 } else if (effectiveWhich == 3) {
                     tile.rowSpan = Math.max(1, tile.rowSpan - 1);
                     saveAndRefresh(tile.label + " alçaltıldı (" + tile.rowSpan + " satır).");
-                } else if (effectiveWhich == 4) {
-                    int idx = config.tiles.indexOf(tile);
-                    Tile spacer = new Tile(TileType.SPACER, "Boşluk", 0, 0, 1, 1);
-                    if (idx >= 0 && idx < config.tiles.size()) {
-                        config.tiles.add(idx + 1, spacer);
-                    } else {
-                        config.tiles.add(spacer);
+                } else {
+                    int nextIdx = 4;
+                    if (workspaceView.isEditMode()) {
+                        if (effectiveWhich == nextIdx) {
+                            int idx = config.tiles.indexOf(tile);
+                            Tile spacer = new Tile(TileType.SPACER, "Boşluk", 0, 0, 1, 1);
+                            if (idx >= 0 && idx < config.tiles.size()) {
+                                config.tiles.add(idx + 1, spacer);
+                            } else {
+                                config.tiles.add(spacer);
+                            }
+                            saveAndRefresh("Boşluk eklendi.");
+                            return;
+                        }
+                        nextIdx++;
                     }
-                    saveAndRefresh("Sağına boşluk eklendi.");
-                } else if (effectiveWhich == 5) {
-                    int idx = config.tiles.indexOf(tile);
-                    Tile spacer = new Tile(TileType.SPACER, "Boşluk", 0, 0, 1, 1);
-                    if (idx >= 0) {
-                        config.tiles.add(idx, spacer);
-                    } else {
-                        config.tiles.add(0, spacer);
+
+                    if (effectiveWhich == nextIdx) {
+                        if (hiddenApps.isEmpty()) {
+                            Toast.makeText(MainActivity.this, "Gizlenmiş uygulama yok. Tüm uygulamalarınız ekranda.", Toast.LENGTH_SHORT).show();
+                        } else {
+                            openHiddenAppsDialog(tile);
+                        }
+                    } else if (effectiveWhich == nextIdx + 1) {
+                        config.tiles.remove(tile);
+                        saveAndRefresh(tile.label + " gizlendi. Ayarlar veya kutu menüsünden geri getirebilirsiniz.");
+                    } else if (effectiveWhich == nextIdx + 2) {
+                        openLauncherSettingsDialog();
                     }
-                    saveAndRefresh("Soluna boşluk eklendi.");
-                } else if (effectiveWhich == 6) {
-                    int idx = config.tiles.indexOf(tile);
-                    int target = Math.max(0, idx - maxC);
-                    Tile spacer = new Tile(TileType.SPACER, "Boşluk", 0, 0, 1, 1);
-                    config.tiles.add(target, spacer);
-                    saveAndRefresh("Üst satıra boşluk eklendi.");
-                } else if (effectiveWhich == 7) {
-                    int idx = config.tiles.indexOf(tile);
-                    int target = Math.min(config.tiles.size(), idx + maxC);
-                    Tile spacer = new Tile(TileType.SPACER, "Boşluk", 0, 0, 1, 1);
-                    config.tiles.add(target, spacer);
-                    saveAndRefresh("Alt satıra boşluk eklendi.");
-                } else if (effectiveWhich == 8) {
-                    if (hiddenApps.isEmpty()) {
-                        Toast.makeText(MainActivity.this, "Gizlenmiş uygulama yok. Tüm uygulamalarınız ekranda.", Toast.LENGTH_SHORT).show();
-                    } else {
-                        openHiddenAppsDialog(tile);
-                    }
-                } else if (effectiveWhich == 9) {
-                    config.tiles.remove(tile);
-                    saveAndRefresh(tile.label + " gizlendi. Ayarlar veya kutu menüsünden geri getirebilirsiniz.");
-                } else if (effectiveWhich == 10) {
-                    openLauncherSettingsDialog();
                 }
             }
         });
@@ -667,6 +698,28 @@ public class MainActivity extends Activity {
         setupTileClickListeners();
         String msg = newMode ? "Düzenleme Modu Açık. Çıkmak için [Geri] tuşuna basın." : "Düzenleme Modu Kapatıldı.";
         Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+    }
+
+    private void showEditModeActionDialog() {
+        String[] options = new String[]{"➕ Yeni Boşluk (Spacer) Ekle", "✖️ Düzenleme Modundan Çık"};
+        AlertDialog.Builder b = new AlertDialog.Builder(this);
+        b.setTitle("Düzenleme Modu İşlemleri");
+        b.setItems(options, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                if (which == 0) {
+                    Tile spacer = new Tile(TileType.SPACER, "Boşluk", 0, 0, 1, 1);
+                    config.tiles.add(spacer);
+                    WorkspaceStorage.saveWorkspace(MainActivity.this, config);
+                    workspaceView.rebuildViews();
+                    setupTileClickListeners();
+                    Toast.makeText(MainActivity.this, "Yeni boşluk eklendi. Yerini ve boyutunu ayarlayabilirsiniz.", Toast.LENGTH_LONG).show();
+                } else {
+                    toggleEditMode();
+                }
+            }
+        });
+        b.show();
     }
 
     private void openSystemSettings() {
@@ -767,8 +820,17 @@ public class MainActivity extends Activity {
         addThemeButton(themeRow, "Aydınlık", "LIGHT");
         layout.addView(themeRow);
 
-        // 6. Saat & Tarih Ayarları
-        addSectionHeader(layout, "6. SAAT & TARİH");
+        // 6. Yazı Boyutu Seçimi
+        addSectionHeader(layout, "6. YAZI BOYUTU (FONT BOYUTU)");
+        LinearLayout fontRow = new LinearLayout(this);
+        fontRow.setOrientation(LinearLayout.HORIZONTAL);
+        addFontButton(fontRow, "Küçük (%85)", "SMALL");
+        addFontButton(fontRow, "Normal (%100)", "NORMAL");
+        addFontButton(fontRow, "Büyük (%125)", "LARGE");
+        layout.addView(fontRow);
+
+        // 7. Saat & Tarih Ayarları
+        addSectionHeader(layout, "7. SAAT & TARİH");
         CheckBox cb24 = new CheckBox(this);
         cb24.setText("24 Saat Formatı (Örn: 22:30)");
         cb24.setTextColor(Color.WHITE);
@@ -791,8 +853,8 @@ public class MainActivity extends Activity {
         });
         layout.addView(cbDate);
 
-        // 7. Geliştirici ve Kumanda Testi
-        addSectionHeader(layout, "7. TELEFONDA KUMANDA TESTİ");
+        // 8. Geliştirici ve Kumanda Testi
+        addSectionHeader(layout, "8. TELEFONDA KUMANDA TESTİ");
         CheckBox cbRemote = new CheckBox(this);
         cbRemote.setText("🕹️ Sanal TV Kumandası (Ekranda Test Pedi)");
         cbRemote.setTextColor(Color.parseColor("#80D8FF"));
@@ -805,8 +867,8 @@ public class MainActivity extends Activity {
         });
         layout.addView(cbRemote);
 
-        // 8. Gizlenen ve Eksik Uygulamalar
-        addSectionHeader(layout, "8. GİZLENEN UYGULAMALAR");
+        // 9. Gizlenen ve Eksik Uygulamalar
+        addSectionHeader(layout, "9. GİZLENEN UYGULAMALAR");
         final List<AppInfo> currentHidden = getHiddenOrMissingApps();
         Button hiddenBtn = new Button(this);
         hiddenBtn.setText("👁️ Gizlenen Uygulamaları Yönet (" + currentHidden.size() + " adet)");
@@ -820,8 +882,30 @@ public class MainActivity extends Activity {
         });
         layout.addView(hiddenBtn);
 
-        // 9. Düzen Sıfırlama Butonu
-        addSectionHeader(layout, "9. DÜZEN İŞLEMLERİ");
+        // 10. Düzen İşlemleri
+        addSectionHeader(layout, "10. DÜZEN İŞLEMLERİ");
+
+        Button addSpacerBtn = new Button(this);
+        addSpacerBtn.setText("➕ Yeni Boşluk (Spacer) Ekle");
+        addSpacerBtn.setBackgroundColor(Color.parseColor("#37474F"));
+        addSpacerBtn.setTextColor(Color.WHITE);
+        LinearLayout.LayoutParams spLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        spLp.bottomMargin = dpToPx(6);
+        addSpacerBtn.setLayoutParams(spLp);
+        addSpacerBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Tile spacer = new Tile(TileType.SPACER, "Boşluk", 0, 0, 1, 1);
+                config.tiles.add(spacer);
+                WorkspaceStorage.saveWorkspace(MainActivity.this, config);
+                workspaceView.rebuildViews();
+                setupTileClickListeners();
+                Toast.makeText(MainActivity.this, "Yeni boşluk eklendi. Düzenleme modunda yerini ve boyutunu ayarlayabilirsiniz.", Toast.LENGTH_LONG).show();
+            }
+        });
+        layout.addView(addSpacerBtn);
+
         Button reflowBtn = new Button(this);
         reflowBtn.setText("🔄 Sıralamayı Varsayılana Sıfırla (Alfabeye Göre Sırala)");
         reflowBtn.setBackgroundColor(Color.parseColor("#37474F"));
@@ -840,29 +924,79 @@ public class MainActivity extends Activity {
         });
         layout.addView(reflowBtn);
 
+        // Özel TV Uyumlu 2 Katlı Eylem Butonları Bloğu (Asla kaymaz, taşmaz!)
+        LinearLayout actionBlock = new LinearLayout(this);
+        actionBlock.setOrientation(LinearLayout.VERTICAL);
+        actionBlock.setPadding(0, dpToPx(24), 0, dpToPx(8));
+
+        Button saveBtn = new Button(this);
+        saveBtn.setText("💾 Ayarları Kaydet");
+        saveBtn.setTextColor(Color.WHITE);
+        saveBtn.setTextSize(13);
+        saveBtn.setTypeface(Typeface.DEFAULT_BOLD);
+        saveBtn.setBackgroundColor(Color.parseColor("#2E7D32"));
+        LinearLayout.LayoutParams saveLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(44));
+        saveLp.bottomMargin = dpToPx(8);
+        saveBtn.setLayoutParams(saveLp);
+
+        LinearLayout subRow = new LinearLayout(this);
+        subRow.setOrientation(LinearLayout.HORIZONTAL);
+        subRow.setWeightSum(2f);
+
+        Button backupBtn = new Button(this);
+        backupBtn.setText("🔄 Yedek / Geri Yükle");
+        backupBtn.setTextColor(Color.WHITE);
+        backupBtn.setTextSize(11);
+        backupBtn.setBackgroundColor(Color.parseColor("#37474F"));
+        LinearLayout.LayoutParams bLp = new LinearLayout.LayoutParams(0, dpToPx(40), 1f);
+        bLp.rightMargin = dpToPx(4);
+        backupBtn.setLayoutParams(bLp);
+
+        Button resetBtn = new Button(this);
+        resetBtn.setText("⚠️ Fabrika Ayarları");
+        resetBtn.setTextColor(Color.WHITE);
+        resetBtn.setTextSize(11);
+        resetBtn.setBackgroundColor(Color.parseColor("#8B0000"));
+        LinearLayout.LayoutParams rLp = new LinearLayout.LayoutParams(0, dpToPx(40), 1f);
+        rLp.leftMargin = dpToPx(4);
+        resetBtn.setLayoutParams(rLp);
+
+        subRow.addView(backupBtn);
+        subRow.addView(resetBtn);
+
+        actionBlock.addView(saveBtn);
+        actionBlock.addView(subRow);
+        layout.addView(actionBlock);
+
         scroll.addView(layout);
         builder.setView(scroll);
 
-        builder.setPositiveButton("Kaydet", new DialogInterface.OnClickListener() {
+        final AlertDialog dialog = builder.create();
+
+        saveBtn.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(DialogInterface dialog, int which) {
+            public void onClick(View v) {
                 WorkspaceStorage.saveWorkspace(MainActivity.this, config);
                 workspaceView.rebuildViews();
                 setupTileClickListeners();
+                dialog.dismiss();
                 Toast.makeText(MainActivity.this, "Ayarlar kaydedildi.", Toast.LENGTH_SHORT).show();
             }
         });
 
-        builder.setNeutralButton("Yedekle / Geri Yükle", new DialogInterface.OnClickListener() {
+        backupBtn.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(DialogInterface dialog, int which) {
+            public void onClick(View v) {
+                dialog.dismiss();
                 openBackupRestoreDialog();
             }
         });
 
-        builder.setNegativeButton("Fabrika Ayarları", new DialogInterface.OnClickListener() {
+        resetBtn.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(DialogInterface dialog, int which) {
+            public void onClick(View v) {
+                dialog.dismiss();
                 config = WorkspaceStorage.generateDefaultWorkspace(MainActivity.this);
                 workspaceView.setConfig(config, iconCache, false);
                 setupTileClickListeners();
@@ -870,7 +1004,7 @@ public class MainActivity extends Activity {
             }
         });
 
-        builder.show();
+        dialog.show();
     }
 
     private void addSectionHeader(LinearLayout layout, String title) {
@@ -913,6 +1047,24 @@ public class MainActivity extends Activity {
                 config.themeMode = mode;
                 workspaceView.rebuildViews();
                 Toast.makeText(MainActivity.this, "Tema: " + mode, Toast.LENGTH_SHORT).show();
+            }
+        });
+        row.addView(btn);
+    }
+
+    private void addFontButton(LinearLayout row, String text, final String mode) {
+        Button btn = new Button(this);
+        btn.setText(text);
+        btn.setTextSize(10);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        params.setMargins(4, 4, 4, 4);
+        btn.setLayoutParams(params);
+        btn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                config.fontScaleMode = mode;
+                workspaceView.rebuildViews();
+                Toast.makeText(MainActivity.this, "Yazı Boyutu: " + mode, Toast.LENGTH_SHORT).show();
             }
         });
         row.addView(btn);

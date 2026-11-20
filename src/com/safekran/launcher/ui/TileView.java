@@ -7,8 +7,10 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.StateListDrawable;
 import android.text.TextUtils;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -83,7 +85,7 @@ public class TileView extends FrameLayout {
             container.addView(iconView, new LinearLayout.LayoutParams(iconSize, iconSize));
 
             labelView = new TextView(context);
-            labelView.setText(context.getString(R.string.tile_spacer));
+            labelView.setText(tile.colSpan + "x" + tile.rowSpan + " " + context.getString(R.string.tile_spacer));
             labelView.setTextColor(isLightMode() ? Color.parseColor("#555555") : Color.parseColor("#888888"));
             labelView.setTextSize(10);
             labelView.setGravity(Gravity.CENTER);
@@ -359,6 +361,60 @@ public class TileView extends FrameLayout {
                 animate().scaleX(1.0f).scaleY(1.0f).setDuration(120).start();
             }
         }).start();
+    }
+
+    @Override
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
+        if (w > 0 && h > 0) {
+            updateDynamicSizes(w, h);
+        }
+    }
+
+    private void updateDynamicSizes(int w, int h) {
+        float density = getResources().getDisplayMetrics().density;
+        float fontMultiplier = 1.0f;
+        if (config != null) {
+            if ("SMALL".equals(config.fontScaleMode)) fontMultiplier = 0.85f;
+            else if ("LARGE".equals(config.fontScaleMode)) fontMultiplier = 1.25f;
+        }
+
+        // 1. Dinamik Simge Boyutu (Kutu yüksekliğinin %40'ı - %45'i)
+        if (iconView != null && tile.type != TileType.CLOCK) {
+            int targetIconSize = Math.max((int) (26 * density), Math.min((int) (64 * density), (int) (h * 0.42f)));
+            ViewGroup.LayoutParams lp = iconView.getLayoutParams();
+            if (lp != null && (lp.width != targetIconSize || lp.height != targetIconSize)) {
+                lp.width = targetIconSize;
+                lp.height = targetIconSize;
+                iconView.setLayoutParams(lp);
+            }
+        }
+
+        // 2. Dinamik Yazı Boyutu (TV Orantılı Tipografi)
+        if (labelView != null) {
+            float baseSp = Math.max(9.5f, Math.min(18f, (h / density) * 0.13f));
+            float finalSp = baseSp * fontMultiplier;
+            labelView.setTextSize(TypedValue.COMPLEX_UNIT_SP, finalSp);
+
+            // Genişletilmiş kutularda (2 sütun ve üzeri) 2 satır metin kırılmasına izin ver
+            if (tile.colSpan >= 2) {
+                labelView.setSingleLine(false);
+                labelView.setMaxLines(2);
+            } else {
+                labelView.setSingleLine(true);
+                labelView.setMaxLines(1);
+            }
+        }
+
+        // 3. Saat Kutusu Dinamik Tipografi
+        if (clockView != null) {
+            float clockSp = Math.max(16f, Math.min(36f, (h / density) * 0.28f)) * fontMultiplier;
+            clockView.setTextSize(TypedValue.COMPLEX_UNIT_SP, clockSp);
+        }
+        if (dateClock != null) {
+            float dateSp = Math.max(9f, Math.min(14f, (h / density) * 0.11f)) * fontMultiplier;
+            dateClock.setTextSize(TypedValue.COMPLEX_UNIT_SP, dateSp);
+        }
     }
 
     private int dpToPx(Context context, int dp) {

@@ -1,12 +1,12 @@
 {
   "appName": "Saf Ekran",
   "packageName": "com.safekran.launcher",
-  "versionCode": 19,
-  "versionName": "2.10.1",
+  "versionCode": 20,
+  "versionName": "2.11.0",
   "developer": "Vezir",
   "schemaVersion": 1,
   "createdDate": "2026-11-19",
-  "apkName": "SafEkran_v2.10.1_vc19.apk",
+  "apkName": "SafEkran_v2.11.0_vc20.apk",
   "history": [
     {
       "versionCode": 1,
@@ -121,6 +121,12 @@
       "versionName": "2.10.1",
       "date": "2026-11-20",
       "description": "Feat: Sanal ve Fiziksel Kumanda [OK] Tuşuna Uzun Basma (Long-Press Kutu Menüsü) Desteği (v2.10.1)"
+    },
+    {
+      "versionCode": 20,
+      "versionName": "2.11.0",
+      "date": "2026-11-20",
+      "description": "Feat: TV Uyumlu Ayarlar Buton Bloğu, Bağımsız Boşluk (Spacer) Mimarisi & Dinamik TV Tipografisi (v2.11.0)"
     }
   ]
 }

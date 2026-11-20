@@ -26,6 +26,7 @@ public class WorkspaceConfig {
 
     public String tileStyle = "FOCUS_ONLY";   // "FOCUS_ONLY", "ALWAYS", "FLOATING"
     public String themeMode = "BLACK";        // "BLACK", "DARK_GRAY", "LIGHT"
+    public String fontScaleMode = "NORMAL";   // "SMALL", "NORMAL", "LARGE"
     public boolean is24Hour = true;
     public boolean showDate = true;
     public boolean virtualRemoteEnabled = false;
@@ -44,6 +45,7 @@ public class WorkspaceConfig {
         root.put("focusScale", (double) focusScale);
         root.put("tileStyle", tileStyle);
         root.put("themeMode", themeMode);
+        root.put("fontScaleMode", fontScaleMode);
         root.put("is24Hour", is24Hour);
         root.put("showDate", showDate);
         root.put("virtualRemoteEnabled", virtualRemoteEnabled);
@@ -75,6 +77,7 @@ public class WorkspaceConfig {
         config.focusScale = (float) root.optDouble("focusScale", 1.06);
         config.tileStyle = root.optString("tileStyle", "FOCUS_ONLY");
         config.themeMode = root.optString("themeMode", "BLACK");
+        config.fontScaleMode = root.optString("fontScaleMode", "NORMAL");
         config.is24Hour = root.optBoolean("is24Hour", true);
         config.showDate = root.optBoolean("showDate", true);
         config.virtualRemoteEnabled = root.optBoolean("virtualRemoteEnabled", false);
