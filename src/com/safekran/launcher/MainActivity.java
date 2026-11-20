@@ -2,15 +2,19 @@ package com.safekran.launcher;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ContentUris;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.SystemClock;
+import android.provider.AlarmClock;
+import android.provider.CalendarContract;
 import android.provider.Settings;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -183,7 +187,10 @@ public class MainActivity extends Activity {
                 executeColorAction(tile, tv);
                 break;
             case CLOCK:
-                openClockOrDateSettings();
+                openClockApp();
+                break;
+            case DATE:
+                openCalendarApp();
                 break;
             case SPACER:
                 // Hayalet Odak: Kumandadan [OK] veya dokunma ile doğrudan boyutlandırma/silme menüsünü aç
@@ -214,13 +221,25 @@ public class MainActivity extends Activity {
     private List<Tile> getMissingSpecialTiles() {
         List<Tile> missing = new java.util.ArrayList<Tile>();
         boolean hasRed = false, hasGreen = false, hasYellow = false, hasBlue = false;
+        boolean hasSettings = false, hasClock = false, hasDate = false;
         if (config != null && config.tiles != null) {
             for (Tile t : config.tiles) {
                 if (t.type == TileType.COLOR_RED) hasRed = true;
                 else if (t.type == TileType.COLOR_GREEN) hasGreen = true;
                 else if (t.type == TileType.COLOR_YELLOW) hasYellow = true;
                 else if (t.type == TileType.COLOR_BLUE) hasBlue = true;
+                else if (t.type == TileType.LAUNCHER_SETTINGS) hasSettings = true;
+                else if (t.type == TileType.CLOCK) hasClock = true;
+                else if (t.type == TileType.DATE) hasDate = true;
             }
+        }
+        if (!hasClock) {
+            Tile c = new Tile(TileType.CLOCK, "Saat", 0, 0, 2, 1);
+            missing.add(c);
+        }
+        if (!hasDate) {
+            Tile d = new Tile(TileType.DATE, "Tarih", 0, 0, 1, 1);
+            missing.add(d);
         }
         if (!hasRed) {
             Tile r = new Tile(TileType.COLOR_RED, "🔴 Kırmızı Tuş", 0, 0, 1, 1);
@@ -241,17 +260,6 @@ public class MainActivity extends Activity {
             Tile b = new Tile(TileType.COLOR_BLUE, "🔵 Ayarlar", 0, 0, 1, 1);
             b.actionType = "LAUNCHER_SETTINGS";
             missing.add(b);
-        }
-
-        // Bağımsız Başlatıcı Ayarları Kutusu
-        boolean hasSettings = false;
-        if (config != null && config.tiles != null) {
-            for (Tile t : config.tiles) {
-                if (t.type == TileType.LAUNCHER_SETTINGS) {
-                    hasSettings = true;
-                    break;
-                }
-            }
         }
         if (!hasSettings) {
             Tile s = new Tile(TileType.LAUNCHER_SETTINGS, "Başlatıcı Ayarları", 0, 0, 1, 1);
@@ -279,7 +287,13 @@ public class MainActivity extends Activity {
         }
 
         for (int i = 0; i < missingSpecials.size(); i++) {
-            items[idx++] = "[RENK KUTUSU] " + missingSpecials.get(i).label + " Kutusunu Ekle";
+            Tile st = missingSpecials.get(i);
+            String prefix = "[ÖZEL KUTU] ";
+            if (st.type == TileType.COLOR_RED || st.type == TileType.COLOR_GREEN ||
+                    st.type == TileType.COLOR_YELLOW || st.type == TileType.COLOR_BLUE) {
+                prefix = "[RENK KUTUSU] ";
+            }
+            items[idx++] = prefix + st.label + " Kutusunu Ekle";
         }
 
         for (int i = 0; i < hidden.size(); i++) {
@@ -697,10 +711,10 @@ public class MainActivity extends Activity {
 
 
 
-    private void openClockOrDateSettings() {
+    private void openClockApp() {
         try {
             // 1. Standart Alarm Clock Intent
-            Intent clockIntent = new Intent(android.provider.AlarmClock.ACTION_SHOW_ALARMS);
+            Intent clockIntent = new Intent(AlarmClock.ACTION_SHOW_ALARMS);
             clockIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             if (getPackageManager().resolveActivity(clockIntent, 0) != null) {
                 startActivity(clockIntent);
@@ -740,6 +754,64 @@ public class MainActivity extends Activity {
 
         // 4. Genel Sistem Ayarları
         openSystemSettings();
+    }
+
+    private void openCalendarApp() {
+        try {
+            // 1. Standart Takvim Intent
+            Intent calIntent = new Intent(Intent.ACTION_MAIN);
+            calIntent.addCategory(Intent.CATEGORY_APP_CALENDAR);
+            calIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (getPackageManager().resolveActivity(calIntent, 0) != null) {
+                startActivity(calIntent);
+                return;
+            }
+        } catch (Exception ignored) {}
+
+        try {
+            // 2. Calendar Contract URI (günün takvimini açar)
+            Uri.Builder builder = CalendarContract.CONTENT_URI.buildUpon();
+            builder.appendPath("time");
+            ContentUris.appendId(builder, System.currentTimeMillis());
+            Intent viewIntent = new Intent(Intent.ACTION_VIEW, builder.build());
+            viewIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (getPackageManager().resolveActivity(viewIntent, 0) != null) {
+                startActivity(viewIntent);
+                return;
+            }
+        } catch (Exception ignored) {}
+
+        // 3. Yaygın OEM Takvim Paketleri (Google, Samsung, Xiaomi, Huawei)
+        String[] calPackages = new String[]{
+                "com.google.android.calendar",
+                "com.samsung.android.calendar",
+                "com.android.calendar",
+                "com.miui.calendar",
+                "com.bbk.calendar",
+                "com.huawei.calendar"
+        };
+        for (String pkg : calPackages) {
+            try {
+                Intent pIntent = getPackageManager().getLaunchIntentForPackage(pkg);
+                if (pIntent != null) {
+                    pIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(pIntent);
+                    return;
+                }
+            } catch (Exception ignored) {}
+        }
+
+        // 4. Sistem Tarih Ayarları (fallback)
+        try {
+            Intent dateIntent = new Intent(Settings.ACTION_DATE_SETTINGS);
+            dateIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (getPackageManager().resolveActivity(dateIntent, 0) != null) {
+                startActivity(dateIntent);
+                return;
+            }
+        } catch (Exception ignored) {}
+
+        Toast.makeText(this, "Takvim uygulaması bulunamadı.", Toast.LENGTH_SHORT).show();
     }
 
     private void openSystemSettings() {
@@ -846,82 +918,8 @@ public class MainActivity extends Activity {
         updateButtonGroupHighlight(themeRow, config.themeMode);
         layout.addView(themeRow);
 
-        // 6. Yazı Boyutu Seçimi (Hazır Butonlar + Kayan Hassas Çubuk)
-        addSectionHeader(layout, "6. YAZI BOYUTU (FONT BOYUTU)");
-
-        final int minFont = 70;
-        final int maxFont = 160;
-        int currentFontPercent = Math.round(config.fontScale * 100);
-        if (currentFontPercent < minFont || currentFontPercent > maxFont) {
-            currentFontPercent = 100;
-            config.fontScale = 1.0f;
-        }
-
-        final TextView fontLabel = new TextView(this);
-        fontLabel.setText("Hassas Yazı Boyutu Oranı: %" + currentFontPercent);
-        fontLabel.setTextColor(Color.parseColor("#CCCCCC"));
-        fontLabel.setTextSize(12);
-        fontLabel.setPadding(0, 10, 0, 2);
-
-        final LinearLayout fontRow = new LinearLayout(this);
-        fontRow.setOrientation(LinearLayout.HORIZONTAL);
-
-        final SeekBar fontSeekBar = new SeekBar(this);
-        fontSeekBar.setMax(maxFont - minFont);
-        fontSeekBar.setProgress(currentFontPercent - minFont);
-
-        final Runnable updateFontButtonsHighlight = new Runnable() {
-            @Override
-            public void run() {
-                for (int i = 0; i < fontRow.getChildCount(); i++) {
-                    View c = fontRow.getChildAt(i);
-                    if (c instanceof Button) {
-                        Button b = (Button) c;
-                        String tag = (String) b.getTag();
-                        boolean selected = false;
-                        int p = Math.round(config.fontScale * 100);
-                        if ("SMALL".equals(tag) && p == 80) selected = true;
-                        else if ("NORMAL".equals(tag) && p == 100) selected = true;
-                        else if ("LARGE".equals(tag) && p == 140) selected = true;
-
-                        b.setBackgroundColor(selected ? Color.parseColor("#2E7D32") : Color.parseColor("#37474F"));
-                        b.setTextColor(selected ? Color.WHITE : Color.parseColor("#CFD8DC"));
-                        b.setTypeface(selected ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
-                    }
-                }
-            }
-        };
-
-        addFontPresetButton(fontRow, "Küçük (%80)", "SMALL", 0.80f, fontSeekBar, fontLabel, minFont, updateFontButtonsHighlight);
-        addFontPresetButton(fontRow, "Normal (%100)", "NORMAL", 1.00f, fontSeekBar, fontLabel, minFont, updateFontButtonsHighlight);
-        addFontPresetButton(fontRow, "Büyük (%140)", "LARGE", 1.40f, fontSeekBar, fontLabel, minFont, updateFontButtonsHighlight);
-
-        updateFontButtonsHighlight.run();
-        layout.addView(fontRow);
-
-        fontSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar sb, int progress, boolean fromUser) {
-                int actualVal = minFont + progress;
-                fontLabel.setText("Hassas Yazı Boyutu Oranı: %" + actualVal);
-                config.fontScale = actualVal / 100f;
-                if (actualVal == 80) config.fontScaleMode = "SMALL";
-                else if (actualVal == 100) config.fontScaleMode = "NORMAL";
-                else if (actualVal == 140) config.fontScaleMode = "LARGE";
-                else config.fontScaleMode = "CUSTOM";
-
-                updateFontButtonsHighlight.run();
-                workspaceView.updateAllTileFontSizes();
-            }
-            @Override public void onStartTrackingTouch(SeekBar sb) {}
-            @Override public void onStopTrackingTouch(SeekBar sb) {}
-        });
-
-        layout.addView(fontLabel);
-        layout.addView(fontSeekBar);
-
-        // 7. Saat & Tarih Ayarları
-        addSectionHeader(layout, "7. SAAT & TARİH");
+        // 6. Saat Ayarları
+        addSectionHeader(layout, "6. SAAT AYARLARI");
         CheckBox cb24 = new CheckBox(this);
         cb24.setText("24 Saat Formatı (Örn: 22:30)");
         cb24.setTextColor(Color.WHITE);
@@ -933,19 +931,8 @@ public class MainActivity extends Activity {
         });
         layout.addView(cb24);
 
-        CheckBox cbDate = new CheckBox(this);
-        cbDate.setText("Tarih Gösterilsin");
-        cbDate.setTextColor(Color.WHITE);
-        cbDate.setChecked(config.showDate);
-        cbDate.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                config.showDate = isChecked;
-            }
-        });
-        layout.addView(cbDate);
-
-        // 8. Geliştirici ve Kumanda Testi
-        addSectionHeader(layout, "8. TELEFONDA KUMANDA TESTİ");
+        // 7. Geliştirici ve Kumanda Testi
+        addSectionHeader(layout, "7. TELEFONDA KUMANDA TESTİ");
         CheckBox cbRemote = new CheckBox(this);
         cbRemote.setText("🕹️ Sanal TV Kumandası (Ekranda Test Pedi)");
         cbRemote.setTextColor(Color.parseColor("#80D8FF"));
@@ -958,8 +945,8 @@ public class MainActivity extends Activity {
         });
         layout.addView(cbRemote);
 
-        // 9. Gizlenen ve Eksik Uygulamalar
-        addSectionHeader(layout, "9. GİZLENEN UYGULAMALAR");
+        // 8. Gizlenen ve Eksik Uygulamalar
+        addSectionHeader(layout, "8. GİZLENEN UYGULAMALAR");
         final List<AppInfo> currentHidden = getHiddenOrMissingApps();
         Button hiddenBtn = new Button(this);
         hiddenBtn.setText("👁️ Gizlenen Uygulamaları Yönet (" + currentHidden.size() + " adet)");
@@ -973,8 +960,8 @@ public class MainActivity extends Activity {
         });
         layout.addView(hiddenBtn);
 
-        // 10. Düzen İşlemleri
-        addSectionHeader(layout, "10. DÜZEN İŞLEMLERİ");
+        // 9. Düzen İşlemleri
+        addSectionHeader(layout, "9. DÜZEN İŞLEMLERİ");
 
         Button addSpacerBtn = new Button(this);
         addSpacerBtn.setText("➕ Yeni Boşluk (Spacer) Ekle");
@@ -1164,31 +1151,6 @@ public class MainActivity extends Activity {
                 workspaceView.rebuildViews();
                 setupTileClickListeners();
                 Toast.makeText(MainActivity.this, "Tema: " + mode, Toast.LENGTH_SHORT).show();
-            }
-        });
-        row.addView(btn);
-    }
-
-    private void addFontPresetButton(final LinearLayout row, String text, final String mode, final float scale,
-                                     final SeekBar seekBar, final TextView label, final int minFont, final Runnable updateHighlight) {
-        Button btn = new Button(this);
-        btn.setText(text);
-        btn.setTag(mode);
-        btn.setTextSize(10);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-        params.setMargins(4, 4, 4, 4);
-        btn.setLayoutParams(params);
-        btn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                config.fontScale = scale;
-                config.fontScaleMode = mode;
-                int percent = Math.round(scale * 100);
-                seekBar.setProgress(percent - minFont);
-                label.setText("Hassas Yazı Boyutu Oranı: %" + percent);
-                updateHighlight.run();
-                workspaceView.updateAllTileFontSizes();
-                Toast.makeText(MainActivity.this, "Yazı Boyutu: " + mode + " (%" + percent + ")", Toast.LENGTH_SHORT).show();
             }
         });
         row.addView(btn);

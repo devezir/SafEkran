@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Saf Ekran</string>
-    <string name="tile_clock">Saat &amp; Tarih</string>
+    <string name="tile_clock">Saat</string>
+    <string name="tile_date">Tarih</string>
     <string name="tile_edit_mode">Düzenle</string>
     <string name="tile_launcher_settings">Başlatıcı Ayarları</string>
     <string name="tile_system_settings">Sistem Ayarları</string>

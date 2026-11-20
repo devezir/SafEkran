@@ -58,6 +58,28 @@ public class WorkspaceStorage {
                     migrated = true;
                 }
             }
+
+            // Sürüm 5 / Bağımsız DATE kutusu göçü
+            boolean hasDate = false;
+            int clockIndex = -1;
+            for (int i = 0; i < config.tiles.size(); i++) {
+                Tile t = config.tiles.get(i);
+                if (t.type == TileType.CLOCK) {
+                    clockIndex = i;
+                    if (t.label != null && t.label.contains("Tarih")) {
+                        t.label = "Saat";
+                        migrated = true;
+                    }
+                } else if (t.type == TileType.DATE) {
+                    hasDate = true;
+                }
+            }
+            if (!hasDate && clockIndex >= 0) {
+                Tile dateTile = new Tile(TileType.DATE, "Tarih", 0, 0, 1, 1);
+                config.tiles.add(clockIndex + 1, dateTile);
+                migrated = true;
+            }
+
             if (migrated) {
                 saveWorkspace(context, config);
             }
@@ -114,9 +136,15 @@ public class WorkspaceStorage {
 
         // 1. Saat Kutusu (2 Sütun genişlik, eğer 2'den az sütun varsa 1)
         int clockSpan = Math.min(2, maxCols);
-        Tile clockTile = new Tile(TileType.CLOCK, "Saat & Tarih", currentCol, currentRow, clockSpan, 1);
+        Tile clockTile = new Tile(TileType.CLOCK, "Saat", currentCol, currentRow, clockSpan, 1);
         config.tiles.add(clockTile);
         currentCol += clockSpan;
+
+        // 2. Tarih Kutusu (Bağımsız Takvim Kartı)
+        if (currentCol >= maxCols) { currentCol = 0; currentRow++; }
+        Tile dateTile = new Tile(TileType.DATE, "Tarih", currentCol, currentRow, 1, 1);
+        config.tiles.add(dateTile);
+        currentCol += 1;
 
         // 2. Kumanda 4 Renk Butonları (Kırmızı, Yeşil, Sarı, Mavi)
         if (currentCol >= maxCols) { currentCol = 0; currentRow++; }

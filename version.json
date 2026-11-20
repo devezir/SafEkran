@@ -1,12 +1,12 @@
 {
   "appName": "Saf Ekran",
   "packageName": "com.safekran.launcher",
-  "versionCode": 26,
-  "versionName": "2.17.0",
+  "versionCode": 27,
+  "versionName": "2.18.0",
   "developer": "Vezir",
   "schemaVersion": 1,
   "createdDate": "2026-11-19",
-  "apkName": "SafEkran_v2.17.0_vc26.apk",
+  "apkName": "SafEkran_v2.18.0_vc27.apk",
   "history": [
     {
       "versionCode": 1,
@@ -163,6 +163,12 @@
       "versionName": "2.17.0",
       "date": "2026-11-20",
       "description": "Fix: Saat Karti Kesilme Hatasi (21:0) Giderildi ve Buyuk Dashboard Karti Tipografisi Ferahlatildi"
+    },
+    {
+      "versionCode": 27,
+      "versionName": "2.18.0",
+      "date": "2026-11-20",
+      "description": "Feat: Bagimsiz Tarih ve Saat Kutulari, Otomatik Kutu-Orantili Dinamik Tipografi"
     }
   ]
 }
