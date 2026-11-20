@@ -647,7 +647,7 @@ public class WorkspaceView extends ViewGroup {
             if (child instanceof TileView && child.getVisibility() == View.VISIBLE) {
                 TileView tv = (TileView) child;
                 Tile t = tv.getTile();
-                if (t != null && (isEditMode || t.type != TileType.SPACER)) {
+                if (t != null) {
                     validTiles.add(tv);
                 }
             }

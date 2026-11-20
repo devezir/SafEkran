@@ -47,6 +47,21 @@ public class WorkspaceStorage {
                 saveWorkspace(context, config);
             }
 
+            // Düzenleme Modu Kaldırıldı: Eski EDIT_MODE tuşlarını güvenle boş/özelleştirilebilir renge dönüştür
+            boolean migrated = false;
+            for (Tile t : config.tiles) {
+                if ("EDIT_MODE".equals(t.actionType)) {
+                    t.actionType = "NONE";
+                    if (t.label != null && t.label.contains("Düzenle")) {
+                        t.label = "🔴 Kırmızı Tuş";
+                    }
+                    migrated = true;
+                }
+            }
+            if (migrated) {
+                saveWorkspace(context, config);
+            }
+
             return config;
         } catch (Exception e) {
             e.printStackTrace();
@@ -105,8 +120,8 @@ public class WorkspaceStorage {
 
         // 2. Kumanda 4 Renk Butonları (Kırmızı, Yeşil, Sarı, Mavi)
         if (currentCol >= maxCols) { currentCol = 0; currentRow++; }
-        Tile redTile = new Tile(TileType.COLOR_RED, "🔴 Düzenle", currentCol, currentRow, 1, 1);
-        redTile.actionType = "EDIT_MODE";
+        Tile redTile = new Tile(TileType.COLOR_RED, "🔴 Kırmızı Tuş", currentCol, currentRow, 1, 1);
+        redTile.actionType = "NONE";
         config.tiles.add(redTile);
         currentCol += 1;
 

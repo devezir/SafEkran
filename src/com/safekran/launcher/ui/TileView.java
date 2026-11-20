@@ -31,6 +31,7 @@ public class TileView extends FrameLayout {
     private TextView labelView;
     private TextClock clockView;
     private TextClock dateClock;
+    private LinearLayout spacerContainer;
 
     public TileView(Context context, Tile tile, WorkspaceConfig config, boolean isEditMode, Drawable appIcon) {
         super(context);
@@ -60,38 +61,49 @@ public class TileView extends FrameLayout {
     }
 
     private void initSpacerTile(Context context) {
-        if (!isEditMode) {
-            setVisibility(View.INVISIBLE);
-            setFocusable(false);
-            setFocusableInTouchMode(false);
-            setClickable(false);
-        } else {
-            setVisibility(View.VISIBLE);
-            setFocusable(true);
-            setFocusableInTouchMode(true);
-            setClickable(true);
+        // Hayalet Odak (Ghost Focus) Mimarisi:
+        // Normalde görünmez / saf siyah zemindedir. Kumanda veya dokunmatik odaklandığında neon/kesik çerçeve ile belirir.
+        setVisibility(View.VISIBLE);
+        setFocusable(true);
+        setFocusableInTouchMode(true);
+        setClickable(true);
+        setLongClickable(true);
+        setBackgroundColor(Color.TRANSPARENT);
+
+        spacerContainer = new LinearLayout(context);
+        spacerContainer.setOrientation(LinearLayout.VERTICAL);
+        spacerContainer.setGravity(Gravity.CENTER);
+        spacerContainer.setAlpha(0.0f); // Varsayılan olarak %100 hayalet
+
+        iconView = new ImageView(context);
+        iconView.setImageResource(R.drawable.ic_spacer);
+        if (isLightMode()) {
+            iconView.setColorFilter(Color.parseColor("#555555"));
+        }
+        int iconSize = dpToPx(context, 26);
+        spacerContainer.addView(iconView, new LinearLayout.LayoutParams(iconSize, iconSize));
+
+        labelView = new TextView(context);
+        labelView.setText(tile.colSpan + "x" + tile.rowSpan + " " + context.getString(R.string.tile_spacer));
+        labelView.setTextColor(isLightMode() ? Color.parseColor("#333333") : Color.parseColor("#CCCCCC"));
+        labelView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10.5f);
+        labelView.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        labelParams.topMargin = dpToPx(context, 2);
+        spacerContainer.addView(labelView, labelParams);
+
+        addView(spacerContainer, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT, Gravity.CENTER));
+    }
+
+    public void updateSpacerGhostVisuals(boolean focused) {
+        if (tile.type != TileType.SPACER || spacerContainer == null) return;
+        if (focused) {
+            spacerContainer.setAlpha(1.0f);
             setBackgroundResource(R.drawable.bg_spacer_edit);
-
-            LinearLayout container = new LinearLayout(context);
-            container.setOrientation(LinearLayout.VERTICAL);
-            container.setGravity(Gravity.CENTER);
-
-            iconView = new ImageView(context);
-            iconView.setImageResource(R.drawable.ic_spacer);
-            if (isLightMode()) {
-                iconView.setColorFilter(Color.parseColor("#555555"));
-            }
-            int iconSize = dpToPx(context, 26);
-            container.addView(iconView, new LinearLayout.LayoutParams(iconSize, iconSize));
-
-            labelView = new TextView(context);
-            labelView.setText(tile.colSpan + "x" + tile.rowSpan + " " + context.getString(R.string.tile_spacer));
-            labelView.setTextColor(isLightMode() ? Color.parseColor("#555555") : Color.parseColor("#888888"));
-            labelView.setTextSize(10);
-            labelView.setGravity(Gravity.CENTER);
-            container.addView(labelView);
-
-            addView(container, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT, Gravity.CENTER));
+        } else {
+            spacerContainer.setAlpha(0.0f);
+            setBackgroundColor(Color.TRANSPARENT);
         }
     }
 
@@ -198,11 +210,15 @@ public class TileView extends FrameLayout {
         labelView = new TextView(context);
         labelView.setText(tile.label);
         labelView.setTextColor(getTextColor());
-        labelView.setTextSize(11);
-        labelView.setSingleLine(true);
+        labelView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+        labelView.setMaxLines(tile.colSpan >= 2 ? 2 : 1);
         labelView.setEllipsize(TextUtils.TruncateAt.END);
         labelView.setGravity(Gravity.CENTER);
-        container.addView(labelView);
+        labelView.setIncludeFontPadding(true);
+        LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        labelParams.topMargin = dpToPx(context, 2);
+        container.addView(labelView, labelParams);
 
         addView(container, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT, Gravity.CENTER));
     }
@@ -313,6 +329,7 @@ public class TileView extends FrameLayout {
 
     public void setTvFocused(boolean focused) {
         setSelected(focused);
+        updateSpacerGhostVisuals(focused);
         float targetScale = focused ? ((config != null) ? config.focusScale : 1.08f) : 1.0f;
         animate().scaleX(targetScale).scaleY(targetScale).setDuration(120).start();
         invalidate();
@@ -321,11 +338,20 @@ public class TileView extends FrameLayout {
     @Override
     public void setSelected(boolean selected) {
         super.setSelected(selected);
+        updateSpacerGhostVisuals(selected);
         float targetScale = (config != null) ? config.focusScale : 1.08f;
         if (selected) {
             animate().scaleX(targetScale).scaleY(targetScale).setDuration(120).start();
         } else if (!hasFocus()) {
             animate().scaleX(1.0f).scaleY(1.0f).setDuration(120).start();
+        }
+    }
+
+    @Override
+    public void setPressed(boolean pressed) {
+        super.setPressed(pressed);
+        if (tile.type == TileType.SPACER) {
+            updateSpacerGhostVisuals(pressed || hasFocus() || isSelected());
         }
     }
 
@@ -340,6 +366,7 @@ public class TileView extends FrameLayout {
         setOnFocusChangeListener(new OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean hasFocus) {
+                updateSpacerGhostVisuals(hasFocus || isSelected());
                 float targetScale = (config != null) ? config.focusScale : 1.08f;
                 if (hasFocus) {
                     animate().scaleX(targetScale).scaleY(targetScale).setDuration(120).start();
@@ -379,9 +406,20 @@ public class TileView extends FrameLayout {
             else if ("LARGE".equals(config.fontScaleMode)) fontMultiplier = 1.25f;
         }
 
-        // 1. Dinamik Simge Boyutu (Kutu yüksekliğinin %40'ı - %45'i)
+        // 1. Dinamik Simge Boyutu (Kutu boyutlarına göre doygun ölçekleme)
         if (iconView != null && tile.type != TileType.CLOCK) {
-            int targetIconSize = Math.max((int) (26 * density), Math.min((int) (64 * density), (int) (h * 0.42f)));
+            int maxCap;
+            if (tile.colSpan >= 2 && tile.rowSpan >= 2) {
+                maxCap = (int) (104 * density);
+            } else if (tile.colSpan >= 2 || tile.rowSpan >= 2) {
+                maxCap = (int) (76 * density);
+            } else {
+                maxCap = (int) (52 * density);
+            }
+
+            int targetIconSize = Math.max((int) (26 * density),
+                    Math.min(maxCap, (int) (Math.min(w * 0.45f, h * 0.44f))));
+
             ViewGroup.LayoutParams lp = iconView.getLayoutParams();
             if (lp != null && (lp.width != targetIconSize || lp.height != targetIconSize)) {
                 lp.width = targetIconSize;
@@ -392,16 +430,14 @@ public class TileView extends FrameLayout {
 
         // 2. Dinamik Yazı Boyutu (TV Orantılı Tipografi)
         if (labelView != null) {
-            float baseSp = Math.max(9.5f, Math.min(18f, (h / density) * 0.13f));
+            float baseSp = Math.max(9.5f, Math.min(16f, (h / density) * 0.12f));
             float finalSp = baseSp * fontMultiplier;
             labelView.setTextSize(TypedValue.COMPLEX_UNIT_SP, finalSp);
 
             // Genişletilmiş kutularda (2 sütun ve üzeri) 2 satır metin kırılmasına izin ver
             if (tile.colSpan >= 2) {
-                labelView.setSingleLine(false);
                 labelView.setMaxLines(2);
             } else {
-                labelView.setSingleLine(true);
                 labelView.setMaxLines(1);
             }
         }

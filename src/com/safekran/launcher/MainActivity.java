@@ -153,21 +153,16 @@ public class MainActivity extends Activity {
             updateRemoteTitleWithSelected();
         }
 
-        if (workspaceView.isEditMode()) {
-            if (selectedMovingTile == null) {
-                selectedMovingTile = tile;
-                Toast.makeText(this, tile.label + " seçildi. Yön tuşlarıyla veya diğer kutuya dokunarak yer değiştirin.", Toast.LENGTH_SHORT).show();
-            } else {
-                // Dokunmatik ile iki kutunun sırasını yer değiştir
-                if (selectedMovingTile != tile) {
-                    swapTilePositions(selectedMovingTile, tile);
-                    Toast.makeText(this, selectedMovingTile.label + " ile " + tile.label + " yer değiştirdi.", Toast.LENGTH_SHORT).show();
-                }
-                selectedMovingTile = null;
-                WorkspaceStorage.saveWorkspace(this, config);
-                workspaceView.rebuildViews();
-                setupTileClickListeners();
+        // Kutu taşıma aktifse hedef kutuyla anında yer değiştir
+        if (selectedMovingTile != null) {
+            if (selectedMovingTile != tile) {
+                swapTilePositions(selectedMovingTile, tile);
+                Toast.makeText(this, selectedMovingTile.label + " ile " + tile.label + " yer değiştirdi.", Toast.LENGTH_SHORT).show();
             }
+            selectedMovingTile = null;
+            WorkspaceStorage.saveWorkspace(this, config);
+            workspaceView.rebuildViews();
+            setupTileClickListeners();
             return;
         }
 
@@ -176,11 +171,8 @@ public class MainActivity extends Activity {
                 launchApp(tile.packageName);
                 break;
             case EDIT_MODE:
-                if (workspaceView.isEditMode()) {
-                    showEditModeActionDialog();
-                } else {
-                    toggleEditMode();
-                }
+                // Eski yapılandırmadan kalmışsa renk atama menüsünü aç
+                openColorAssignmentDialog(tile);
                 break;
             case LAUNCHER_SETTINGS:
                 openLauncherSettingsDialog();
@@ -195,12 +187,11 @@ public class MainActivity extends Activity {
                 executeColorAction(tile, tv);
                 break;
             case CLOCK:
-                Toast.makeText(this, "Saat kutusu. Düzenle modunda taşınabilir.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Saat kutusu. Kutuya uzun basarak konumunu taşıyabilirsiniz.", Toast.LENGTH_SHORT).show();
                 break;
             case SPACER:
-                if (workspaceView.isEditMode()) {
-                    onTileLongClicked(tile);
-                }
+                // Hayalet Odak: Kumandadan [OK] veya dokunma ile doğrudan boyutlandırma/silme menüsünü aç
+                onTileLongClicked(tile);
                 break;
         }
     }
@@ -236,8 +227,8 @@ public class MainActivity extends Activity {
             }
         }
         if (!hasRed) {
-            Tile r = new Tile(TileType.COLOR_RED, "🔴 Düzenle", 0, 0, 1, 1);
-            r.actionType = "EDIT_MODE";
+            Tile r = new Tile(TileType.COLOR_RED, "🔴 Kırmızı Tuş", 0, 0, 1, 1);
+            r.actionType = "NONE";
             missing.add(r);
         }
         if (!hasGreen) {
@@ -377,7 +368,7 @@ public class MainActivity extends Activity {
                 Toast.makeText(this, tile.label + " için henüz bir uygulama atanmamış. Kutuya uzun basarak atayabilirsiniz.", Toast.LENGTH_SHORT).show();
             }
         } else if ("EDIT_MODE".equals(action)) {
-            toggleEditMode();
+            openColorAssignmentDialog(tile);
         } else if ("HIDDEN_APPS".equals(action)) {
             openHiddenAppsDialog(null);
         } else if ("THEME_TOGGLE".equals(action)) {
@@ -444,7 +435,6 @@ public class MainActivity extends Activity {
 
         String[] actions = new String[]{
                 "📱 Bir Uygulama Ata (YouTube, Netflix vb.)...",
-                "✏️ Düzenleme Modu Aç/Kapat",
                 "👁️ Gizlenen Uygulamalar Menüsü",
                 "🌗 Hızlı Tema Değiştir (Siyah ↔ Aydınlık)",
                 "⚙️ Başlatıcı Ayarları",
@@ -483,31 +473,26 @@ public class MainActivity extends Activity {
                     });
                     appDialog.show();
                 } else if (which == 1) {
-                    tile.actionType = "EDIT_MODE";
-                    tile.packageName = "";
-                    tile.label = prefix + "Düzenle";
-                    finishColorAssignment(tile);
-                } else if (which == 2) {
                     tile.actionType = "HIDDEN_APPS";
                     tile.packageName = "";
                     tile.label = prefix + "Gizlenenler";
                     finishColorAssignment(tile);
-                } else if (which == 3) {
+                } else if (which == 2) {
                     tile.actionType = "THEME_TOGGLE";
                     tile.packageName = "";
                     tile.label = prefix + "Tema";
                     finishColorAssignment(tile);
-                } else if (which == 4) {
+                } else if (which == 3) {
                     tile.actionType = "LAUNCHER_SETTINGS";
                     tile.packageName = "";
                     tile.label = prefix + "Ayarlar";
                     finishColorAssignment(tile);
-                } else if (which == 5) {
+                } else if (which == 4) {
                     tile.actionType = "SYSTEM_SETTINGS";
                     tile.packageName = "";
                     tile.label = prefix + "Sistem";
                     finishColorAssignment(tile);
-                } else if (which == 6) {
+                } else if (which == 5) {
                     tile.actionType = "NONE";
                     tile.packageName = "";
                     String cName = (tile.type == TileType.COLOR_RED) ? "Kırmızı" :
@@ -535,6 +520,7 @@ public class MainActivity extends Activity {
             spacerOptions.add("⬅️ Daralt (-1 Sütun)");
             spacerOptions.add("⬆️ Yükselt (+1 Satır)");
             spacerOptions.add("⬇️ Alçalt (-1 Satır)");
+            spacerOptions.add("🔁 Konumunu Değiştir (Taşı)");
             spacerOptions.add("🗑️ Boşluğu Kaldır (Sil)");
 
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -556,6 +542,9 @@ public class MainActivity extends Activity {
                         tile.rowSpan = Math.max(1, tile.rowSpan - 1);
                         saveAndRefresh("Boşluk alçaltıldı (" + tile.rowSpan + " satır).");
                     } else if (which == 4) {
+                        selectedMovingTile = tile;
+                        Toast.makeText(MainActivity.this, "Boşluk seçildi. Kumanda yön tuşlarıyla veya hedef kutuya dokunarak yerini değiştirin. Bırakmak için [OK] tuşuna basın.", Toast.LENGTH_LONG).show();
+                    } else if (which == 5) {
                         config.tiles.remove(tile);
                         saveAndRefresh("Boşluk kaldırıldı.");
                     }
@@ -571,21 +560,20 @@ public class MainActivity extends Activity {
                 tile.type == TileType.COLOR_BLUE);
 
         final List<AppInfo> hiddenApps = getHiddenOrMissingApps();
-        String addAppOption = hiddenApps.isEmpty() ? "Sağına Uygulama Ekle (Gizlenen yok)" : "Sağına Uygulama Ekle (" + hiddenApps.size() + " gizlenen)";
+        String addAppOption = hiddenApps.isEmpty() ? "➕ Sağına Uygulama Ekle (Gizlenen yok)" : "➕ Sağına Uygulama Ekle (" + hiddenApps.size() + " gizlenen)";
 
         List<String> optionsList = new java.util.ArrayList<String>();
         if (isColorTile) {
             optionsList.add("🎯 İşlem / Uygulama Ata");
         }
-        optionsList.add("Genişlet (+1 Sütun)");
-        optionsList.add("Daralt (-1 Sütun)");
-        optionsList.add("Yükselt (+1 Satır)");
-        optionsList.add("Alçalt (-1 Satır)");
-        if (workspaceView.isEditMode()) {
-            optionsList.add("➕ Araya Boşluk Ekle");
-        }
+        optionsList.add("🔁 Konumunu Değiştir (Taşı)");
+        optionsList.add("➡️ Genişlet (+1 Sütun)");
+        optionsList.add("⬅️ Daralt (-1 Sütun)");
+        optionsList.add("⬆️ Yükselt (+1 Satır)");
+        optionsList.add("⬇️ Alçalt (-1 Satır)");
+        optionsList.add("🔲 Sağına Boşluk Ekle");
         optionsList.add(addAppOption);
-        optionsList.add("Kutuyu Kaldır (Gizle)");
+        optionsList.add("🗑️ Kutuyu Kaldır (Gizle)");
         optionsList.add("⚙️ Başlatıcı Ayarları");
 
         String[] options = optionsList.toArray(new String[0]);
@@ -605,46 +593,40 @@ public class MainActivity extends Activity {
                 int effectiveWhich = which - shift;
                 int maxC = workspaceView.getCalculatedCols();
                 if (effectiveWhich == 0) {
+                    selectedMovingTile = tile;
+                    Toast.makeText(MainActivity.this, tile.label + " seçildi. Kumanda yön tuşlarıyla veya hedef kutuya dokunarak yerini değiştirin. Bırakmak için [OK] tuşuna basın.", Toast.LENGTH_LONG).show();
+                } else if (effectiveWhich == 1) {
                     tile.colSpan = Math.min(maxC, tile.colSpan + 1);
                     saveAndRefresh(tile.label + " genişletildi (" + tile.colSpan + " sütun).");
-                } else if (effectiveWhich == 1) {
+                } else if (effectiveWhich == 2) {
                     tile.colSpan = Math.max(1, tile.colSpan - 1);
                     saveAndRefresh(tile.label + " daraltıldı (" + tile.colSpan + " sütun).");
-                } else if (effectiveWhich == 2) {
+                } else if (effectiveWhich == 3) {
                     tile.rowSpan = Math.min(4, tile.rowSpan + 1);
                     saveAndRefresh(tile.label + " yükseltildi (" + tile.rowSpan + " satır).");
-                } else if (effectiveWhich == 3) {
+                } else if (effectiveWhich == 4) {
                     tile.rowSpan = Math.max(1, tile.rowSpan - 1);
                     saveAndRefresh(tile.label + " alçaltıldı (" + tile.rowSpan + " satır).");
-                } else {
-                    int nextIdx = 4;
-                    if (workspaceView.isEditMode()) {
-                        if (effectiveWhich == nextIdx) {
-                            int idx = config.tiles.indexOf(tile);
-                            Tile spacer = new Tile(TileType.SPACER, "Boşluk", 0, 0, 1, 1);
-                            if (idx >= 0 && idx < config.tiles.size()) {
-                                config.tiles.add(idx + 1, spacer);
-                            } else {
-                                config.tiles.add(spacer);
-                            }
-                            saveAndRefresh("Boşluk eklendi.");
-                            return;
-                        }
-                        nextIdx++;
+                } else if (effectiveWhich == 5) {
+                    int idx = config.tiles.indexOf(tile);
+                    Tile spacer = new Tile(TileType.SPACER, "Boşluk", 0, 0, 1, 1);
+                    if (idx >= 0 && idx < config.tiles.size()) {
+                        config.tiles.add(idx + 1, spacer);
+                    } else {
+                        config.tiles.add(spacer);
                     }
-
-                    if (effectiveWhich == nextIdx) {
-                        if (hiddenApps.isEmpty()) {
-                            Toast.makeText(MainActivity.this, "Gizlenmiş uygulama yok. Tüm uygulamalarınız ekranda.", Toast.LENGTH_SHORT).show();
-                        } else {
-                            openHiddenAppsDialog(tile);
-                        }
-                    } else if (effectiveWhich == nextIdx + 1) {
-                        config.tiles.remove(tile);
-                        saveAndRefresh(tile.label + " gizlendi. Ayarlar veya kutu menüsünden geri getirebilirsiniz.");
-                    } else if (effectiveWhich == nextIdx + 2) {
-                        openLauncherSettingsDialog();
+                    saveAndRefresh("Boşluk eklendi. Kumandayla üzerine gelerek boyutlandırabilirsiniz.");
+                } else if (effectiveWhich == 6) {
+                    if (hiddenApps.isEmpty()) {
+                        Toast.makeText(MainActivity.this, "Gizlenmiş uygulama yok. Tüm uygulamalarınız ekranda.", Toast.LENGTH_SHORT).show();
+                    } else {
+                        openHiddenAppsDialog(tile);
                     }
+                } else if (effectiveWhich == 7) {
+                    config.tiles.remove(tile);
+                    saveAndRefresh(tile.label + " gizlendi. Ayarlar veya kutu menüsünden geri getirebilirsiniz.");
+                } else if (effectiveWhich == 8) {
+                    openLauncherSettingsDialog();
                 }
             }
         });
@@ -691,36 +673,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void toggleEditMode() {
-        boolean newMode = !workspaceView.isEditMode();
-        workspaceView.setEditMode(newMode);
-        selectedMovingTile = null;
-        setupTileClickListeners();
-        String msg = newMode ? "Düzenleme Modu Açık. Çıkmak için [Geri] tuşuna basın." : "Düzenleme Modu Kapatıldı.";
-        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
-    }
 
-    private void showEditModeActionDialog() {
-        String[] options = new String[]{"➕ Yeni Boşluk (Spacer) Ekle", "✖️ Düzenleme Modundan Çık"};
-        AlertDialog.Builder b = new AlertDialog.Builder(this);
-        b.setTitle("Düzenleme Modu İşlemleri");
-        b.setItems(options, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                if (which == 0) {
-                    Tile spacer = new Tile(TileType.SPACER, "Boşluk", 0, 0, 1, 1);
-                    config.tiles.add(spacer);
-                    WorkspaceStorage.saveWorkspace(MainActivity.this, config);
-                    workspaceView.rebuildViews();
-                    setupTileClickListeners();
-                    Toast.makeText(MainActivity.this, "Yeni boşluk eklendi. Yerini ve boyutunu ayarlayabilirsiniz.", Toast.LENGTH_LONG).show();
-                } else {
-                    toggleEditMode();
-                }
-            }
-        });
-        b.show();
-    }
 
     private void openSystemSettings() {
         try {
@@ -901,7 +854,7 @@ public class MainActivity extends Activity {
                 WorkspaceStorage.saveWorkspace(MainActivity.this, config);
                 workspaceView.rebuildViews();
                 setupTileClickListeners();
-                Toast.makeText(MainActivity.this, "Yeni boşluk eklendi. Düzenleme modunda yerini ve boyutunu ayarlayabilirsiniz.", Toast.LENGTH_LONG).show();
+                Toast.makeText(MainActivity.this, "Yeni boşluk eklendi. Kumandayla üzerine gelerek veya dokunarak boyutunu ayarlayabilirsiniz.", Toast.LENGTH_LONG).show();
             }
         });
         layout.addView(addSpacerBtn);
@@ -1149,33 +1102,32 @@ public class MainActivity extends Activity {
             }
         }
 
-        if (workspaceView.isEditMode()) {
+        if (selectedMovingTile != null) {
             if (keyCode == KeyEvent.KEYCODE_BACK) {
-                toggleEditMode();
+                selectedMovingTile = null;
+                Toast.makeText(this, "Taşıma işlemi iptal edildi.", Toast.LENGTH_SHORT).show();
                 return true;
             }
 
             // Superpowers Akış Hareketi: Kutu taşındığında sıralama listesinde dinamik yer değiştirir
             // Asla üst üste binme veya boşluk oluşamaz!
-            if (selectedMovingTile != null) {
-                int cols = workspaceView.getCalculatedCols();
-                if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-                    moveTileInStream(selectedMovingTile, -cols);
-                    return true;
-                } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
-                    moveTileInStream(selectedMovingTile, cols);
-                    return true;
-                } else if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
-                    moveTileInStream(selectedMovingTile, -1);
-                    return true;
-                } else if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
-                    moveTileInStream(selectedMovingTile, 1);
-                    return true;
-                } else if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
-                    selectedMovingTile = null;
-                    Toast.makeText(this, "Kutu konumu bırakıldı.", Toast.LENGTH_SHORT).show();
-                    return true;
-                }
+            int cols = workspaceView.getCalculatedCols();
+            if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                moveTileInStream(selectedMovingTile, -cols);
+                return true;
+            } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                moveTileInStream(selectedMovingTile, cols);
+                return true;
+            } else if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                moveTileInStream(selectedMovingTile, -1);
+                return true;
+            } else if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                moveTileInStream(selectedMovingTile, 1);
+                return true;
+            } else if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
+                selectedMovingTile = null;
+                Toast.makeText(this, "Kutu konumu bırakıldı.", Toast.LENGTH_SHORT).show();
+                return true;
             }
         } else {
             if (keyCode == KeyEvent.KEYCODE_MENU) {
@@ -1256,8 +1208,8 @@ public class MainActivity extends Activity {
     private void handleDpadNavigation(int keyCode) {
         if (workspaceView == null || workspaceView.getChildCount() == 0) return;
 
-        // Düzenleme modunda kutu taşınıyorsa
-        if (workspaceView.isEditMode() && selectedMovingTile != null) {
+        // Kutu taşınıyorsa
+        if (selectedMovingTile != null) {
             int cols = workspaceView.getCalculatedCols();
             if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
                 moveTileInStream(selectedMovingTile, -cols);
@@ -1294,7 +1246,11 @@ public class MainActivity extends Activity {
         if (remoteTitleView != null && workspaceView != null) {
             TileView sel = workspaceView.getTvSelectedTile();
             if (sel != null && sel.getTile() != null && sel.getTile().label != null) {
-                remoteTitleView.setText("🎮 " + sel.getTile().label);
+                if (sel.getTile().type == TileType.SPACER) {
+                    remoteTitleView.setText("🎮 🔲 " + sel.getTile().colSpan + "x" + sel.getTile().rowSpan + " Boşluk");
+                } else {
+                    remoteTitleView.setText("🎮 " + sel.getTile().label);
+                }
             } else {
                 remoteTitleView.setText("🎮 TV Kumandası (Sürükle)");
             }
