@@ -59,7 +59,7 @@ public class WorkspaceStorage {
                 }
             }
 
-            // Sürüm 5 / Bağımsız DATE kutusu göçü
+            // Sürüm 5 / Bağımsız DATE kutusu göçü (Varsayılan 2x Genişlik)
             boolean hasDate = false;
             int clockIndex = -1;
             for (int i = 0; i < config.tiles.size(); i++) {
@@ -72,11 +72,19 @@ public class WorkspaceStorage {
                     }
                 } else if (t.type == TileType.DATE) {
                     hasDate = true;
+                    if (t.colSpan == 1 && config.schemaVersion < 5) {
+                        t.colSpan = 2;
+                        migrated = true;
+                    }
                 }
             }
             if (!hasDate && clockIndex >= 0) {
-                Tile dateTile = new Tile(TileType.DATE, "Tarih", 0, 0, 1, 1);
+                Tile dateTile = new Tile(TileType.DATE, "Tarih", 0, 0, 2, 1);
                 config.tiles.add(clockIndex + 1, dateTile);
+                migrated = true;
+            }
+            if (config.schemaVersion < 5) {
+                config.schemaVersion = 5;
                 migrated = true;
             }
 
@@ -140,11 +148,15 @@ public class WorkspaceStorage {
         config.tiles.add(clockTile);
         currentCol += clockSpan;
 
-        // 2. Tarih Kutusu (Bağımsız Takvim Kartı)
-        if (currentCol >= maxCols) { currentCol = 0; currentRow++; }
-        Tile dateTile = new Tile(TileType.DATE, "Tarih", currentCol, currentRow, 1, 1);
+        // 2. Tarih Kutusu (Varsayılan 2 Sütun genişlik)
+        int dateSpan = Math.min(2, maxCols);
+        if (currentCol + dateSpan > maxCols) {
+            currentCol = 0;
+            currentRow++;
+        }
+        Tile dateTile = new Tile(TileType.DATE, "Tarih", currentCol, currentRow, dateSpan, 1);
         config.tiles.add(dateTile);
-        currentCol += 1;
+        currentCol += dateSpan;
 
         // 2. Kumanda 4 Renk Butonları (Kırmızı, Yeşil, Sarı, Mavi)
         if (currentCol >= maxCols) { currentCol = 0; currentRow++; }

@@ -238,7 +238,7 @@ public class MainActivity extends Activity {
             missing.add(c);
         }
         if (!hasDate) {
-            Tile d = new Tile(TileType.DATE, "Tarih", 0, 0, 1, 1);
+            Tile d = new Tile(TileType.DATE, "Tarih", 0, 0, 2, 1);
             missing.add(d);
         }
         if (!hasRed) {

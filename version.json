@@ -1,12 +1,12 @@
 {
   "appName": "Saf Ekran",
   "packageName": "com.safekran.launcher",
-  "versionCode": 27,
-  "versionName": "2.18.0",
+  "versionCode": 28,
+  "versionName": "2.18.1",
   "developer": "Vezir",
   "schemaVersion": 1,
   "createdDate": "2026-11-19",
-  "apkName": "SafEkran_v2.18.0_vc27.apk",
+  "apkName": "SafEkran_v2.18.1_vc28.apk",
   "history": [
     {
       "versionCode": 1,
@@ -169,6 +169,12 @@
       "versionName": "2.18.0",
       "date": "2026-11-20",
       "description": "Feat: Bagimsiz Tarih ve Saat Kutulari, Otomatik Kutu-Orantili Dinamik Tipografi"
+    },
+    {
+      "versionCode": 28,
+      "versionName": "2.18.1",
+      "date": "2026-11-20",
+      "description": "Fix: Tarih Kutusu Varsayilan 2x, 1x Adaptif Tipografi ve onMeasure Tuval Kirpilmasi Onarimi (v2.18.1)"
     }
   ]
 }

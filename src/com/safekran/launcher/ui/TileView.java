@@ -29,8 +29,11 @@ public class TileView extends FrameLayout {
     private ImageView iconView;
     private TextView labelView;
     private TextClock clockView;
+    private LinearLayout dateContainer;
     private TextClock dateDayView;
-    private TextClock dateFullView;
+    private LinearLayout dateTextGroup;
+    private TextClock dateMonthView;
+    private TextClock dateWeekView;
     private LinearLayout spacerContainer;
 
     public TileView(Context context, Tile tile, WorkspaceConfig config, Drawable appIcon) {
@@ -151,10 +154,10 @@ public class TileView extends FrameLayout {
         clockView.setTextColor(getTextColor());
         clockView.setTypeface(Typeface.DEFAULT_BOLD);
         clockView.setGravity(Gravity.CENTER);
-        clockView.setIncludeFontPadding(false);
+        clockView.setIncludeFontPadding(true);
 
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER);
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT, Gravity.CENTER);
         container.addView(clockView, lp);
 
         addView(container, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
@@ -167,11 +170,11 @@ public class TileView extends FrameLayout {
         setClickable(true);
         applyTileBackground();
 
-        LinearLayout container = new LinearLayout(context);
-        container.setOrientation(LinearLayout.VERTICAL);
-        container.setGravity(Gravity.CENTER);
-        container.setClipChildren(false);
-        container.setClipToPadding(false);
+        dateContainer = new LinearLayout(context);
+        dateContainer.setOrientation(LinearLayout.VERTICAL);
+        dateContainer.setGravity(Gravity.CENTER);
+        dateContainer.setClipChildren(false);
+        dateContainer.setClipToPadding(false);
 
         dateDayView = new TextClock(context);
         dateDayView.setFormat24Hour("d");
@@ -182,26 +185,49 @@ public class TileView extends FrameLayout {
         dateDayView.setTextColor(getTextColor());
         dateDayView.setTypeface(Typeface.DEFAULT_BOLD);
         dateDayView.setGravity(Gravity.CENTER);
-        dateDayView.setIncludeFontPadding(false);
+        dateDayView.setIncludeFontPadding(true);
         LinearLayout.LayoutParams dayParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        container.addView(dateDayView, dayParams);
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        dateContainer.addView(dateDayView, dayParams);
 
-        dateFullView = new TextClock(context);
-        dateFullView.setFormat24Hour("MMMM EEEE");
-        dateFullView.setFormat12Hour("MMMM EEEE");
-        dateFullView.setSingleLine(false);
-        dateFullView.setMaxLines(2);
-        dateFullView.setEllipsize(TextUtils.TruncateAt.END);
-        dateFullView.setTextColor(isLightMode() ? Color.parseColor("#666666") : Color.parseColor("#AAAAAA"));
-        dateFullView.setGravity(Gravity.CENTER);
-        dateFullView.setIncludeFontPadding(true);
-        dateFullView.setPadding(dpToPx(context, 2), 0, dpToPx(context, 2), dpToPx(context, 2));
-        LinearLayout.LayoutParams fullParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        container.addView(dateFullView, fullParams);
+        dateTextGroup = new LinearLayout(context);
+        dateTextGroup.setOrientation(LinearLayout.VERTICAL);
+        dateTextGroup.setGravity(Gravity.CENTER);
+        dateTextGroup.setClipChildren(false);
+        dateTextGroup.setClipToPadding(false);
 
-        addView(container, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+        dateMonthView = new TextClock(context);
+        dateMonthView.setFormat24Hour("MMMM");
+        dateMonthView.setFormat12Hour("MMMM");
+        dateMonthView.setSingleLine(true);
+        dateMonthView.setMaxLines(1);
+        dateMonthView.setEllipsize(TextUtils.TruncateAt.END);
+        dateMonthView.setTextColor(getTextColor());
+        dateMonthView.setTypeface(Typeface.DEFAULT_BOLD);
+        dateMonthView.setGravity(Gravity.CENTER);
+        dateMonthView.setIncludeFontPadding(true);
+        LinearLayout.LayoutParams monthParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        dateTextGroup.addView(dateMonthView, monthParams);
+
+        dateWeekView = new TextClock(context);
+        dateWeekView.setFormat24Hour("EEEE");
+        dateWeekView.setFormat12Hour("EEEE");
+        dateWeekView.setSingleLine(true);
+        dateWeekView.setMaxLines(1);
+        dateWeekView.setEllipsize(TextUtils.TruncateAt.END);
+        dateWeekView.setTextColor(isLightMode() ? Color.parseColor("#666666") : Color.parseColor("#AAAAAA"));
+        dateWeekView.setGravity(Gravity.CENTER);
+        dateWeekView.setIncludeFontPadding(true);
+        LinearLayout.LayoutParams weekParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        dateTextGroup.addView(dateWeekView, weekParams);
+
+        LinearLayout.LayoutParams tgParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        dateContainer.addView(dateTextGroup, tgParams);
+
+        addView(dateContainer, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
     }
 
     private void initActionOrAppTile(Context context, Drawable appIcon) {
@@ -462,6 +488,16 @@ public class TileView extends FrameLayout {
     }
 
     @Override
+    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        int w = MeasureSpec.getSize(widthMeasureSpec);
+        int h = MeasureSpec.getSize(heightMeasureSpec);
+        if (w > 0 && h > 0) {
+            updateDynamicSizes(w, h);
+        }
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+    }
+
+    @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
         if (w > 0 && h > 0) {
@@ -491,8 +527,8 @@ public class TileView extends FrameLayout {
                 maxCap = (int) (58 * density);
             }
 
-            int targetIconSize = Math.max((int) (24 * density),
-                    Math.min(maxCap, (int) (Math.min(w * 0.52f, h * 0.48f))));
+            int targetIconSize = Math.max((int) (22 * density),
+                    Math.min(maxCap, (int) (Math.min(w * 0.50f, h * 0.46f))));
 
             ViewGroup.LayoutParams lp = iconView.getLayoutParams();
             if (lp != null && (lp.width != targetIconSize || lp.height != targetIconSize)) {
@@ -504,7 +540,7 @@ public class TileView extends FrameLayout {
 
         // 2. Dinamik Uygulama / Eylem Yazı Boyutu (Kutu Boyutuna Orantılı)
         if (labelView != null) {
-            float baseSp = Math.max(9.5f, Math.min(16.0f, (h / density) * 0.125f));
+            float baseSp = Math.max(9.0f, Math.min(16.0f, (h / density) * 0.12f));
             labelView.setTextSize(TypedValue.COMPLEX_UNIT_SP, baseSp);
 
             if (tile.colSpan >= 2) {
@@ -516,20 +552,63 @@ public class TileView extends FrameLayout {
 
         // 3. Saat Kutusu Dinamik Tipografi (Kutuya tam oturan jilet gibi saat)
         if (clockView != null) {
-            float maxSpByWidth = availWDp / 2.6f;
-            float maxSpByHeight = availHDp * 0.55f;
-            float clockSp = Math.max(16f, Math.min(84f, Math.min(maxSpByWidth, maxSpByHeight)));
+            float maxSpByWidth = availWDp / 2.7f;
+            float maxSpByHeight = availHDp * 0.52f;
+            float clockSp = Math.max(14f, Math.min(84f, Math.min(maxSpByWidth, maxSpByHeight)));
             clockView.setTextSize(TypedValue.COMPLEX_UNIT_SP, clockSp);
         }
 
-        // 4. Tarih Kutusu Dinamik Tipografi (Günün sayısı + Ay ve Gün ismi)
-        if (dateDayView != null) {
-            float daySp = Math.max(18f, Math.min(64f, Math.min(availHDp * 0.44f, availWDp / 1.5f)));
-            dateDayView.setTextSize(TypedValue.COMPLEX_UNIT_SP, daySp);
-        }
-        if (dateFullView != null) {
-            float fullSp = Math.max(9.5f, Math.min(18f, availHDp * 0.14f));
-            dateFullView.setTextSize(TypedValue.COMPLEX_UNIT_SP, fullSp);
+        // 4. Tarih Kutusu Dinamik Tipografi ve Adaptif Yerleşim (2x Geniş veya 1x Dar)
+        if (dateContainer != null && dateDayView != null && dateMonthView != null && dateWeekView != null) {
+            boolean isWide = (w >= h * 1.30f);
+
+            if (isWide) {
+                // 2x ve Üzeri Geniş Kart Modu: Sol (Gün Sayısı), Sağ (Ay ve Gün İsmi)
+                if (dateContainer.getOrientation() != LinearLayout.HORIZONTAL) {
+                    dateContainer.setOrientation(LinearLayout.HORIZONTAL);
+                }
+                if (dateTextGroup != null) {
+                    dateTextGroup.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+                    LinearLayout.LayoutParams tgLp = (LinearLayout.LayoutParams) dateTextGroup.getLayoutParams();
+                    if (tgLp != null) {
+                        tgLp.leftMargin = dpToPx(getContext(), 8);
+                        dateTextGroup.setLayoutParams(tgLp);
+                    }
+                }
+                dateMonthView.setGravity(Gravity.START);
+                dateWeekView.setGravity(Gravity.START);
+
+                float daySp = Math.max(16f, Math.min(68f, availHDp * 0.56f));
+                float monthSp = Math.max(10f, Math.min(20f, availHDp * 0.22f));
+                float weekSp = Math.max(9f, Math.min(16f, availHDp * 0.18f));
+
+                dateDayView.setTextSize(TypedValue.COMPLEX_UNIT_SP, daySp);
+                dateMonthView.setTextSize(TypedValue.COMPLEX_UNIT_SP, monthSp);
+                dateWeekView.setTextSize(TypedValue.COMPLEX_UNIT_SP, weekSp);
+            } else {
+                // 1x Dar Kart Modu: Üstte Gün Sayısı ("20"), Altta Ay ("Kasım"), En Altta Gün Adı ("Cuma")
+                if (dateContainer.getOrientation() != LinearLayout.VERTICAL) {
+                    dateContainer.setOrientation(LinearLayout.VERTICAL);
+                }
+                if (dateTextGroup != null) {
+                    dateTextGroup.setGravity(Gravity.CENTER);
+                    LinearLayout.LayoutParams tgLp = (LinearLayout.LayoutParams) dateTextGroup.getLayoutParams();
+                    if (tgLp != null) {
+                        tgLp.leftMargin = 0;
+                        dateTextGroup.setLayoutParams(tgLp);
+                    }
+                }
+                dateMonthView.setGravity(Gravity.CENTER);
+                dateWeekView.setGravity(Gravity.CENTER);
+
+                float daySp = Math.max(11f, Math.min(36f, Math.min(availHDp * 0.36f, availWDp / 1.6f)));
+                float monthSp = Math.max(8.5f, Math.min(15f, Math.min(availHDp * 0.18f, availWDp / 4.0f)));
+                float weekSp = Math.max(7.5f, Math.min(13f, Math.min(availHDp * 0.15f, availWDp / 4.0f)));
+
+                dateDayView.setTextSize(TypedValue.COMPLEX_UNIT_SP, daySp);
+                dateMonthView.setTextSize(TypedValue.COMPLEX_UNIT_SP, monthSp);
+                dateWeekView.setTextSize(TypedValue.COMPLEX_UNIT_SP, weekSp);
+            }
         }
     }
 
