@@ -788,6 +788,7 @@ public class MainActivity extends Activity {
         addStyleButton(styleRow, "Sadece Odakta (Önerilen)", "FOCUS_ONLY");
         addStyleButton(styleRow, "Her Zaman Çerçeveli", "ALWAYS");
         addStyleButton(styleRow, "Yüzen (Çerçevesiz)", "FLOATING");
+        updateButtonGroupHighlight(styleRow, config.tileStyle);
         layout.addView(styleRow);
 
         // 5. Tema Seçimi
@@ -797,16 +798,82 @@ public class MainActivity extends Activity {
         addThemeButton(themeRow, "Saf Siyah", "BLACK");
         addThemeButton(themeRow, "Koyu Gri", "DARK_GRAY");
         addThemeButton(themeRow, "Aydınlık", "LIGHT");
+        updateButtonGroupHighlight(themeRow, config.themeMode);
         layout.addView(themeRow);
 
-        // 6. Yazı Boyutu Seçimi
+        // 6. Yazı Boyutu Seçimi (Hazır Butonlar + Kayan Hassas Çubuk)
         addSectionHeader(layout, "6. YAZI BOYUTU (FONT BOYUTU)");
-        LinearLayout fontRow = new LinearLayout(this);
+
+        final int minFont = 70;
+        final int maxFont = 160;
+        int currentFontPercent = Math.round(config.fontScale * 100);
+        if (currentFontPercent < minFont || currentFontPercent > maxFont) {
+            currentFontPercent = 100;
+            config.fontScale = 1.0f;
+        }
+
+        final TextView fontLabel = new TextView(this);
+        fontLabel.setText("Hassas Yazı Boyutu Oranı: %" + currentFontPercent);
+        fontLabel.setTextColor(Color.parseColor("#CCCCCC"));
+        fontLabel.setTextSize(12);
+        fontLabel.setPadding(0, 10, 0, 2);
+
+        final LinearLayout fontRow = new LinearLayout(this);
         fontRow.setOrientation(LinearLayout.HORIZONTAL);
-        addFontButton(fontRow, "Küçük (%85)", "SMALL");
-        addFontButton(fontRow, "Normal (%100)", "NORMAL");
-        addFontButton(fontRow, "Büyük (%125)", "LARGE");
+
+        final SeekBar fontSeekBar = new SeekBar(this);
+        fontSeekBar.setMax(maxFont - minFont);
+        fontSeekBar.setProgress(currentFontPercent - minFont);
+
+        final Runnable updateFontButtonsHighlight = new Runnable() {
+            @Override
+            public void run() {
+                for (int i = 0; i < fontRow.getChildCount(); i++) {
+                    View c = fontRow.getChildAt(i);
+                    if (c instanceof Button) {
+                        Button b = (Button) c;
+                        String tag = (String) b.getTag();
+                        boolean selected = false;
+                        int p = Math.round(config.fontScale * 100);
+                        if ("SMALL".equals(tag) && p == 80) selected = true;
+                        else if ("NORMAL".equals(tag) && p == 100) selected = true;
+                        else if ("LARGE".equals(tag) && p == 140) selected = true;
+
+                        b.setBackgroundColor(selected ? Color.parseColor("#2E7D32") : Color.parseColor("#37474F"));
+                        b.setTextColor(selected ? Color.WHITE : Color.parseColor("#CFD8DC"));
+                        b.setTypeface(selected ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
+                    }
+                }
+            }
+        };
+
+        addFontPresetButton(fontRow, "Küçük (%80)", "SMALL", 0.80f, fontSeekBar, fontLabel, minFont, updateFontButtonsHighlight);
+        addFontPresetButton(fontRow, "Normal (%100)", "NORMAL", 1.00f, fontSeekBar, fontLabel, minFont, updateFontButtonsHighlight);
+        addFontPresetButton(fontRow, "Büyük (%140)", "LARGE", 1.40f, fontSeekBar, fontLabel, minFont, updateFontButtonsHighlight);
+
+        updateFontButtonsHighlight.run();
         layout.addView(fontRow);
+
+        fontSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar sb, int progress, boolean fromUser) {
+                int actualVal = minFont + progress;
+                fontLabel.setText("Hassas Yazı Boyutu Oranı: %" + actualVal);
+                config.fontScale = actualVal / 100f;
+                if (actualVal == 80) config.fontScaleMode = "SMALL";
+                else if (actualVal == 100) config.fontScaleMode = "NORMAL";
+                else if (actualVal == 140) config.fontScaleMode = "LARGE";
+                else config.fontScaleMode = "CUSTOM";
+
+                updateFontButtonsHighlight.run();
+                workspaceView.updateAllTileFontSizes();
+            }
+            @Override public void onStartTrackingTouch(SeekBar sb) {}
+            @Override public void onStopTrackingTouch(SeekBar sb) {}
+        });
+
+        layout.addView(fontLabel);
+        layout.addView(fontSeekBar);
 
         // 7. Saat & Tarih Ayarları
         addSectionHeader(layout, "7. SAAT & TARİH");
@@ -1002,9 +1069,23 @@ public class MainActivity extends Activity {
         layout.addView(header);
     }
 
-    private void addStyleButton(LinearLayout row, String text, final String style) {
+    private void updateButtonGroupHighlight(LinearLayout row, String selectedTag) {
+        for (int i = 0; i < row.getChildCount(); i++) {
+            View child = row.getChildAt(i);
+            if (child instanceof Button) {
+                Button b = (Button) child;
+                boolean isSelected = selectedTag != null && selectedTag.equals(b.getTag());
+                b.setBackgroundColor(isSelected ? Color.parseColor("#2E7D32") : Color.parseColor("#37474F"));
+                b.setTextColor(isSelected ? Color.WHITE : Color.parseColor("#CFD8DC"));
+                b.setTypeface(isSelected ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
+            }
+        }
+    }
+
+    private void addStyleButton(final LinearLayout row, String text, final String style) {
         Button btn = new Button(this);
         btn.setText(text);
+        btn.setTag(style);
         btn.setTextSize(10);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
         params.setMargins(4, 4, 4, 4);
@@ -1013,6 +1094,7 @@ public class MainActivity extends Activity {
             @Override
             public void onClick(View v) {
                 config.tileStyle = style;
+                updateButtonGroupHighlight(row, style);
                 workspaceView.rebuildViews();
                 setupTileClickListeners();
                 Toast.makeText(MainActivity.this, "Çerçeve Stili: " + style, Toast.LENGTH_SHORT).show();
@@ -1021,9 +1103,10 @@ public class MainActivity extends Activity {
         row.addView(btn);
     }
 
-    private void addThemeButton(LinearLayout row, String text, final String mode) {
+    private void addThemeButton(final LinearLayout row, String text, final String mode) {
         Button btn = new Button(this);
         btn.setText(text);
+        btn.setTag(mode);
         btn.setTextSize(11);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
         params.setMargins(4, 4, 4, 4);
@@ -1032,6 +1115,7 @@ public class MainActivity extends Activity {
             @Override
             public void onClick(View v) {
                 config.themeMode = mode;
+                updateButtonGroupHighlight(row, mode);
                 workspaceView.rebuildViews();
                 setupTileClickListeners();
                 Toast.makeText(MainActivity.this, "Tema: " + mode, Toast.LENGTH_SHORT).show();
@@ -1040,9 +1124,11 @@ public class MainActivity extends Activity {
         row.addView(btn);
     }
 
-    private void addFontButton(LinearLayout row, String text, final String mode) {
+    private void addFontPresetButton(final LinearLayout row, String text, final String mode, final float scale,
+                                     final SeekBar seekBar, final TextView label, final int minFont, final Runnable updateHighlight) {
         Button btn = new Button(this);
         btn.setText(text);
+        btn.setTag(mode);
         btn.setTextSize(10);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
         params.setMargins(4, 4, 4, 4);
@@ -1050,10 +1136,14 @@ public class MainActivity extends Activity {
         btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                config.fontScale = scale;
                 config.fontScaleMode = mode;
-                workspaceView.rebuildViews();
-                setupTileClickListeners();
-                Toast.makeText(MainActivity.this, "Yazı Boyutu: " + mode, Toast.LENGTH_SHORT).show();
+                int percent = Math.round(scale * 100);
+                seekBar.setProgress(percent - minFont);
+                label.setText("Hassas Yazı Boyutu Oranı: %" + percent);
+                updateHighlight.run();
+                workspaceView.updateAllTileFontSizes();
+                Toast.makeText(MainActivity.this, "Yazı Boyutu: " + mode + " (%" + percent + ")", Toast.LENGTH_SHORT).show();
             }
         });
         row.addView(btn);

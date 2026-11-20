@@ -127,6 +127,15 @@ public class WorkspaceView extends ViewGroup {
         return calculatedCols;
     }
 
+    public void updateAllTileFontSizes() {
+        for (int i = 0; i < getChildCount(); i++) {
+            View child = getChildAt(i);
+            if (child instanceof TileView) {
+                ((TileView) child).refreshDynamicSizes();
+            }
+        }
+    }
+
     public void rebuildViews() {
         removeAllViews();
         tvSelectedTile = null;

@@ -438,12 +438,23 @@ public class TileView extends FrameLayout {
         }
     }
 
+    public void refreshDynamicSizes() {
+        if (getWidth() > 0 && getHeight() > 0) {
+            updateDynamicSizes(getWidth(), getHeight());
+        }
+    }
+
     private void updateDynamicSizes(int w, int h) {
         float density = getResources().getDisplayMetrics().density;
         float fontMultiplier = 1.0f;
         if (config != null) {
-            if ("SMALL".equals(config.fontScaleMode)) fontMultiplier = 0.85f;
-            else if ("LARGE".equals(config.fontScaleMode)) fontMultiplier = 1.25f;
+            if (config.fontScale > 0.05f) {
+                fontMultiplier = config.fontScale;
+            } else if ("SMALL".equals(config.fontScaleMode)) {
+                fontMultiplier = 0.80f;
+            } else if ("LARGE".equals(config.fontScaleMode)) {
+                fontMultiplier = 1.40f;
+            }
         }
 
         // 1. Dinamik Simge Boyutu (Kutunun üst vitrin alanını cömertçe doldurur)
@@ -470,7 +481,7 @@ public class TileView extends FrameLayout {
 
         // 2. Dinamik Yazı Boyutu (TV Orantılı Ferah Tipografi)
         if (labelView != null) {
-            float baseSp = Math.max(10f, Math.min(15.5f, (h / density) * 0.125f));
+            float baseSp = Math.max(10.5f, Math.min(16.0f, (h / density) * 0.13f));
             float finalSp = baseSp * fontMultiplier;
             labelView.setTextSize(TypedValue.COMPLEX_UNIT_SP, finalSp);
 

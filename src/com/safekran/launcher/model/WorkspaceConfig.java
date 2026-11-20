@@ -26,7 +26,8 @@ public class WorkspaceConfig {
 
     public String tileStyle = "FOCUS_ONLY";   // "FOCUS_ONLY", "ALWAYS", "FLOATING"
     public String themeMode = "BLACK";        // "BLACK", "DARK_GRAY", "LIGHT"
-    public String fontScaleMode = "NORMAL";   // "SMALL", "NORMAL", "LARGE"
+    public String fontScaleMode = "NORMAL";   // "SMALL", "NORMAL", "LARGE", "CUSTOM"
+    public float fontScale = 1.0f;            // Hassas Serbest Yazı Oranı (%70 - %160)
     public boolean is24Hour = true;
     public boolean showDate = true;
     public boolean virtualRemoteEnabled = false;
@@ -46,6 +47,7 @@ public class WorkspaceConfig {
         root.put("tileStyle", tileStyle);
         root.put("themeMode", themeMode);
         root.put("fontScaleMode", fontScaleMode);
+        root.put("fontScale", (double) fontScale);
         root.put("is24Hour", is24Hour);
         root.put("showDate", showDate);
         root.put("virtualRemoteEnabled", virtualRemoteEnabled);
@@ -78,6 +80,18 @@ public class WorkspaceConfig {
         config.tileStyle = root.optString("tileStyle", "FOCUS_ONLY");
         config.themeMode = root.optString("themeMode", "BLACK");
         config.fontScaleMode = root.optString("fontScaleMode", "NORMAL");
+
+        double defaultFontScale = 1.0;
+        if ("SMALL".equals(config.fontScaleMode)) {
+            defaultFontScale = 0.80;
+        } else if ("LARGE".equals(config.fontScaleMode)) {
+            defaultFontScale = 1.40;
+        }
+        config.fontScale = (float) root.optDouble("fontScale", defaultFontScale);
+        if (config.fontScale < 0.50f || config.fontScale > 2.0f) {
+            config.fontScale = (float) defaultFontScale;
+        }
+
         config.is24Hour = root.optBoolean("is24Hour", true);
         config.showDate = root.optBoolean("showDate", true);
         config.virtualRemoteEnabled = root.optBoolean("virtualRemoteEnabled", false);
