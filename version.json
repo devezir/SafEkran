@@ -1,12 +1,12 @@
 {
   "appName": "Saf Ekran",
   "packageName": "com.safekran.launcher",
-  "versionCode": 31,
-  "versionName": "2.19.2",
+  "versionCode": 32,
+  "versionName": "2.20.0",
   "developer": "Vezir",
   "schemaVersion": 1,
   "createdDate": "2026-11-19",
-  "apkName": "SafEkran_v2.19.2_vc31.apk",
+  "apkName": "SafEkran_v2.20.0_vc32.apk",
   "history": [
     {
       "versionCode": 1,
@@ -193,6 +193,12 @@
       "versionName": "2.19.2",
       "date": "2026-11-20",
       "description": "Feat: Canli Pil Dinleyicisi (ACTION_BATTERY_CHANGED), onResume Durum Tazeleme, Cift Pil Simgesi Temizligi (v2.19.2)"
+    },
+    {
+      "versionCode": 32,
+      "versionName": "2.20.0",
+      "date": "2026-11-20",
+      "description": "Feat: Download Klasorune Tarihli Coklu Yedekleme ve Dosya Secicili Geri Yukleme (v2.20.0)"
     }
   ]
 }

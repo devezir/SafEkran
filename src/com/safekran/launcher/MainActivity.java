@@ -17,6 +17,7 @@ import android.net.Uri;
 import android.os.BatteryManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.SystemClock;
 import android.provider.AlarmClock;
 import android.provider.CalendarContract;
@@ -46,9 +47,20 @@ import com.safekran.launcher.model.WorkspaceConfig;
 import com.safekran.launcher.ui.TileView;
 import com.safekran.launcher.ui.WorkspaceView;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileFilter;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStreamReader;
+import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 public class MainActivity extends Activity {
@@ -1380,9 +1392,228 @@ public class MainActivity extends Activity {
         layout.addView(seekBar);
     }
 
+    private File getDownloadsDir() {
+        File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+        if (dir != null) {
+            if (!dir.exists()) {
+                dir.mkdirs();
+            }
+            if (dir.exists()) {
+                return dir;
+            }
+        }
+        return getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+    }
+
     private void openBackupRestoreDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("JSON Yedekleme ve Geri Yükleme");
+        builder.setTitle("🔄 Çalışma Alanı Yedekleme & Geri Yükleme");
+
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(dpToPx(20), dpToPx(16), dpToPx(20), dpToPx(12));
+
+        TextView info = new TextView(this);
+        info.setText("Yedekler cihazınızın Download (İndirilenler) klasöründe tarih ve saat etiketiyle saklanır.");
+        info.setTextColor(Color.parseColor("#B0BEC5"));
+        info.setTextSize(12);
+        info.setPadding(0, 0, 0, dpToPx(14));
+        layout.addView(info);
+
+        // 1. Download Klasörüne Yedekle Butonu
+        Button btnSaveDownload = new Button(this);
+        btnSaveDownload.setText("📥 Download Klasörüne Yedekle (Tarihli)");
+        btnSaveDownload.setTextColor(Color.WHITE);
+        btnSaveDownload.setTypeface(Typeface.DEFAULT_BOLD);
+        btnSaveDownload.setBackgroundColor(Color.parseColor("#1B5E20"));
+        btnSaveDownload.setTextSize(12);
+        LinearLayout.LayoutParams p1 = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(44));
+        p1.bottomMargin = dpToPx(8);
+        btnSaveDownload.setLayoutParams(p1);
+        layout.addView(btnSaveDownload);
+
+        // 2. Download Klasöründen Seç ve Geri Yükle Butonu
+        Button btnRestoreDownload = new Button(this);
+        btnRestoreDownload.setText("📂 Download'dan Seç ve Geri Yükle");
+        btnRestoreDownload.setTextColor(Color.WHITE);
+        btnRestoreDownload.setTypeface(Typeface.DEFAULT_BOLD);
+        btnRestoreDownload.setBackgroundColor(Color.parseColor("#0D47A1"));
+        btnRestoreDownload.setTextSize(12);
+        LinearLayout.LayoutParams p2 = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(44));
+        p2.bottomMargin = dpToPx(8);
+        btnRestoreDownload.setLayoutParams(p2);
+        layout.addView(btnRestoreDownload);
+
+        // 3. Panodan / Metinle Düzenleme (B Planı)
+        Button btnRawJson = new Button(this);
+        btnRawJson.setText("📋 Panodan / Metin ile Yedekle");
+        btnRawJson.setTextColor(Color.parseColor("#ECEFF1"));
+        btnRawJson.setBackgroundColor(Color.parseColor("#37474F"));
+        btnRawJson.setTextSize(11);
+        LinearLayout.LayoutParams p3 = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(38));
+        btnRawJson.setLayoutParams(p3);
+        layout.addView(btnRawJson);
+
+        builder.setView(layout);
+        builder.setNegativeButton("Kapat", null);
+        final AlertDialog dialog = builder.create();
+
+        btnSaveDownload.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dialog.dismiss();
+                saveBackupToDownloads();
+            }
+        });
+
+        btnRestoreDownload.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dialog.dismiss();
+                openFileRestoreChooserDialog();
+            }
+        });
+
+        btnRawJson.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dialog.dismiss();
+                openRawJsonDialog();
+            }
+        });
+
+        dialog.show();
+    }
+
+    private void saveBackupToDownloads() {
+        try {
+            File dir = getDownloadsDir();
+            if (dir == null) {
+                Toast.makeText(this, "Download klasörüne erişilemedi!", Toast.LENGTH_LONG).show();
+                return;
+            }
+            String timeStamp = new SimpleDateFormat("yyyy-MM-dd_HH-mm", Locale.US).format(new Date());
+            String fileName = "SafEkran_Yedek_" + timeStamp + ".json";
+            File backupFile = new File(dir, fileName);
+
+            String jsonStr = WorkspaceStorage.exportToJsonString(config);
+            FileOutputStream fos = new FileOutputStream(backupFile);
+            fos.write(jsonStr.getBytes("UTF-8"));
+            fos.flush();
+            fos.close();
+
+            Toast.makeText(this, "✅ Yedek kaydedildi:\n" + fileName, Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "Yedek kaydedilemedi: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void openFileRestoreChooserDialog() {
+        File dir = getDownloadsDir();
+        if (dir == null || !dir.exists()) {
+            Toast.makeText(this, "Download klasörü bulunamadı!", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        File[] files = dir.listFiles(new FileFilter() {
+            @Override
+            public boolean accept(File f) {
+                if (!f.isFile()) return false;
+                String name = f.getName().toLowerCase(Locale.US);
+                return name.startsWith("safekran_yedek") && name.endsWith(".json");
+            }
+        });
+
+        // Eğer SafEkran_Yedek bulunamazsa genel .json dosyalarını ara
+        if (files == null || files.length == 0) {
+            files = dir.listFiles(new FileFilter() {
+                @Override
+                public boolean accept(File f) {
+                    if (!f.isFile()) return false;
+                    String name = f.getName().toLowerCase(Locale.US);
+                    return name.endsWith(".json") && name.contains("safekran");
+                }
+            });
+        }
+
+        if (files == null || files.length == 0) {
+            AlertDialog.Builder noFilesBuilder = new AlertDialog.Builder(this);
+            noFilesBuilder.setTitle("Yedek Dosyası Bulunamadı");
+            noFilesBuilder.setMessage("Download klasöründe herhangi bir SafEkran yedek dosyası (*.json) bulunamadı.\n\nKlasör: " + dir.getAbsolutePath());
+            noFilesBuilder.setPositiveButton("Tamam", null);
+            noFilesBuilder.show();
+            return;
+        }
+
+        // En yeni dosyadan en eskiye sırala
+        Arrays.sort(files, new Comparator<File>() {
+            @Override
+            public int compare(File f1, File f2) {
+                return Long.compare(f2.lastModified(), f1.lastModified());
+            }
+        });
+
+        final File[] sortedFiles = files;
+        String[] displayItems = new String[sortedFiles.length];
+        SimpleDateFormat sdf = new SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault());
+
+        for (int i = 0; i < sortedFiles.length; i++) {
+            File f = sortedFiles[i];
+            long sizeKb = Math.max(1, f.length() / 1024);
+            String dateFormatted = sdf.format(new Date(f.lastModified()));
+            displayItems[i] = "📄 " + f.getName() + "\n     " + dateFormatted + "  (" + sizeKb + " KB)";
+        }
+
+        AlertDialog.Builder chooser = new AlertDialog.Builder(this);
+        chooser.setTitle("📂 Geri Yüklenecek Yedeği Seçin (" + sortedFiles.length + " dosya)");
+        chooser.setItems(displayItems, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface d, int which) {
+                File selected = sortedFiles[which];
+                restoreFromFile(selected);
+            }
+        });
+        chooser.setNegativeButton("İptal", null);
+        chooser.show();
+    }
+
+    private void restoreFromFile(File file) {
+        try {
+            String jsonStr = readFileToString(file);
+            WorkspaceConfig imported = WorkspaceStorage.importFromJsonString(jsonStr);
+            if (imported != null) {
+                config = imported;
+                WorkspaceStorage.saveWorkspace(MainActivity.this, config);
+                workspaceView.setConfig(config, iconCache);
+                setupTileClickListeners();
+                Toast.makeText(MainActivity.this, "✅ " + file.getName() + "\nbaşarıyla geri yüklendi!", Toast.LENGTH_LONG).show();
+            } else {
+                Toast.makeText(MainActivity.this, "❌ Geçersiz yedek dosyası içeriği!", Toast.LENGTH_LONG).show();
+            }
+        } catch (Exception e) {
+            Toast.makeText(MainActivity.this, "Yedek yüklenemedi: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private String readFileToString(File file) throws Exception {
+        FileInputStream fis = new FileInputStream(file);
+        BufferedReader reader = new BufferedReader(new InputStreamReader(fis, "UTF-8"));
+        StringBuilder sb = new StringBuilder();
+        String line;
+        while ((line = reader.readLine()) != null) {
+            sb.append(line).append("\n");
+        }
+        reader.close();
+        fis.close();
+        return sb.toString();
+    }
+
+    private void openRawJsonDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("📋 JSON Metin ile Yedekleme / Düzenleme");
 
         final EditText input = new EditText(this);
         input.setText(WorkspaceStorage.exportToJsonString(config));
