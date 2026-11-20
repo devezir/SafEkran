@@ -88,8 +88,8 @@ public class WorkspaceStorage {
                 migrated = true;
             }
 
-            // Sürüm 6 / Tüm özel durum kutularının varsayılan olarak ana ekrana eklenmesi
-            boolean hasBattery = false, hasRam = false, hasStorage = false, hasNetwork = false, hasBluetooth = false;
+            // Sürüm 7 / Başlatıcı Ayarları dahil tüm özel kutuların eksiksiz ana ekranda olması
+            boolean hasBattery = false, hasRam = false, hasStorage = false, hasNetwork = false, hasBluetooth = false, hasLauncherSettings = false;
             int insertIndex = -1;
             for (int i = 0; i < config.tiles.size(); i++) {
                 Tile t = config.tiles.get(i);
@@ -98,6 +98,7 @@ public class WorkspaceStorage {
                 else if (t.type == TileType.STORAGE) hasStorage = true;
                 else if (t.type == TileType.NETWORK) hasNetwork = true;
                 else if (t.type == TileType.BLUETOOTH) hasBluetooth = true;
+                else if (t.type == TileType.LAUNCHER_SETTINGS) hasLauncherSettings = true;
                 else if (t.type == TileType.SYSTEM_SETTINGS) insertIndex = i;
             }
             if (insertIndex < 0) insertIndex = Math.min(6, config.tiles.size());
@@ -107,9 +108,10 @@ public class WorkspaceStorage {
             if (!hasStorage) { config.tiles.add(insertIndex, new Tile(TileType.STORAGE, "Depolama", 0, 0, 1, 1)); migrated = true; }
             if (!hasNetwork) { config.tiles.add(insertIndex, new Tile(TileType.NETWORK, "Ağ", 0, 0, 1, 1)); migrated = true; }
             if (!hasBluetooth) { config.tiles.add(insertIndex, new Tile(TileType.BLUETOOTH, "Bluetooth", 0, 0, 1, 1)); migrated = true; }
+            if (!hasLauncherSettings) { config.tiles.add(insertIndex, new Tile(TileType.LAUNCHER_SETTINGS, "Başlatıcı Ayarları", 0, 0, 1, 1)); migrated = true; }
 
-            if (config.schemaVersion < 6) {
-                config.schemaVersion = 6;
+            if (config.schemaVersion < 7) {
+                config.schemaVersion = 7;
                 migrated = true;
             }
 
@@ -141,7 +143,7 @@ public class WorkspaceStorage {
 
     public static WorkspaceConfig generateDefaultWorkspace(Context context) {
         WorkspaceConfig config = new WorkspaceConfig();
-        config.schemaVersion = 4;
+        config.schemaVersion = 7;
         config.safeArea = new SafeArea(0.03f, 0.03f, 0.03f, 0.03f); // %3 Optimum güvenli alan
         config.tileScale = 0.10f;          // %10 Kutu Boyutu
         config.tileHeightRatio = 0.75f;     // %75 Yükseklik Oranı (16:9 TV için ideal)
@@ -232,6 +234,11 @@ public class WorkspaceStorage {
         if (currentCol >= maxCols) { currentCol = 0; currentRow++; }
         Tile btTile = new Tile(TileType.BLUETOOTH, "Bluetooth", currentCol, currentRow, 1, 1);
         config.tiles.add(btTile);
+        currentCol += 1;
+
+        if (currentCol >= maxCols) { currentCol = 0; currentRow++; }
+        Tile launcherSettingsTile = new Tile(TileType.LAUNCHER_SETTINGS, "Başlatıcı Ayarları", currentCol, currentRow, 1, 1);
+        config.tiles.add(launcherSettingsTile);
         currentCol += 1;
 
         if (currentCol >= maxCols) { currentCol = 0; currentRow++; }

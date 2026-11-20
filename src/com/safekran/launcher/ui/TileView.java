@@ -312,11 +312,73 @@ public class TileView extends FrameLayout {
         addView(container, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
     }
 
+    // --- Evrensel Bilgi ve Durum Metni Tipografi Motoru ---
+
+    private void setInfoPrimary(String text, int color) {
+        if (infoPrimaryView == null) return;
+        infoPrimaryView.setText(text != null ? text : "");
+        infoPrimaryView.setTextColor(color);
+        fitInfoPrimary();
+    }
+
+    private void setInfoSecondary(String text) {
+        if (infoSecondaryView == null) return;
+        infoSecondaryView.setText(text != null ? text : "");
+        fitInfoSecondary();
+    }
+
+    private void fitInfoPrimary() {
+        if (infoPrimaryView == null) return;
+        int w = getWidth();
+        int h = getHeight();
+        if (w > 0 && h > 0) {
+            float density = getResources().getDisplayMetrics().density;
+            float availHDp = Math.max(10, (h - dpToPx(getContext(), 8)) / density);
+            float availW = Math.max(10f, w - dpToPx(getContext(), 10));
+            float maxSp = Math.max(9.5f, Math.min(24f, availHDp * 0.28f));
+            autoFitText(infoPrimaryView, maxSp, 7.5f, availW);
+        }
+    }
+
+    private void fitInfoSecondary() {
+        if (infoSecondaryView == null) return;
+        int w = getWidth();
+        int h = getHeight();
+        if (w > 0 && h > 0) {
+            float density = getResources().getDisplayMetrics().density;
+            float availHDp = Math.max(10, (h - dpToPx(getContext(), 8)) / density);
+            float availW = Math.max(10f, w - dpToPx(getContext(), 10));
+            float maxSp = Math.max(8.0f, Math.min(14f, availHDp * 0.18f));
+            autoFitText(infoSecondaryView, maxSp, 7.0f, availW);
+        }
+    }
+
+    private void autoFitText(TextView tv, float maxSp, float minSp, float availWidthPx) {
+        if (tv == null || availWidthPx <= 0) return;
+        CharSequence cs = tv.getText();
+        if (cs == null || cs.length() == 0) return;
+        String text = cs.toString();
+
+        float density = getResources().getDisplayMetrics().density;
+        android.text.TextPaint paint = new android.text.TextPaint(tv.getPaint());
+        float targetPx = maxSp * density;
+        paint.setTextSize(targetPx);
+        float textWidth = paint.measureText(text);
+
+        if (textWidth > availWidthPx && textWidth > 0) {
+            targetPx = targetPx * (availWidthPx / textWidth);
+        }
+        float minPx = minSp * density;
+        if (targetPx < minPx) {
+            targetPx = minPx;
+        }
+        tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, targetPx);
+    }
+
     public void updateBatteryData(int pct, boolean isCharging) {
         if (tile.type != TileType.BATTERY || infoPrimaryView == null || infoSecondaryView == null) return;
         String prefix = isCharging ? "⚡ " : "🔋 ";
-        infoPrimaryView.setText(prefix + "%" + pct);
-        infoPrimaryView.setTextColor(isCharging ? Color.parseColor("#4CAF50") : (pct <= 20 ? Color.parseColor("#E53935") : getTextColor()));
+        int col = isCharging ? Color.parseColor("#4CAF50") : (pct <= 20 ? Color.parseColor("#E53935") : getTextColor());
         String secLabel = "Pil";
         if (isCharging) {
             secLabel = "Şarj Oluyor";
@@ -324,7 +386,8 @@ public class TileView extends FrameLayout {
             secLabel = tile.label.replace("🔋", "").replace("⚡", "").trim();
             if (secLabel.isEmpty()) secLabel = "Pil";
         }
-        infoSecondaryView.setText(secLabel);
+        setInfoPrimary(prefix + "%" + pct, col);
+        setInfoSecondary(secLabel);
     }
 
     public void refreshStatusData() {
@@ -360,9 +423,8 @@ public class TileView extends FrameLayout {
                     totalGb = totalMem / (1024.0 * 1024.0 * 1024.0);
                 }
             } catch (Exception ignored) {}
-            infoPrimaryView.setText("RAM: %" + usedPct);
-            infoPrimaryView.setTextColor(usedPct > 85 ? Color.parseColor("#E53935") : getTextColor());
-            infoSecondaryView.setText(String.format(java.util.Locale.US, "%.1f / %.1f GB", usedGb, totalGb));
+            setInfoPrimary("RAM: %" + usedPct, usedPct > 85 ? Color.parseColor("#E53935") : getTextColor());
+            setInfoSecondary(String.format(java.util.Locale.US, "%.1f / %.1f GB", usedGb, totalGb));
         } else if (tile.type == TileType.STORAGE) {
             if (infoPrimaryView == null) return;
             long freeGb = 0;
@@ -379,7 +441,8 @@ public class TileView extends FrameLayout {
                 }
                 freeGb = (availableBlocks * blockSize) / (1024L * 1024L * 1024L);
             } catch (Exception ignored) {}
-            infoPrimaryView.setText(freeGb + " GB Boş");
+            setInfoPrimary(freeGb + " GB Boş", getTextColor());
+            setInfoSecondary("Depolama");
         } else if (tile.type == TileType.NETWORK) {
             updateNetworkData();
         } else if (tile.type == TileType.BLUETOOTH) {
@@ -417,24 +480,24 @@ public class TileView extends FrameLayout {
         } catch (Exception ignored) {}
 
         infoPrimaryView = new TextView(context);
-        infoPrimaryView.setText("RAM: %" + usedPct);
         infoPrimaryView.setTypeface(Typeface.DEFAULT_BOLD);
-        infoPrimaryView.setTextColor(usedPct > 85 ? Color.parseColor("#E53935") : getTextColor());
         infoPrimaryView.setGravity(Gravity.CENTER);
         infoPrimaryView.setSingleLine(true);
+        infoPrimaryView.setEllipsize(TextUtils.TruncateAt.END);
         container.addView(infoPrimaryView, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
         infoSecondaryView = new TextView(context);
-        String detailText = String.format(java.util.Locale.US, "%.1f / %.1f GB", usedGb, totalGb);
-        infoSecondaryView.setText(detailText);
         infoSecondaryView.setTextColor(isLightMode() ? Color.parseColor("#666666") : Color.parseColor("#AAAAAA"));
         infoSecondaryView.setGravity(Gravity.CENTER);
         infoSecondaryView.setSingleLine(true);
+        infoSecondaryView.setEllipsize(TextUtils.TruncateAt.END);
         container.addView(infoSecondaryView, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
         addView(container, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+        setInfoPrimary("RAM: %" + usedPct, usedPct > 85 ? Color.parseColor("#E53935") : getTextColor());
+        setInfoSecondary(String.format(java.util.Locale.US, "%.1f / %.1f GB", usedGb, totalGb));
     }
 
     private void initStorageTile(Context context) {
@@ -466,23 +529,24 @@ public class TileView extends FrameLayout {
         } catch (Exception ignored) {}
 
         infoPrimaryView = new TextView(context);
-        infoPrimaryView.setText(freeGb + " GB Boş");
         infoPrimaryView.setTypeface(Typeface.DEFAULT_BOLD);
-        infoPrimaryView.setTextColor(getTextColor());
         infoPrimaryView.setGravity(Gravity.CENTER);
         infoPrimaryView.setSingleLine(true);
+        infoPrimaryView.setEllipsize(TextUtils.TruncateAt.END);
         container.addView(infoPrimaryView, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
         infoSecondaryView = new TextView(context);
-        infoSecondaryView.setText("Depolama");
         infoSecondaryView.setTextColor(isLightMode() ? Color.parseColor("#666666") : Color.parseColor("#AAAAAA"));
         infoSecondaryView.setGravity(Gravity.CENTER);
         infoSecondaryView.setSingleLine(true);
+        infoSecondaryView.setEllipsize(TextUtils.TruncateAt.END);
         container.addView(infoSecondaryView, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
         addView(container, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+        setInfoPrimary(freeGb + " GB Boş", getTextColor());
+        setInfoSecondary("Depolama");
     }
 
     private void initNetworkTile(Context context) {
@@ -502,6 +566,7 @@ public class TileView extends FrameLayout {
         infoPrimaryView.setTypeface(Typeface.DEFAULT_BOLD);
         infoPrimaryView.setGravity(Gravity.CENTER);
         infoPrimaryView.setSingleLine(true);
+        infoPrimaryView.setEllipsize(TextUtils.TruncateAt.END);
         container.addView(infoPrimaryView, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
@@ -509,6 +574,7 @@ public class TileView extends FrameLayout {
         infoSecondaryView.setTextColor(isLightMode() ? Color.parseColor("#666666") : Color.parseColor("#AAAAAA"));
         infoSecondaryView.setGravity(Gravity.CENTER);
         infoSecondaryView.setSingleLine(true);
+        infoSecondaryView.setEllipsize(TextUtils.TruncateAt.END);
         container.addView(infoSecondaryView, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
@@ -534,30 +600,25 @@ public class TileView extends FrameLayout {
                             ipStr = String.format(java.util.Locale.US, "%d.%d.%d.%d", (ip & 0xff), (ip >> 8 & 0xff), (ip >> 16 & 0xff), (ip >> 24 & 0xff));
                         }
                     }
-                    infoPrimaryView.setText("📶 Wi-Fi: %" + levelPct);
-                    infoPrimaryView.setTextColor(getTextColor());
-                    infoSecondaryView.setText(ipStr);
+                    setInfoPrimary("📶 Wi-Fi: %" + levelPct, getTextColor());
+                    setInfoSecondary(ipStr);
                 } else if (activeNetwork.getType() == 9 /* TYPE_ETHERNET */) {
-                    infoPrimaryView.setText("🌐 Ethernet");
-                    infoPrimaryView.setTextColor(getTextColor());
-                    infoSecondaryView.setText("Kablolu Bağlı");
+                    setInfoPrimary("🌐 Ethernet", getTextColor());
+                    setInfoSecondary("Kablolu Bağlı");
                 } else if (activeNetwork.getType() == ConnectivityManager.TYPE_MOBILE) {
-                    infoPrimaryView.setText("📶 Mobil Veri");
-                    infoPrimaryView.setTextColor(getTextColor());
-                    infoSecondaryView.setText(activeNetwork.getSubtypeName() != null ? activeNetwork.getSubtypeName() : "Bağlı");
+                    setInfoPrimary("📶 Mobil Veri", getTextColor());
+                    setInfoSecondary(activeNetwork.getSubtypeName() != null ? activeNetwork.getSubtypeName() : "Bağlı");
                 } else {
-                    infoPrimaryView.setText("🌐 Bağlı");
-                    infoPrimaryView.setTextColor(getTextColor());
-                    infoSecondaryView.setText("İnternet Aktif");
+                    setInfoPrimary("🌐 Bağlı", getTextColor());
+                    setInfoSecondary("İnternet Aktif");
                 }
             } else {
-                infoPrimaryView.setText("❌ İnternet Yok");
-                infoPrimaryView.setTextColor(Color.parseColor("#E53935"));
-                infoSecondaryView.setText("Bağlantı Kesildi");
+                setInfoPrimary("❌ İnternet Yok", Color.parseColor("#E53935"));
+                setInfoSecondary("Bağlantı Kesildi");
             }
         } catch (Exception e) {
-            infoPrimaryView.setText("Ağ Durumu");
-            infoSecondaryView.setText("Ayarlar");
+            setInfoPrimary("Ağ Durumu", getTextColor());
+            setInfoSecondary("Ayarlar");
         }
     }
 
@@ -578,6 +639,7 @@ public class TileView extends FrameLayout {
         infoPrimaryView.setTypeface(Typeface.DEFAULT_BOLD);
         infoPrimaryView.setGravity(Gravity.CENTER);
         infoPrimaryView.setSingleLine(true);
+        infoPrimaryView.setEllipsize(TextUtils.TruncateAt.END);
         container.addView(infoPrimaryView, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
@@ -585,6 +647,7 @@ public class TileView extends FrameLayout {
         infoSecondaryView.setTextColor(isLightMode() ? Color.parseColor("#666666") : Color.parseColor("#AAAAAA"));
         infoSecondaryView.setGravity(Gravity.CENTER);
         infoSecondaryView.setSingleLine(true);
+        infoSecondaryView.setEllipsize(TextUtils.TruncateAt.END);
         container.addView(infoSecondaryView, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
@@ -597,16 +660,12 @@ public class TileView extends FrameLayout {
         try {
             android.bluetooth.BluetoothAdapter ba = android.bluetooth.BluetoothAdapter.getDefaultAdapter();
             if (ba == null) {
-                infoPrimaryView.setText("Bluetooth Yok");
-                infoPrimaryView.setTextColor(isLightMode() ? Color.parseColor("#888888") : Color.parseColor("#666666"));
-                infoSecondaryView.setText("Donanım Yok");
+                setInfoPrimary("Bluetooth Yok", isLightMode() ? Color.parseColor("#888888") : Color.parseColor("#666666"));
+                setInfoSecondary("Donanım Yok");
             } else if (!ba.isEnabled()) {
-                infoPrimaryView.setText("Bluetooth");
-                infoPrimaryView.setTextColor(isLightMode() ? Color.parseColor("#888888") : Color.parseColor("#777777"));
-                infoSecondaryView.setText("Kapalı");
+                setInfoPrimary("Bluetooth", isLightMode() ? Color.parseColor("#888888") : Color.parseColor("#777777"));
+                setInfoSecondary("Kapalı");
             } else {
-                infoPrimaryView.setText("🔵 Bluetooth");
-                infoPrimaryView.setTextColor(Color.parseColor("#29B6F6"));
                 String deviceText = "Bağlı Cihaz Yok";
                 try {
                     java.util.Set<android.bluetooth.BluetoothDevice> bonded = ba.getBondedDevices();
@@ -624,11 +683,12 @@ public class TileView extends FrameLayout {
                         }
                     }
                 } catch (Exception ignored) {}
-                infoSecondaryView.setText(deviceText);
+                setInfoPrimary("🔵 Bluetooth", Color.parseColor("#29B6F6"));
+                setInfoSecondary(deviceText);
             }
         } catch (Exception e) {
-            infoPrimaryView.setText("Bluetooth");
-            infoSecondaryView.setText("Ayarlar");
+            setInfoPrimary("Bluetooth", getTextColor());
+            setInfoSecondary("Ayarlar");
         }
     }
 
@@ -1053,14 +1113,16 @@ public class TileView extends FrameLayout {
             }
         }
 
-        // 5. Bilgi ve Durum Kutuları (Pil, RAM, Depolama) Dinamik Tipografi
+        // 5. Bilgi ve Durum Kutuları (Pil, RAM, Depolama, Ağ, Bluetooth) Evrensel Dinamik Tipografi
         if (infoPrimaryView != null) {
-            float primSp = Math.max(11f, Math.min(26f, Math.min(availHDp * 0.28f, availWDp / 4.8f)));
-            infoPrimaryView.setTextSize(TypedValue.COMPLEX_UNIT_SP, primSp);
+            float availW = Math.max(10f, w - dpToPx(getContext(), 10));
+            float maxSp = Math.max(9.5f, Math.min(24f, availHDp * 0.28f));
+            autoFitText(infoPrimaryView, maxSp, 7.5f, availW);
         }
         if (infoSecondaryView != null) {
-            float secSp = Math.max(8.5f, Math.min(14f, Math.min(availHDp * 0.16f, availWDp / 5.5f)));
-            infoSecondaryView.setTextSize(TypedValue.COMPLEX_UNIT_SP, secSp);
+            float availW = Math.max(10f, w - dpToPx(getContext(), 10));
+            float maxSp = Math.max(8.0f, Math.min(14f, availHDp * 0.18f));
+            autoFitText(infoSecondaryView, maxSp, 7.0f, availW);
         }
     }
 

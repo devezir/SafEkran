@@ -328,7 +328,7 @@ public class MainActivity extends Activity {
         boolean hasRed = false, hasGreen = false, hasYellow = false, hasBlue = false;
         boolean hasSettings = false, hasClock = false, hasDate = false;
         boolean hasBattery = false, hasRam = false, hasStorage = false;
-        boolean hasNetwork = false, hasBluetooth = false;
+        boolean hasNetwork = false, hasBluetooth = false, hasSysSettings = false;
         if (config != null && config.tiles != null) {
             for (Tile t : config.tiles) {
                 if (t.type == TileType.COLOR_RED) hasRed = true;
@@ -336,6 +336,7 @@ public class MainActivity extends Activity {
                 else if (t.type == TileType.COLOR_YELLOW) hasYellow = true;
                 else if (t.type == TileType.COLOR_BLUE) hasBlue = true;
                 else if (t.type == TileType.LAUNCHER_SETTINGS) hasSettings = true;
+                else if (t.type == TileType.SYSTEM_SETTINGS) hasSysSettings = true;
                 else if (t.type == TileType.CLOCK) hasClock = true;
                 else if (t.type == TileType.DATE) hasDate = true;
                 else if (t.type == TileType.BATTERY) hasBattery = true;
@@ -396,6 +397,10 @@ public class MainActivity extends Activity {
         if (!hasSettings) {
             Tile s = new Tile(TileType.LAUNCHER_SETTINGS, "Başlatıcı Ayarları", 0, 0, 1, 1);
             missing.add(s);
+        }
+        if (!hasSysSettings) {
+            Tile ss = new Tile(TileType.SYSTEM_SETTINGS, "Sistem Ayarları", 0, 0, 1, 1);
+            missing.add(ss);
         }
         return missing;
     }

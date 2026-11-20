@@ -1,12 +1,12 @@
 {
   "appName": "Saf Ekran",
   "packageName": "com.safekran.launcher",
-  "versionCode": 33,
-  "versionName": "2.21.0",
+  "versionCode": 34,
+  "versionName": "2.21.1",
   "developer": "Vezir",
   "schemaVersion": 1,
   "createdDate": "2026-11-19",
-  "apkName": "SafEkran_v2.21.0_vc33.apk",
+  "apkName": "SafEkran_v2.21.1_vc34.apk",
   "history": [
     {
       "versionCode": 1,
@@ -205,6 +205,12 @@
       "versionName": "2.21.0",
       "date": "2026-11-20",
       "description": "Ag ve Bluetooth Kutulari, Turnstile Acilis Animasyonu, Duzen Kilidi, Sifir Gizli Kutu"
+    },
+    {
+      "versionCode": 34,
+      "versionName": "2.21.1",
+      "date": "2026-11-21",
+      "description": "Fix: Evrensel Tipografi Motoru (autoFitText) ile Ag ve Tum Durum Kutularinda Dinamik Metin Sigdirma, Baslatici Ayarlari Varsayilan Acik (v2.21.1)"
     }
   ]
 }
