@@ -183,7 +183,7 @@ public class MainActivity extends Activity {
                 executeColorAction(tile, tv);
                 break;
             case CLOCK:
-                Toast.makeText(this, "Saat kutusu. Kutuya uzun basarak konumunu taşıyabilirsiniz.", Toast.LENGTH_SHORT).show();
+                openClockOrDateSettings();
                 break;
             case SPACER:
                 // Hayalet Odak: Kumandadan [OK] veya dokunma ile doğrudan boyutlandırma/silme menüsünü aç
@@ -696,6 +696,51 @@ public class MainActivity extends Activity {
     }
 
 
+
+    private void openClockOrDateSettings() {
+        try {
+            // 1. Standart Alarm Clock Intent
+            Intent clockIntent = new Intent(android.provider.AlarmClock.ACTION_SHOW_ALARMS);
+            clockIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (getPackageManager().resolveActivity(clockIntent, 0) != null) {
+                startActivity(clockIntent);
+                return;
+            }
+        } catch (Exception ignored) {}
+
+        // 2. Yaygın Cihaz Saat Paketleri (Google, AOSP, Xiaomi, Samsung, Oppo, Huawei)
+        String[] clockPackages = new String[]{
+                "com.google.android.deskclock",
+                "com.android.deskclock",
+                "com.sec.android.app.clockpackage",
+                "com.miui.clock",
+                "com.coloros.alarmclock",
+                "com.huawei.android.totemweather"
+        };
+        for (String pkg : clockPackages) {
+            try {
+                Intent pIntent = getPackageManager().getLaunchIntentForPackage(pkg);
+                if (pIntent != null) {
+                    pIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(pIntent);
+                    return;
+                }
+            } catch (Exception ignored) {}
+        }
+
+        // 3. Sistem Tarih ve Saat Ayarları
+        try {
+            Intent dateIntent = new Intent(Settings.ACTION_DATE_SETTINGS);
+            dateIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (getPackageManager().resolveActivity(dateIntent, 0) != null) {
+                startActivity(dateIntent);
+                return;
+            }
+        } catch (Exception ignored) {}
+
+        // 4. Genel Sistem Ayarları
+        openSystemSettings();
+    }
 
     private void openSystemSettings() {
         try {
@@ -1364,6 +1409,12 @@ public class MainActivity extends Activity {
     private void updateRemoteTitleWithSelected() {
         if (remoteTitleView != null && workspaceView != null) {
             TileView sel = workspaceView.getTvSelectedTile();
+            if (sel == null) {
+                View focused = workspaceView.findFocus();
+                if (focused instanceof TileView) {
+                    sel = (TileView) focused;
+                }
+            }
             if (sel != null && sel.getTile() != null && sel.getTile().label != null) {
                 if (sel.getTile().type == TileType.SPACER) {
                     remoteTitleView.setText("🎮 🔲 " + sel.getTile().colSpan + "x" + sel.getTile().rowSpan + " Boşluk");

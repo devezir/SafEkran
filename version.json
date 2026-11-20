@@ -1,12 +1,12 @@
 {
   "appName": "Saf Ekran",
   "packageName": "com.safekran.launcher",
-  "versionCode": 24,
-  "versionName": "2.15.0",
+  "versionCode": 25,
+  "versionName": "2.16.0",
   "developer": "Vezir",
   "schemaVersion": 1,
   "createdDate": "2026-11-19",
-  "apkName": "SafEkran_v2.15.0_vc24.apk",
+  "apkName": "SafEkran_v2.16.0_vc25.apk",
   "history": [
     {
       "versionCode": 1,
@@ -151,6 +151,12 @@
       "versionName": "2.15.0",
       "date": "2026-11-20",
       "description": "Hassas Yazi Boyutu Kayan Cubugu (SeekBar %70-%160), Aktif Secim Vurgulama ve Anlik Tipografi Olcekleme"
+    },
+    {
+      "versionCode": 25,
+      "versionName": "2.16.0",
+      "date": "2026-11-20",
+      "description": "Fix: Dokunmatik Odak Kilitlenmesi ve Saat Kutusu Desenkronizasyonu Kokten Duzeltildi"
     }
   ]
 }

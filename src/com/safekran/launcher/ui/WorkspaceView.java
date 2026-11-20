@@ -395,11 +395,6 @@ public class WorkspaceView extends ViewGroup {
                     lastTouchY = y;
                     initVelocityTrackerIfNotExists();
                     velocityTracker.addMovement(ev);
-
-                    MotionEvent cancelEvent = MotionEvent.obtain(ev);
-                    cancelEvent.setAction(MotionEvent.ACTION_CANCEL);
-                    super.dispatchTouchEvent(cancelEvent);
-                    cancelEvent.recycle();
                     return true;
                 }
                 break;
@@ -486,6 +481,16 @@ public class WorkspaceView extends ViewGroup {
     @Override
     public void requestChildFocus(View child, View focused) {
         super.requestChildFocus(child, focused);
+
+        if (child instanceof TileView) {
+            TileView target = (TileView) child;
+            if (tvSelectedTile != null && tvSelectedTile != target) {
+                tvSelectedTile.setTvFocused(false);
+            }
+            tvSelectedTile = target;
+            tvSelectedTile.setSelected(true);
+            postInvalidateOnAnimation();
+        }
 
         if (focused != null && config != null) {
             int childTop = child.getTop();
@@ -589,20 +594,35 @@ public class WorkspaceView extends ViewGroup {
     }
 
     public void executeTvSelected() {
+        View focused = findFocus();
+        if (focused instanceof TileView) {
+            tvSelectedTile = (TileView) focused;
+            focused.performClick();
+            return;
+        }
         if (tvSelectedTile != null) {
             tvSelectedTile.performClick();
         } else {
-            selectFirstVisibleTile();
+            TileView first = selectFirstVisibleTile();
+            if (first != null) {
+                first.performClick();
+            }
         }
     }
 
     public void executeTvSelectedLongClick() {
+        View focused = findFocus();
+        if (focused instanceof TileView) {
+            tvSelectedTile = (TileView) focused;
+            focused.performLongClick();
+            return;
+        }
         if (tvSelectedTile != null) {
             tvSelectedTile.performLongClick();
         } else {
-            selectFirstVisibleTile();
-            if (tvSelectedTile != null) {
-                tvSelectedTile.performLongClick();
+            TileView first = selectFirstVisibleTile();
+            if (first != null) {
+                first.performLongClick();
             }
         }
     }

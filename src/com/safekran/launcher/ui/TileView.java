@@ -71,7 +71,7 @@ public class TileView extends FrameLayout {
         // Normalde görünmez / saf siyah zemindedir. Kumanda veya dokunmatik odaklandığında neon/kesik çerçeve ile belirir.
         setVisibility(View.VISIBLE);
         setFocusable(true);
-        setFocusableInTouchMode(true);
+        setFocusableInTouchMode(false);
         setClickable(true);
         setLongClickable(true);
         setBackgroundColor(Color.TRANSPARENT);
@@ -128,7 +128,7 @@ public class TileView extends FrameLayout {
     private void initClockTile(Context context) {
         setVisibility(View.VISIBLE);
         setFocusable(true);
-        setFocusableInTouchMode(true);
+        setFocusableInTouchMode(false);
         setClickable(true);
         applyTileBackground();
 
@@ -179,7 +179,7 @@ public class TileView extends FrameLayout {
     private void initActionOrAppTile(Context context, Drawable appIcon) {
         setVisibility(View.VISIBLE);
         setFocusable(true);
-        setFocusableInTouchMode(true);
+        setFocusableInTouchMode(false);
         setClickable(true);
         applyTileBackground();
 
@@ -372,6 +372,9 @@ public class TileView extends FrameLayout {
         updateSpacerGhostVisuals(focused);
         float targetScale = focused ? ((config != null) ? config.focusScale : 1.08f) : 1.0f;
         animate().scaleX(targetScale).scaleY(targetScale).setDuration(120).start();
+        if (focused && !hasFocus()) {
+            requestFocus();
+        }
         invalidate();
     }
 
