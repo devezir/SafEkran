@@ -1077,6 +1077,81 @@ public class MainActivity extends Activity {
         }
     }
 
+    private boolean isDefaultLauncher() {
+        try {
+            Intent intent = new Intent(Intent.ACTION_MAIN);
+            intent.addCategory(Intent.CATEGORY_HOME);
+            android.content.pm.ResolveInfo resolveInfo = getPackageManager().resolveActivity(
+                    intent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY);
+            if (resolveInfo != null && resolveInfo.activityInfo != null) {
+                return getPackageName().equals(resolveInfo.activityInfo.packageName);
+            }
+        } catch (Exception ignored) {}
+        return false;
+    }
+
+    private void promptSetDefaultLauncher() {
+        boolean handled = false;
+
+        // 1. Android 10+ (API 29+): RoleManager.ROLE_HOME
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            try {
+                android.app.role.RoleManager roleManager = (android.app.role.RoleManager) getSystemService(Context.ROLE_SERVICE);
+                if (roleManager != null && roleManager.isRoleAvailable(android.app.role.RoleManager.ROLE_HOME)) {
+                    if (!roleManager.isRoleHeld(android.app.role.RoleManager.ROLE_HOME)) {
+                        Intent roleIntent = roleManager.createRequestRoleIntent(android.app.role.RoleManager.ROLE_HOME);
+                        startActivity(roleIntent);
+                        handled = true;
+                    } else {
+                        Toast.makeText(this, "Saf Ekran zaten varsayılan başlatıcı.", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+
+        if (handled) return;
+
+        // 2. Android 7.0 - 9.0 (veya RoleManager desteklenmeyen ROM'lar): ACTION_HOME_SETTINGS
+        try {
+            Intent homeSettings = new Intent(Settings.ACTION_HOME_SETTINGS);
+            homeSettings.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (getPackageManager().resolveActivity(homeSettings, 0) != null) {
+                startActivity(homeSettings);
+                handled = true;
+            }
+        } catch (Exception ignored) {}
+
+        if (handled) return;
+
+        // 3. Android TV / AOSP Ayarları (com.android.tv.settings veya ACTION_MANAGE_DEFAULT_APPS_SETTINGS)
+        try {
+            Intent defaultApps = new Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS);
+            defaultApps.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (getPackageManager().resolveActivity(defaultApps, 0) != null) {
+                startActivity(defaultApps);
+                handled = true;
+            }
+        } catch (Exception ignored) {}
+
+        if (handled) return;
+
+        // 4. Android 5.0 - 6.0 ve Genel Fallback: HOME Intent ile Sistem Seçicisini Tetikleme
+        try {
+            Intent homeIntent = new Intent(Intent.ACTION_MAIN);
+            homeIntent.addCategory(Intent.CATEGORY_HOME);
+            homeIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            Intent chooser = Intent.createChooser(homeIntent, "Varsayılan Başlatıcıyı Seçin");
+            chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(chooser);
+            handled = true;
+        } catch (Exception ignored) {}
+
+        if (!handled) {
+            openSystemSettings();
+        }
+    }
+
     // ==========================================
     // KAPSAMLI BAŞLATICI AYARLARI MENÜSÜ
     // ==========================================
@@ -1236,34 +1311,6 @@ public class MainActivity extends Activity {
         return content;
     }
 
-    private void addScaleButton(final AlertDialog[] dialogRef, final LinearLayout row, String text, final float scaleValue, float currentScale) {
-        final Button btn = new Button(this);
-        btn.setText(text);
-        btn.setTextSize(Math.round(10 * currentScale));
-        int padH = (int) (dpToPx(2) * Math.min(1.3f, currentScale));
-        int padV = (int) (dpToPx(6) * Math.min(1.3f, currentScale));
-        btn.setPadding(padH, padV, padH, padV);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-        params.setMargins(dpToPx(2), dpToPx(2), dpToPx(2), dpToPx(4));
-        btn.setLayoutParams(params);
-
-        boolean isSelected = Math.abs(config.settingsUiScale - scaleValue) < 0.05f;
-        setupTvFocusToggleButton(btn, isSelected, 4);
-
-        btn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                config.settingsUiScale = scaleValue;
-                WorkspaceStorage.saveWorkspace(MainActivity.this, config);
-                if (dialogRef != null && dialogRef[0] != null && dialogRef[0].isShowing()) {
-                    dialogRef[0].dismiss();
-                    openLauncherSettingsDialog();
-                }
-            }
-        });
-        row.addView(btn);
-    }
-
     private void openLauncherSettingsDialog() {
         final AlertDialog[] dialogRef = new AlertDialog[1];
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -1277,7 +1324,7 @@ public class MainActivity extends Activity {
 
         // 1. İmza & Sürüm Başlığı
         TextView authorText = new TextView(this);
-        String currentVersion = "2.21.3";
+        String currentVersion = "2.22.1";
         try {
             currentVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception ignored) {}
@@ -1288,21 +1335,161 @@ public class MainActivity extends Activity {
         layout.addView(authorText);
 
         // 0. ARAYÜZ ÖLÇEĞİ (GÖZLÜK VE TV MENÜ BÜYÜTME - EN ÜSTTE)
+        final int currentStep = Math.max(0, Math.min(33, Math.round((sScale * 100f - 85f) / 5f)));
+        final int currentPct = 85 + currentStep * 5;
+
+        LinearLayout scaleHeaderRow = new LinearLayout(this);
+        scaleHeaderRow.setOrientation(LinearLayout.HORIZONTAL);
+        scaleHeaderRow.setGravity(Gravity.CENTER_VERTICAL);
+        scaleHeaderRow.setPadding(0, dpToPx(4), 0, dpToPx(2));
+
         TextView scaleHeader = new TextView(this);
         scaleHeader.setText("🔍 MENÜ ARAYÜZ ÖLÇEĞİ (GÖZLÜK & TV)");
         scaleHeader.setTextColor(Color.parseColor("#80D8FF"));
         scaleHeader.setTextSize(Math.round(11 * sScale));
         scaleHeader.setTypeface(Typeface.DEFAULT_BOLD);
-        scaleHeader.setPadding(0, dpToPx(4), 0, dpToPx(4));
-        layout.addView(scaleHeader);
+        LinearLayout.LayoutParams shLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        scaleHeader.setLayoutParams(shLp);
+        scaleHeaderRow.addView(scaleHeader);
 
+        final TextView scaleValText = new TextView(this);
+        scaleValText.setText("%" + currentPct);
+        scaleValText.setTextColor(Color.parseColor("#00E5FF"));
+        scaleValText.setTextSize(Math.round(13 * sScale));
+        scaleValText.setTypeface(Typeface.DEFAULT_BOLD);
+        scaleValText.setGravity(Gravity.END);
+        scaleHeaderRow.addView(scaleValText);
+
+        layout.addView(scaleHeaderRow);
+
+        // Slider ve [-] [+] Butonları Satırı (%85 - %250)
         final LinearLayout scaleRow = new LinearLayout(this);
         scaleRow.setOrientation(LinearLayout.HORIZONTAL);
-        addScaleButton(dialogRef, scaleRow, "Kompakt %85", 0.85f, sScale);
-        addScaleButton(dialogRef, scaleRow, "Standart %100", 1.0f, sScale);
-        addScaleButton(dialogRef, scaleRow, "Büyük %125", 1.25f, sScale);
-        addScaleButton(dialogRef, scaleRow, "Gözlük %150", 1.50f, sScale);
+        scaleRow.setGravity(Gravity.CENTER_VERTICAL);
+        scaleRow.setPadding(0, 0, 0, dpToPx(6));
+
+        final Button minusBtn = new Button(this);
+        minusBtn.setText("－");
+        minusBtn.setTextSize(Math.round(14 * sScale));
+        minusBtn.setTextColor(Color.WHITE);
+        setupTvFocusHighlight(minusBtn, Color.parseColor("#37474F"), 4);
+        int btnW = (int) (dpToPx(44) * Math.min(1.3f, sScale));
+        int btnH = (int) (dpToPx(38) * Math.min(1.3f, sScale));
+        LinearLayout.LayoutParams minusLp = new LinearLayout.LayoutParams(btnW, btnH);
+        minusLp.rightMargin = dpToPx(4);
+        minusBtn.setLayoutParams(minusLp);
+
+        final SeekBar scaleSeekBar = new SeekBar(this);
+        scaleSeekBar.setMax(33);
+        scaleSeekBar.setProgress(currentStep);
+        scaleSeekBar.setKeyProgressIncrement(1);
+        setupTvFocusSlider(scaleSeekBar);
+        LinearLayout.LayoutParams sbLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        sbLp.setMargins(dpToPx(4), 0, dpToPx(4), 0);
+        scaleSeekBar.setLayoutParams(sbLp);
+
+        final Button plusBtn = new Button(this);
+        plusBtn.setText("＋");
+        plusBtn.setTextSize(Math.round(14 * sScale));
+        plusBtn.setTextColor(Color.WHITE);
+        setupTvFocusHighlight(plusBtn, Color.parseColor("#37474F"), 4);
+        LinearLayout.LayoutParams plusLp = new LinearLayout.LayoutParams(btnW, btnH);
+        plusLp.leftMargin = dpToPx(4);
+        plusBtn.setLayoutParams(plusLp);
+
+        scaleRow.addView(minusBtn);
+        scaleRow.addView(scaleSeekBar);
+        scaleRow.addView(plusBtn);
         layout.addView(scaleRow);
+
+        final android.os.Handler scaleHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+        final Runnable applyScaleRunnable = new Runnable() {
+            @Override
+            public void run() {
+                int step = scaleSeekBar.getProgress();
+                float newScale = (85 + step * 5) / 100f;
+                if (Math.abs(config.settingsUiScale - newScale) > 0.01f) {
+                    config.settingsUiScale = newScale;
+                    WorkspaceStorage.saveWorkspace(MainActivity.this, config);
+                    if (dialogRef[0] != null && dialogRef[0].isShowing()) {
+                        dialogRef[0].dismiss();
+                        openLauncherSettingsDialog();
+                    }
+                }
+            }
+        };
+
+        scaleSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar sb, int progress, boolean fromUser) {
+                int pct = 85 + progress * 5;
+                scaleValText.setText("%" + pct);
+                if (fromUser) {
+                    scaleHandler.removeCallbacks(applyScaleRunnable);
+                    scaleHandler.postDelayed(applyScaleRunnable, 400);
+                }
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar sb) {
+                scaleHandler.removeCallbacks(applyScaleRunnable);
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar sb) {
+                scaleHandler.removeCallbacks(applyScaleRunnable);
+                scaleHandler.post(applyScaleRunnable);
+            }
+        });
+
+        minusBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                int cur = scaleSeekBar.getProgress();
+                if (cur > 0) {
+                    scaleSeekBar.setProgress(cur - 1);
+                    scaleHandler.removeCallbacks(applyScaleRunnable);
+                    scaleHandler.post(applyScaleRunnable);
+                }
+            }
+        });
+
+        plusBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                int cur = scaleSeekBar.getProgress();
+                if (cur < 33) {
+                    scaleSeekBar.setProgress(cur + 1);
+                    scaleHandler.removeCallbacks(applyScaleRunnable);
+                    scaleHandler.post(applyScaleRunnable);
+                }
+            }
+        });
+
+        // --- VARSAYILAN BAŞLATICI KARTI (KUTU GEOMETRİSİNİN HEMEN ÜSTÜNDE) ---
+        final boolean isDefault = isDefaultLauncher();
+        final Button defaultLauncherBtn = new Button(this);
+        if (isDefault) {
+            defaultLauncherBtn.setText("✅ Saf Ekran Varsayılan Başlatıcı");
+            defaultLauncherBtn.setTextColor(Color.parseColor("#A5D6A7"));
+            setupTvFocusHighlight(defaultLauncherBtn, Color.parseColor("#1B5E20"), 4);
+        } else {
+            defaultLauncherBtn.setText("🏠 Saf Ekran'ı Varsayılan Başlatıcı Yap");
+            defaultLauncherBtn.setTextColor(Color.WHITE);
+            setupTvFocusHighlight(defaultLauncherBtn, Color.parseColor("#E65100"), 4);
+        }
+        defaultLauncherBtn.setTextSize(Math.round(11 * sScale));
+        LinearLayout.LayoutParams defLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, (int) (dpToPx(40) * Math.min(1.3f, sScale)));
+        defLp.setMargins(0, dpToPx(4), 0, dpToPx(8));
+        defaultLauncherBtn.setLayoutParams(defLp);
+        defaultLauncherBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                promptSetDefaultLauncher();
+            }
+        });
+        layout.addView(defaultLauncherBtn);
 
         final List<AccordionSection> allSections = new java.util.ArrayList<AccordionSection>();
 
@@ -1586,13 +1773,13 @@ public class MainActivity extends Activity {
             wlp.dimAmount = 0.05f; // Saydama yakın: Arka plandaki kutuların canlı akışı %100 görünür!
             if (isLandscape) {
                 wlp.gravity = Gravity.END | Gravity.CENTER_VERTICAL;
-                float widthFraction = (sScale > 1.2f) ? 0.48f : 0.40f;
+                float widthFraction = (sScale >= 1.8f) ? 0.65f : ((sScale > 1.2f) ? 0.48f : 0.40f);
                 wlp.width = (int) (dm.widthPixels * widthFraction);
                 wlp.height = WindowManager.LayoutParams.MATCH_PARENT;
             } else {
                 wlp.gravity = Gravity.BOTTOM;
                 wlp.width = WindowManager.LayoutParams.MATCH_PARENT;
-                float heightFraction = (sScale > 1.2f) ? 0.82f : 0.70f;
+                float heightFraction = (sScale >= 1.8f) ? 0.95f : ((sScale > 1.2f) ? 0.85f : 0.70f);
                 wlp.height = (int) (dm.heightPixels * heightFraction);
             }
             window.setAttributes(wlp);

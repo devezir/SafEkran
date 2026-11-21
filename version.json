@@ -1,12 +1,12 @@
 {
   "appName": "Saf Ekran",
   "packageName": "com.safekran.launcher",
-  "versionCode": 38,
-  "versionName": "2.22.1",
+  "versionCode": 39,
+  "versionName": "2.23.0",
   "developer": "Vezir",
   "schemaVersion": 1,
   "createdDate": "2026-11-19",
-  "apkName": "SafEkran_v2.22.1_vc38.apk",
+  "apkName": "SafEkran_v2.23.0_vc39.apk",
   "history": [
     {
       "versionCode": 1,
@@ -235,6 +235,12 @@
       "versionName": "2.22.1",
       "date": "2026-11-21",
       "description": "Tweak: Guncellemeleri Denetle butonu ayarlar menusunde en alta tasindi (v2.22.1)"
+    },
+    {
+      "versionCode": 39,
+      "versionName": "2.23.0",
+      "date": "2026-11-21",
+      "description": "Feat: %85-%250 arasi menu olcek slider'i ve evrensel varsayilan baslatici yapma motoru (v2.23.0)"
     }
   ]
 }

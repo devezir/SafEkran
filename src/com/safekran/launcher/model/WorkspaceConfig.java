@@ -104,7 +104,7 @@ public class WorkspaceConfig {
         config.animationEnabled = root.optBoolean("animationEnabled", true);
         config.isLayoutLocked = root.optBoolean("isLayoutLocked", false);
         config.settingsUiScale = (float) root.optDouble("settingsUiScale", 1.0);
-        if (config.settingsUiScale < 0.70f || config.settingsUiScale > 2.0f) {
+        if (config.settingsUiScale < 0.70f || config.settingsUiScale > 2.80f) {
             config.settingsUiScale = 1.0f;
         }
 
