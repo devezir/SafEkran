@@ -980,6 +980,27 @@ public class MainActivity extends Activity {
     }
 
     private void openBatterySettings() {
+        // 1. Android TV: Eğer TV ortamı veya com.android.tv.settings mevcutsa yerel sistem ayarlarına (Cihaz Tercihleri) git
+        try {
+            Intent tvIntent = new Intent(Intent.ACTION_MAIN);
+            tvIntent.setClassName("com.android.tv.settings", "com.android.tv.settings.MainSettings");
+            tvIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (getPackageManager().resolveActivity(tvIntent, 0) != null) {
+                startActivity(tvIntent);
+                return;
+            }
+        } catch (Exception ignored) {}
+
+        try {
+            Intent tvPkg = getPackageManager().getLaunchIntentForPackage("com.android.tv.settings");
+            if (tvPkg != null) {
+                tvPkg.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(tvPkg);
+                return;
+            }
+        } catch (Exception ignored) {}
+
+        // 2. Bataryalı Mobil Cihazlar: Standart Pil Kullanım Özeti
         try {
             Intent bIntent = new Intent(Intent.ACTION_POWER_USAGE_SUMMARY);
             bIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -988,6 +1009,7 @@ public class MainActivity extends Activity {
                 return;
             }
         } catch (Exception ignored) {}
+
         openSystemSettings();
     }
 
@@ -1016,6 +1038,27 @@ public class MainActivity extends Activity {
     }
 
     private void openSystemSettings() {
+        // 1. Android TV: Saf Android TV Sistem Ayarları (com.android.tv.settings)
+        try {
+            Intent tvIntent = new Intent(Intent.ACTION_MAIN);
+            tvIntent.setClassName("com.android.tv.settings", "com.android.tv.settings.MainSettings");
+            tvIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (getPackageManager().resolveActivity(tvIntent, 0) != null) {
+                startActivity(tvIntent);
+                return;
+            }
+        } catch (Exception ignored) {}
+
+        try {
+            Intent tvPkg = getPackageManager().getLaunchIntentForPackage("com.android.tv.settings");
+            if (tvPkg != null) {
+                tvPkg.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(tvPkg);
+                return;
+            }
+        } catch (Exception ignored) {}
+
+        // 2. Standart Android Ayarları
         try {
             Intent intent = new Intent(Settings.ACTION_SETTINGS);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -1041,19 +1084,118 @@ public class MainActivity extends Activity {
         boolean isExpanded;
     }
 
+    private void setupTvFocusHighlight(final View view, final int normalColor, final int normalRadiusDp) {
+        final GradientDrawable normalDrawable = new GradientDrawable();
+        normalDrawable.setColor(normalColor);
+        normalDrawable.setCornerRadius(dpToPx(normalRadiusDp));
+
+        final GradientDrawable focusedDrawable = new GradientDrawable();
+        focusedDrawable.setColor(Color.parseColor("#37474F"));
+        focusedDrawable.setCornerRadius(dpToPx(normalRadiusDp));
+        focusedDrawable.setStroke(dpToPx(2.5f), Color.parseColor("#00E5FF")); // Canlı Parlak Cyan TV Odak Çerçevesi
+
+        view.setBackground(normalDrawable);
+        view.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                if (hasFocus) {
+                    v.setBackground(focusedDrawable);
+                    v.animate().scaleX(1.02f).scaleY(1.02f).setDuration(100).start();
+                } else {
+                    v.setBackground(normalDrawable);
+                    v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start();
+                }
+            }
+        });
+    }
+
+    private void setupTvFocusToggleButton(final Button btn, final boolean isSelected, final int radiusDp) {
+        final int bgColor = isSelected ? Color.parseColor("#2E7D32") : Color.parseColor("#37474F");
+        final GradientDrawable normalDrawable = new GradientDrawable();
+        normalDrawable.setColor(bgColor);
+        normalDrawable.setCornerRadius(dpToPx(radiusDp));
+        if (isSelected) {
+            normalDrawable.setStroke(dpToPx(1.5f), Color.parseColor("#81C784"));
+        }
+
+        final GradientDrawable focusedDrawable = new GradientDrawable();
+        focusedDrawable.setColor(isSelected ? Color.parseColor("#388E3C") : Color.parseColor("#455A64"));
+        focusedDrawable.setCornerRadius(dpToPx(radiusDp));
+        focusedDrawable.setStroke(dpToPx(2.5f), Color.parseColor("#00E5FF"));
+
+        btn.setBackground(normalDrawable);
+        btn.setTextColor(isSelected ? Color.WHITE : Color.parseColor("#CFD8DC"));
+        btn.setTypeface(isSelected ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
+
+        btn.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                if (hasFocus) {
+                    v.setBackground(focusedDrawable);
+                    v.animate().scaleX(1.04f).scaleY(1.04f).setDuration(100).start();
+                } else {
+                    v.setBackground(normalDrawable);
+                    v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start();
+                }
+            }
+        });
+    }
+
+    private void setupTvFocusCheckBox(final CheckBox cb) {
+        final GradientDrawable focusedDrawable = new GradientDrawable();
+        focusedDrawable.setColor(Color.parseColor("#263238"));
+        focusedDrawable.setCornerRadius(dpToPx(4));
+        focusedDrawable.setStroke(dpToPx(2.0f), Color.parseColor("#00E5FF"));
+
+        cb.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                if (hasFocus) {
+                    v.setBackground(focusedDrawable);
+                    v.animate().scaleX(1.02f).scaleY(1.02f).setDuration(100).start();
+                } else {
+                    v.setBackground(null);
+                    v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start();
+                }
+            }
+        });
+    }
+
+    private void setupTvFocusSlider(final SeekBar sb) {
+        final GradientDrawable focusedDrawable = new GradientDrawable();
+        focusedDrawable.setColor(Color.parseColor("#1A2327"));
+        focusedDrawable.setCornerRadius(dpToPx(6));
+        focusedDrawable.setStroke(dpToPx(2.0f), Color.parseColor("#00E5FF"));
+
+        sb.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                if (hasFocus) {
+                    v.setBackground(focusedDrawable);
+                    v.animate().scaleX(1.02f).scaleY(1.02f).setDuration(100).start();
+                } else {
+                    v.setBackground(null);
+                    v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start();
+                }
+            }
+        });
+    }
+
     private LinearLayout addAccordionSection(LinearLayout container, final List<AccordionSection> allSections,
-                                             final String title, boolean defaultExpanded) {
+                                             final String title, boolean defaultExpanded, float sScale) {
         final AccordionSection section = new AccordionSection();
         section.isExpanded = defaultExpanded;
 
         final Button header = new Button(this);
         header.setText((defaultExpanded ? "▼ " : "► ") + title);
         header.setTextColor(Color.parseColor("#80D8FF"));
-        header.setTextSize(11);
+        header.setTextSize(Math.round(11 * sScale));
         header.setTypeface(Typeface.DEFAULT_BOLD);
-        header.setBackgroundColor(Color.parseColor("#263238"));
+        setupTvFocusHighlight(header, Color.parseColor("#263238"), 4);
         header.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
-        header.setPadding(dpToPx(12), dpToPx(8), dpToPx(12), dpToPx(8));
+        int padH = (int) (dpToPx(12) * Math.min(1.3f, sScale));
+        int padV = (int) (dpToPx(8) * Math.min(1.3f, sScale));
+        header.setPadding(padH, padV, padH, padV);
         LinearLayout.LayoutParams hLp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         hLp.topMargin = dpToPx(6);
@@ -1091,8 +1233,39 @@ public class MainActivity extends Activity {
         return content;
     }
 
+    private void addScaleButton(final AlertDialog[] dialogRef, final LinearLayout row, String text, final float scaleValue, float currentScale) {
+        final Button btn = new Button(this);
+        btn.setText(text);
+        btn.setTextSize(Math.round(10 * currentScale));
+        int padH = (int) (dpToPx(2) * Math.min(1.3f, currentScale));
+        int padV = (int) (dpToPx(6) * Math.min(1.3f, currentScale));
+        btn.setPadding(padH, padV, padH, padV);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        params.setMargins(dpToPx(2), dpToPx(2), dpToPx(2), dpToPx(4));
+        btn.setLayoutParams(params);
+
+        boolean isSelected = Math.abs(config.settingsUiScale - scaleValue) < 0.05f;
+        setupTvFocusToggleButton(btn, isSelected, 4);
+
+        btn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                config.settingsUiScale = scaleValue;
+                WorkspaceStorage.saveWorkspace(MainActivity.this, config);
+                if (dialogRef != null && dialogRef[0] != null && dialogRef[0].isShowing()) {
+                    dialogRef[0].dismiss();
+                    openLauncherSettingsDialog();
+                }
+            }
+        });
+        row.addView(btn);
+    }
+
     private void openLauncherSettingsDialog() {
+        final AlertDialog[] dialogRef = new AlertDialog[1];
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
+
+        final float sScale = (config != null) ? config.settingsUiScale : 1.0f;
 
         ScrollView scroll = new ScrollView(this);
         LinearLayout layout = new LinearLayout(this);
@@ -1101,33 +1274,50 @@ public class MainActivity extends Activity {
 
         // 1. İmza & Sürüm Başlığı
         TextView authorText = new TextView(this);
-        String currentVersion = "2.18.1";
+        String currentVersion = "2.21.2";
         try {
             currentVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception ignored) {}
         authorText.setText("Saf Ekran v" + currentVersion + " | Geliştirici: Vezir");
         authorText.setTextColor(Color.parseColor("#4CAF50"));
-        authorText.setTextSize(12);
+        authorText.setTextSize(Math.round(12 * sScale));
         authorText.setPadding(0, 0, 0, dpToPx(8));
         layout.addView(authorText);
+
+        // 0. ARAYÜZ ÖLÇEĞİ (GÖZLÜK VE TV MENÜ BÜYÜTME - EN ÜSTTE)
+        TextView scaleHeader = new TextView(this);
+        scaleHeader.setText("🔍 MENÜ ARAYÜZ ÖLÇEĞİ (GÖZLÜK & TV)");
+        scaleHeader.setTextColor(Color.parseColor("#80D8FF"));
+        scaleHeader.setTextSize(Math.round(11 * sScale));
+        scaleHeader.setTypeface(Typeface.DEFAULT_BOLD);
+        scaleHeader.setPadding(0, dpToPx(4), 0, dpToPx(4));
+        layout.addView(scaleHeader);
+
+        final LinearLayout scaleRow = new LinearLayout(this);
+        scaleRow.setOrientation(LinearLayout.HORIZONTAL);
+        addScaleButton(dialogRef, scaleRow, "Kompakt %85", 0.85f, sScale);
+        addScaleButton(dialogRef, scaleRow, "Standart %100", 1.0f, sScale);
+        addScaleButton(dialogRef, scaleRow, "Büyük %125", 1.25f, sScale);
+        addScaleButton(dialogRef, scaleRow, "Gözlük %150", 1.50f, sScale);
+        layout.addView(scaleRow);
 
         final List<AccordionSection> allSections = new java.util.ArrayList<AccordionSection>();
 
         // 1. Kutu Geometrisi (Canlı Önizleme — Varsayılan AÇIK)
-        LinearLayout secGeometry = addAccordionSection(layout, allSections, "1. KUTU GEOMETRİSİ (CANLI ÖNİZLEME)", true);
-        addPercentSlider(secGeometry, "Kutu Boyutu (Genişlik)", config.tileScale, 6, 20, new ValueCallback() {
+        LinearLayout secGeometry = addAccordionSection(layout, allSections, "1. KUTU GEOMETRİSİ (CANLI ÖNİZLEME)", true, sScale);
+        addPercentSlider(secGeometry, "Kutu Boyutu (Genişlik)", config.tileScale, 6, 20, sScale, new ValueCallback() {
             @Override public void onValueChanged(float val) { 
                 config.tileScale = val; 
                 workspaceView.requestLayout(); 
             }
         });
-        addPercentSlider(secGeometry, "Kutu Yükseklik Oranı (%75=TV, %100=Kare)", config.tileHeightRatio, 50, 100, new ValueCallback() {
+        addPercentSlider(secGeometry, "Kutu Yükseklik Oranı (%75=TV, %100=Kare)", config.tileHeightRatio, 50, 100, sScale, new ValueCallback() {
             @Override public void onValueChanged(float val) { 
                 config.tileHeightRatio = val; 
                 workspaceView.requestLayout(); 
             }
         });
-        addPercentSlider(secGeometry, "Kutular Arası Boşluk (Gutter)", config.gutterPercent, 0, 5, new ValueCallback() {
+        addPercentSlider(secGeometry, "Kutular Arası Boşluk (Gutter)", config.gutterPercent, 0, 5, sScale, new ValueCallback() {
             @Override public void onValueChanged(float val) { 
                 config.gutterPercent = val; 
                 workspaceView.requestLayout(); 
@@ -1135,49 +1325,51 @@ public class MainActivity extends Activity {
         });
 
         // 2. Güvenli Alan (Overscan)
-        LinearLayout secSafeArea = addAccordionSection(layout, allSections, "2. GÜVENLİ ALAN (OVERSCAN)", false);
-        addPercentSlider(secSafeArea, "Üst Güvenli Alan", config.safeArea.top, 0, 20, new ValueCallback() {
+        LinearLayout secSafeArea = addAccordionSection(layout, allSections, "2. GÜVENLİ ALAN (OVERSCAN)", false, sScale);
+        addPercentSlider(secSafeArea, "Üst Güvenli Alan", config.safeArea.top, 0, 20, sScale, new ValueCallback() {
             @Override public void onValueChanged(float val) { config.safeArea.top = val; workspaceView.requestLayout(); }
         });
-        addPercentSlider(secSafeArea, "Alt Güvenli Alan", config.safeArea.bottom, 0, 20, new ValueCallback() {
+        addPercentSlider(secSafeArea, "Alt Güvenli Alan", config.safeArea.bottom, 0, 20, sScale, new ValueCallback() {
             @Override public void onValueChanged(float val) { config.safeArea.bottom = val; workspaceView.requestLayout(); }
         });
-        addPercentSlider(secSafeArea, "Sol Güvenli Alan", config.safeArea.left, 0, 20, new ValueCallback() {
+        addPercentSlider(secSafeArea, "Sol Güvenli Alan", config.safeArea.left, 0, 20, sScale, new ValueCallback() {
             @Override public void onValueChanged(float val) { config.safeArea.left = val; workspaceView.requestLayout(); }
         });
-        addPercentSlider(secSafeArea, "Sağ Güvenli Alan", config.safeArea.right, 0, 20, new ValueCallback() {
+        addPercentSlider(secSafeArea, "Sağ Güvenli Alan", config.safeArea.right, 0, 20, sScale, new ValueCallback() {
             @Override public void onValueChanged(float val) { config.safeArea.right = val; workspaceView.requestLayout(); }
         });
 
         // 3. Odak ve Etkileşim
-        LinearLayout secFocus = addAccordionSection(layout, allSections, "3. ODAK VE ETKİLEŞİM", false);
+        LinearLayout secFocus = addAccordionSection(layout, allSections, "3. ODAK VE ETKİLEŞİM", false, sScale);
         float currentFocusPercent = (config.focusScale - 1.0f);
-        addPercentSlider(secFocus, "Odaklanınca Büyüme Oranı", currentFocusPercent, 0, 15, new ValueCallback() {
+        addPercentSlider(secFocus, "Odaklanınca Büyüme Oranı", currentFocusPercent, 0, 15, sScale, new ValueCallback() {
             @Override public void onValueChanged(float val) { config.focusScale = 1.0f + val; }
         });
 
         // 4. Çerçeve ve Tema Stili
-        LinearLayout secTheme = addAccordionSection(layout, allSections, "4. ÇERÇEVE VE TEMA STİLİ", false);
+        LinearLayout secTheme = addAccordionSection(layout, allSections, "4. ÇERÇEVE VE TEMA STİLİ", false, sScale);
         LinearLayout styleRow = new LinearLayout(this);
         styleRow.setOrientation(LinearLayout.HORIZONTAL);
-        addStyleButton(styleRow, "Sadece Odakta", "FOCUS_ONLY");
-        addStyleButton(styleRow, "Her Zaman", "ALWAYS");
-        addStyleButton(styleRow, "Yüzen", "FLOATING");
+        addStyleButton(styleRow, "Sadece Odakta", "FOCUS_ONLY", sScale);
+        addStyleButton(styleRow, "Her Zaman", "ALWAYS", sScale);
+        addStyleButton(styleRow, "Yüzen", "FLOATING", sScale);
         updateButtonGroupHighlight(styleRow, config.tileStyle);
         secTheme.addView(styleRow);
 
         LinearLayout themeRow = new LinearLayout(this);
         themeRow.setOrientation(LinearLayout.HORIZONTAL);
-        addThemeButton(themeRow, "Saf Siyah", "BLACK");
-        addThemeButton(themeRow, "Koyu Gri", "DARK_GRAY");
-        addThemeButton(themeRow, "Aydınlık", "LIGHT");
+        addThemeButton(themeRow, "Saf Siyah", "BLACK", sScale);
+        addThemeButton(themeRow, "Koyu Gri", "DARK_GRAY", sScale);
+        addThemeButton(themeRow, "Aydınlık", "LIGHT", sScale);
         updateButtonGroupHighlight(themeRow, config.themeMode);
         secTheme.addView(themeRow);
 
         CheckBox cbAnim = new CheckBox(this);
         cbAnim.setText("✨ Açılış Animasyonu (Windows Phone Süzülme)");
         cbAnim.setTextColor(Color.parseColor("#80D8FF"));
+        cbAnim.setTextSize(Math.round(12 * sScale));
         cbAnim.setChecked(config.animationEnabled);
+        setupTvFocusCheckBox(cbAnim);
         cbAnim.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 config.animationEnabled = isChecked;
@@ -1186,11 +1378,13 @@ public class MainActivity extends Activity {
         secTheme.addView(cbAnim);
 
         // 5. Telefonda Kumanda Testi
-        LinearLayout secRemote = addAccordionSection(layout, allSections, "5. TELEFONDA KUMANDA TESTİ", false);
+        LinearLayout secRemote = addAccordionSection(layout, allSections, "5. TELEFONDA KUMANDA TESTİ", false, sScale);
         CheckBox cbRemote = new CheckBox(this);
         cbRemote.setText("🕹️ Sanal TV Kumandası (Ekranda Test Pedi)");
         cbRemote.setTextColor(Color.parseColor("#80D8FF"));
+        cbRemote.setTextSize(Math.round(12 * sScale));
         cbRemote.setChecked(config.virtualRemoteEnabled);
+        setupTvFocusCheckBox(cbRemote);
         cbRemote.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 config.virtualRemoteEnabled = isChecked;
@@ -1200,12 +1394,13 @@ public class MainActivity extends Activity {
         secRemote.addView(cbRemote);
 
         // 6. Gizlenen ve Özel Kutular
-        LinearLayout secHidden = addAccordionSection(layout, allSections, "6. GİZLENEN VE ÖZEL KUTULAR", false);
+        LinearLayout secHidden = addAccordionSection(layout, allSections, "6. GİZLENEN VE ÖZEL KUTULAR", false, sScale);
         final List<AppInfo> currentHidden = getHiddenOrMissingApps();
         Button hiddenBtn = new Button(this);
         hiddenBtn.setText("👁️ Gizlenen Uygulamaları ve Özel Kutuları Yönet");
-        hiddenBtn.setBackgroundColor(currentHidden.isEmpty() ? Color.parseColor("#37474F") : Color.parseColor("#00695C"));
+        hiddenBtn.setTextSize(Math.round(11 * sScale));
         hiddenBtn.setTextColor(Color.WHITE);
+        setupTvFocusHighlight(hiddenBtn, currentHidden.isEmpty() ? Color.parseColor("#37474F") : Color.parseColor("#00695C"), 4);
         hiddenBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -1215,12 +1410,14 @@ public class MainActivity extends Activity {
         secHidden.addView(hiddenBtn);
 
         // 7. Düzen İşlemleri
-        LinearLayout secLayoutOps = addAccordionSection(layout, allSections, "7. DÜZEN İŞLEMLERİ", false);
+        LinearLayout secLayoutOps = addAccordionSection(layout, allSections, "7. DÜZEN İŞLEMLERİ", false, sScale);
 
         CheckBox cbLock = new CheckBox(this);
         cbLock.setText("🔒 Düzeni Kilitle (Taşıma ve Silmeyi Engelle)");
         cbLock.setTextColor(Color.parseColor("#FFD54F"));
+        cbLock.setTextSize(Math.round(12 * sScale));
         cbLock.setChecked(config.isLayoutLocked);
+        setupTvFocusCheckBox(cbLock);
         cbLock.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 config.isLayoutLocked = isChecked;
@@ -1230,8 +1427,9 @@ public class MainActivity extends Activity {
 
         Button addSpacerBtn = new Button(this);
         addSpacerBtn.setText("➕ Yeni Boşluk (Spacer) Ekle");
-        addSpacerBtn.setBackgroundColor(Color.parseColor("#37474F"));
+        addSpacerBtn.setTextSize(Math.round(11 * sScale));
         addSpacerBtn.setTextColor(Color.WHITE);
+        setupTvFocusHighlight(addSpacerBtn, Color.parseColor("#37474F"), 4);
         LinearLayout.LayoutParams spLp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         spLp.bottomMargin = dpToPx(6);
@@ -1251,8 +1449,9 @@ public class MainActivity extends Activity {
 
         Button reflowBtn = new Button(this);
         reflowBtn.setText("🔄 Sıralamayı Varsayılana Sıfırla (Alfabeye Göre Sırala)");
-        reflowBtn.setBackgroundColor(Color.parseColor("#37474F"));
+        reflowBtn.setTextSize(Math.round(11 * sScale));
         reflowBtn.setTextColor(Color.WHITE);
+        setupTvFocusHighlight(reflowBtn, Color.parseColor("#37474F"), 4);
         reflowBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -1275,11 +1474,11 @@ public class MainActivity extends Activity {
         Button saveBtn = new Button(this);
         saveBtn.setText("💾 Ayarları Kaydet");
         saveBtn.setTextColor(Color.WHITE);
-        saveBtn.setTextSize(13);
+        saveBtn.setTextSize(Math.round(13 * sScale));
         saveBtn.setTypeface(Typeface.DEFAULT_BOLD);
-        saveBtn.setBackgroundColor(Color.parseColor("#2E7D32"));
+        setupTvFocusHighlight(saveBtn, Color.parseColor("#2E7D32"), 4);
         LinearLayout.LayoutParams saveLp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(44));
+                LinearLayout.LayoutParams.MATCH_PARENT, (int) (dpToPx(44) * Math.min(1.3f, sScale)));
         saveLp.bottomMargin = dpToPx(8);
         saveBtn.setLayoutParams(saveLp);
 
@@ -1290,18 +1489,18 @@ public class MainActivity extends Activity {
         Button backupBtn = new Button(this);
         backupBtn.setText("🔄 Yedek / Geri Yükle");
         backupBtn.setTextColor(Color.WHITE);
-        backupBtn.setTextSize(11);
-        backupBtn.setBackgroundColor(Color.parseColor("#37474F"));
-        LinearLayout.LayoutParams bLp = new LinearLayout.LayoutParams(0, dpToPx(40), 1f);
+        backupBtn.setTextSize(Math.round(11 * sScale));
+        setupTvFocusHighlight(backupBtn, Color.parseColor("#37474F"), 4);
+        LinearLayout.LayoutParams bLp = new LinearLayout.LayoutParams(0, (int) (dpToPx(40) * Math.min(1.3f, sScale)), 1f);
         bLp.rightMargin = dpToPx(4);
         backupBtn.setLayoutParams(bLp);
 
         Button resetBtn = new Button(this);
         resetBtn.setText("⚠️ Fabrika Ayarları");
         resetBtn.setTextColor(Color.WHITE);
-        resetBtn.setTextSize(11);
-        resetBtn.setBackgroundColor(Color.parseColor("#8B0000"));
-        LinearLayout.LayoutParams rLp = new LinearLayout.LayoutParams(0, dpToPx(40), 1f);
+        resetBtn.setTextSize(Math.round(11 * sScale));
+        setupTvFocusHighlight(resetBtn, Color.parseColor("#8B0000"), 4);
+        LinearLayout.LayoutParams rLp = new LinearLayout.LayoutParams(0, (int) (dpToPx(40) * Math.min(1.3f, sScale)), 1f);
         rLp.leftMargin = dpToPx(4);
         resetBtn.setLayoutParams(rLp);
 
@@ -1316,6 +1515,7 @@ public class MainActivity extends Activity {
         builder.setView(scroll);
 
         final AlertDialog dialog = builder.create();
+        dialogRef[0] = dialog;
 
         saveBtn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -1364,12 +1564,14 @@ public class MainActivity extends Activity {
             wlp.dimAmount = 0.05f; // Saydama yakın: Arka plandaki kutuların canlı akışı %100 görünür!
             if (isLandscape) {
                 wlp.gravity = Gravity.END | Gravity.CENTER_VERTICAL;
-                wlp.width = (int) (dm.widthPixels * 0.40f);
+                float widthFraction = (sScale > 1.2f) ? 0.48f : 0.40f;
+                wlp.width = (int) (dm.widthPixels * widthFraction);
                 wlp.height = WindowManager.LayoutParams.MATCH_PARENT;
             } else {
                 wlp.gravity = Gravity.BOTTOM;
                 wlp.width = WindowManager.LayoutParams.MATCH_PARENT;
-                wlp.height = (int) (dm.heightPixels * 0.70f);
+                float heightFraction = (sScale > 1.2f) ? 0.82f : 0.70f;
+                wlp.height = (int) (dm.heightPixels * heightFraction);
             }
             window.setAttributes(wlp);
 
@@ -1395,20 +1597,21 @@ public class MainActivity extends Activity {
             if (child instanceof Button) {
                 Button b = (Button) child;
                 boolean isSelected = selectedTag != null && selectedTag.equals(b.getTag());
-                b.setBackgroundColor(isSelected ? Color.parseColor("#2E7D32") : Color.parseColor("#37474F"));
-                b.setTextColor(isSelected ? Color.WHITE : Color.parseColor("#CFD8DC"));
-                b.setTypeface(isSelected ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
+                setupTvFocusToggleButton(b, isSelected, 4);
             }
         }
     }
 
-    private void addStyleButton(final LinearLayout row, String text, final String style) {
+    private void addStyleButton(final LinearLayout row, String text, final String style, float sScale) {
         Button btn = new Button(this);
         btn.setText(text);
         btn.setTag(style);
-        btn.setTextSize(10);
+        btn.setTextSize(Math.round(10 * sScale));
+        int padH = (int) (dpToPx(4) * Math.min(1.3f, sScale));
+        int padV = (int) (dpToPx(6) * Math.min(1.3f, sScale));
+        btn.setPadding(padH, padV, padH, padV);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-        params.setMargins(4, 4, 4, 4);
+        params.setMargins(dpToPx(2), dpToPx(2), dpToPx(2), dpToPx(4));
         btn.setLayoutParams(params);
         btn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -1423,13 +1626,16 @@ public class MainActivity extends Activity {
         row.addView(btn);
     }
 
-    private void addThemeButton(final LinearLayout row, String text, final String mode) {
+    private void addThemeButton(final LinearLayout row, String text, final String mode, float sScale) {
         Button btn = new Button(this);
         btn.setText(text);
         btn.setTag(mode);
-        btn.setTextSize(11);
+        btn.setTextSize(Math.round(11 * sScale));
+        int padH = (int) (dpToPx(4) * Math.min(1.3f, sScale));
+        int padV = (int) (dpToPx(6) * Math.min(1.3f, sScale));
+        btn.setPadding(padH, padV, padH, padV);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-        params.setMargins(4, 4, 4, 4);
+        params.setMargins(dpToPx(2), dpToPx(2), dpToPx(2), dpToPx(4));
         btn.setLayoutParams(params);
         btn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -1448,16 +1654,17 @@ public class MainActivity extends Activity {
         void onValueChanged(float val);
     }
 
-    private void addPercentSlider(LinearLayout layout, final String label, float initialVal, final int min, final int max, final ValueCallback callback) {
+    private void addPercentSlider(LinearLayout layout, final String label, float initialVal, final int min, final int max, float sScale, final ValueCallback callback) {
         final TextView labelView = new TextView(this);
         int percent = Math.round(initialVal * 100);
         labelView.setText(label + ": %" + percent);
         labelView.setTextColor(Color.parseColor("#CCCCCC"));
-        labelView.setTextSize(12);
-        labelView.setPadding(0, 10, 0, 2);
+        labelView.setTextSize(Math.round(12 * sScale));
+        labelView.setPadding(0, dpToPx(8), 0, dpToPx(2));
         layout.addView(labelView);
 
         SeekBar seekBar = new SeekBar(this);
+        setupTvFocusSlider(seekBar);
         seekBar.setMax(max - min);
         seekBar.setProgress(Math.max(0, percent - min));
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -2121,6 +2328,10 @@ public class MainActivity extends Activity {
     }
 
     private int dpToPx(int dp) {
+        return (int) (dp * getResources().getDisplayMetrics().density + 0.5f);
+    }
+
+    private int dpToPx(float dp) {
         return (int) (dp * getResources().getDisplayMetrics().density + 0.5f);
     }
 }

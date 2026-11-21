@@ -33,6 +33,7 @@ public class WorkspaceConfig {
     public boolean virtualRemoteEnabled = false;
     public boolean animationEnabled = true;
     public boolean isLayoutLocked = false;
+    public float settingsUiScale = 1.0f; // Ayarlar Menüsü Arayüz Ölçeği (Gözlük & TV Dostu)
 
     public List<Tile> tiles = new ArrayList<Tile>();
 
@@ -55,6 +56,7 @@ public class WorkspaceConfig {
         root.put("virtualRemoteEnabled", virtualRemoteEnabled);
         root.put("animationEnabled", animationEnabled);
         root.put("isLayoutLocked", isLayoutLocked);
+        root.put("settingsUiScale", (double) settingsUiScale);
 
         JSONArray arr = new JSONArray();
         for (Tile t : tiles) {
@@ -101,6 +103,10 @@ public class WorkspaceConfig {
         config.virtualRemoteEnabled = root.optBoolean("virtualRemoteEnabled", false);
         config.animationEnabled = root.optBoolean("animationEnabled", true);
         config.isLayoutLocked = root.optBoolean("isLayoutLocked", false);
+        config.settingsUiScale = (float) root.optDouble("settingsUiScale", 1.0);
+        if (config.settingsUiScale < 0.70f || config.settingsUiScale > 2.0f) {
+            config.settingsUiScale = 1.0f;
+        }
 
         JSONArray arr = root.optJSONArray("tiles");
         config.tiles = new ArrayList<Tile>();

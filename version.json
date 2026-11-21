@@ -1,12 +1,12 @@
 {
   "appName": "Saf Ekran",
   "packageName": "com.safekran.launcher",
-  "versionCode": 35,
-  "versionName": "2.21.2",
+  "versionCode": 36,
+  "versionName": "2.21.3",
   "developer": "Vezir",
   "schemaVersion": 1,
   "createdDate": "2026-11-19",
-  "apkName": "SafEkran_v2.21.2_vc35.apk",
+  "apkName": "SafEkran_v2.21.3_vc36.apk",
   "history": [
     {
       "versionCode": 1,
@@ -217,6 +217,12 @@
       "versionName": "2.21.2",
       "date": "2026-11-21",
       "description": "Fix: Uzun Basma Sonrasi Uygulamanin Yanlislikla Acilmasini Engelleyen Cok Katmanli Emniyet Kilidi (v2.21.2)"
+    },
+    {
+      "versionCode": 36,
+      "versionName": "2.21.3",
+      "date": "2026-11-21",
+      "description": "Feat: TV Pil Kutusu AC Guc Tespiti, Canli TV Odak Cercevesi, Ayarlar Menusu Arayuz Olcegi (v2.21.3)"
     }
   ]
 }

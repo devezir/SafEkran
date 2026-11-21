@@ -4,6 +4,7 @@ import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
@@ -268,7 +269,8 @@ public class TileView extends FrameLayout {
         container.setClipChildren(false);
         container.setClipToPadding(false);
 
-        int level = -1, scale = -1, status = -1;
+        int level = -1, scale = -1, status = -1, plugged = -1;
+        boolean isPresent = true;
         try {
             IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
             Intent batteryStatus = context.registerReceiver(null, ifilter);
@@ -276,6 +278,8 @@ public class TileView extends FrameLayout {
                 level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
                 scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
                 status = batteryStatus.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
+                isPresent = batteryStatus.getBooleanExtra(BatteryManager.EXTRA_PRESENT, true);
+                plugged = batteryStatus.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
             }
         } catch (Exception ignored) {}
 
@@ -284,24 +288,13 @@ public class TileView extends FrameLayout {
         int pct = (level >= 0 && scale > 0) ? Math.round((level / (float) scale) * 100) : 100;
 
         infoPrimaryView = new TextView(context);
-        String prefix = isCharging ? "⚡ " : "🔋 ";
-        infoPrimaryView.setText(prefix + "%" + pct);
         infoPrimaryView.setTypeface(Typeface.DEFAULT_BOLD);
-        infoPrimaryView.setTextColor(isCharging ? Color.parseColor("#4CAF50") : (pct <= 20 ? Color.parseColor("#E53935") : getTextColor()));
         infoPrimaryView.setGravity(Gravity.CENTER);
         infoPrimaryView.setSingleLine(true);
         container.addView(infoPrimaryView, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
         infoSecondaryView = new TextView(context);
-        String secLabel = "Pil";
-        if (isCharging) {
-            secLabel = "Şarj Oluyor";
-        } else if (tile.label != null && !tile.label.isEmpty()) {
-            secLabel = tile.label.replace("🔋", "").replace("⚡", "").trim();
-            if (secLabel.isEmpty()) secLabel = "Pil";
-        }
-        infoSecondaryView.setText(secLabel);
         infoSecondaryView.setTextColor(isLightMode() ? Color.parseColor("#666666") : Color.parseColor("#AAAAAA"));
         infoSecondaryView.setGravity(Gravity.CENTER);
         infoSecondaryView.setSingleLine(true);
@@ -310,6 +303,40 @@ public class TileView extends FrameLayout {
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
         addView(container, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+        applyBatteryDisplay(pct, isCharging, isPresent, plugged);
+    }
+
+    private void applyBatteryDisplay(int pct, boolean isCharging, boolean isPresent, int plugged) {
+        boolean isTv = false;
+        try {
+            android.app.UiModeManager umm = (android.app.UiModeManager) getContext().getSystemService(Context.UI_MODE_SERVICE);
+            if (umm != null && umm.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION) {
+                isTv = true;
+            }
+            if (!isTv && getContext().getPackageManager() != null) {
+                isTv = getContext().getPackageManager().hasSystemFeature("android.software.leanback")
+                        || getContext().getPackageManager().hasSystemFeature("android.hardware.type.television");
+            }
+        } catch (Exception ignored) {}
+
+        // Batarya yoksa veya Android TV / AC şebeke gücüne takılıysa (dummy %50'yi önle)
+        if (!isPresent || (isTv && (pct == 50 || plugged == BatteryManager.BATTERY_PLUGGED_AC))) {
+            setInfoPrimary("🔌 Fişe Takılı", Color.parseColor("#29B6F6"));
+            setInfoSecondary("AC Güç");
+            return;
+        }
+
+        String prefix = isCharging ? "⚡ " : "🔋 ";
+        int col = isCharging ? Color.parseColor("#4CAF50") : (pct <= 20 ? Color.parseColor("#E53935") : getTextColor());
+        String secLabel = "Pil";
+        if (isCharging) {
+            secLabel = "Şarj Oluyor";
+        } else if (tile.label != null && !tile.label.isEmpty()) {
+            secLabel = tile.label.replace("🔋", "").replace("⚡", "").trim();
+            if (secLabel.isEmpty()) secLabel = "Pil";
+        }
+        setInfoPrimary(prefix + "%" + pct, col);
+        setInfoSecondary(secLabel);
     }
 
     // --- Evrensel Bilgi ve Durum Metni Tipografi Motoru ---
@@ -376,23 +403,18 @@ public class TileView extends FrameLayout {
     }
 
     public void updateBatteryData(int pct, boolean isCharging) {
+        updateBatteryData(pct, isCharging, true, -1);
+    }
+
+    public void updateBatteryData(int pct, boolean isCharging, boolean isPresent, int plugged) {
         if (tile.type != TileType.BATTERY || infoPrimaryView == null || infoSecondaryView == null) return;
-        String prefix = isCharging ? "⚡ " : "🔋 ";
-        int col = isCharging ? Color.parseColor("#4CAF50") : (pct <= 20 ? Color.parseColor("#E53935") : getTextColor());
-        String secLabel = "Pil";
-        if (isCharging) {
-            secLabel = "Şarj Oluyor";
-        } else if (tile.label != null && !tile.label.isEmpty()) {
-            secLabel = tile.label.replace("🔋", "").replace("⚡", "").trim();
-            if (secLabel.isEmpty()) secLabel = "Pil";
-        }
-        setInfoPrimary(prefix + "%" + pct, col);
-        setInfoSecondary(secLabel);
+        applyBatteryDisplay(pct, isCharging, isPresent, plugged);
     }
 
     public void refreshStatusData() {
         if (tile.type == TileType.BATTERY) {
-            int level = -1, scale = -1, status = -1;
+            int level = -1, scale = -1, status = -1, plugged = -1;
+            boolean isPresent = true;
             try {
                 IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
                 Intent batteryStatus = getContext().registerReceiver(null, ifilter);
@@ -400,12 +422,14 @@ public class TileView extends FrameLayout {
                     level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
                     scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
                     status = batteryStatus.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
+                    isPresent = batteryStatus.getBooleanExtra(BatteryManager.EXTRA_PRESENT, true);
+                    plugged = batteryStatus.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
                 }
             } catch (Exception ignored) {}
             boolean isCharging = (status == BatteryManager.BATTERY_STATUS_CHARGING ||
                     status == BatteryManager.BATTERY_STATUS_FULL);
             int pct = (level >= 0 && scale > 0) ? Math.round((level / (float) scale) * 100) : 100;
-            updateBatteryData(pct, isCharging);
+            updateBatteryData(pct, isCharging, isPresent, plugged);
         } else if (tile.type == TileType.RAM) {
             if (infoPrimaryView == null || infoSecondaryView == null) return;
             int usedPct = 0;
