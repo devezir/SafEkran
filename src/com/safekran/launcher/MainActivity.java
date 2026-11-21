@@ -1102,7 +1102,80 @@ public class MainActivity extends Activity {
         return false;
     }
 
+    private boolean isXiaomiOrHyperOS() {
+        String man = Build.MANUFACTURER != null ? Build.MANUFACTURER.toLowerCase(Locale.US) : "";
+        String brand = Build.BRAND != null ? Build.BRAND.toLowerCase(Locale.US) : "";
+        if (man.contains("xiaomi") || man.contains("redmi") || man.contains("poco") ||
+            brand.contains("xiaomi") || brand.contains("redmi") || brand.contains("poco")) {
+            return true;
+        }
+        try {
+            Class<?> spCls = Class.forName("android.os.SystemProperties");
+            java.lang.reflect.Method getMethod = spCls.getMethod("get", String.class);
+            String miuiVer = (String) getMethod.invoke(null, "ro.miui.ui.version.name");
+            if (miuiVer != null && !miuiVer.trim().isEmpty()) {
+                return true;
+            }
+        } catch (Exception ignored) {}
+        return false;
+    }
+
+    private void openXiaomiDefaultAppsSettings() {
+        Toast.makeText(this, "Açılan ekranda 'Başlatıcı' (Home) seçeneğine dokunup 'Saf Ekran'ı seçiniz.", Toast.LENGTH_LONG).show();
+
+        // 1. MIUI / HyperOS Özel Varsayılan Uygulamalar İntenti
+        try {
+            Intent miuiIntent = new Intent("miui.intent.action.PREFERRED_APP_SETTINGS");
+            miuiIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (getPackageManager().resolveActivity(miuiIntent, 0) != null) {
+                startActivity(miuiIntent);
+                return;
+            }
+        } catch (Exception ignored) {}
+
+        // 2. Xiaomi Settings PreferredSettingsActivity
+        try {
+            Intent miuiComponent = new Intent();
+            miuiComponent.setClassName("com.android.settings", "com.android.settings.Settings$PreferredSettingsActivity");
+            miuiComponent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (getPackageManager().resolveActivity(miuiComponent, 0) != null) {
+                startActivity(miuiComponent);
+                return;
+            }
+        } catch (Exception ignored) {}
+
+        // 3. Standart Varsayılan Uygulamalar Ekranı (HyperOS'ta doğrudan Varsayılan Uygulamaları açar)
+        try {
+            Intent defaultApps = new Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS);
+            defaultApps.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (getPackageManager().resolveActivity(defaultApps, 0) != null) {
+                startActivity(defaultApps);
+                return;
+            }
+        } catch (Exception ignored) {}
+
+        // 4. ACTION_HOME_SETTINGS
+        try {
+            Intent homeSettings = new Intent(Settings.ACTION_HOME_SETTINGS);
+            homeSettings.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (getPackageManager().resolveActivity(homeSettings, 0) != null) {
+                startActivity(homeSettings);
+                return;
+            }
+        } catch (Exception ignored) {}
+
+        // 5. Genel Sistem Ayarları
+        openSystemSettings();
+    }
+
     private void promptSetDefaultLauncher() {
+        // 0. Xiaomi HyperOS / MIUI Tespiti:
+        // Xiaomi Google RoleManager'ı sessizce iptal ettiği için doğrudan Xiaomi Varsayılan Uygulamalar ekranını açıyoruz
+        if (isXiaomiOrHyperOS()) {
+            openXiaomiDefaultAppsSettings();
+            return;
+        }
+
         boolean handled = false;
 
         // 1. Android 10+ (API 29+): RoleManager.ROLE_HOME

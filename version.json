@@ -1,12 +1,12 @@
 {
   "appName": "Saf Ekran",
   "packageName": "com.safekran.launcher",
-  "versionCode": 41,
-  "versionName": "2.23.2",
+  "versionCode": 42,
+  "versionName": "2.23.3",
   "developer": "Vezir",
   "schemaVersion": 1,
   "createdDate": "2026-11-19",
-  "apkName": "SafEkran_v2.23.2_vc41.apk",
+  "apkName": "SafEkran_v2.23.3_vc42.apk",
   "history": [
     {
       "versionCode": 1,
@@ -253,6 +253,12 @@
       "versionName": "2.23.2",
       "date": "2026-11-21",
       "description": "Fix: Baslatici ayarlarinda agir disk taramasinin kaldirilmasi, tekil pencere kilidi ve cift tiklama engeli (v2.23.2)"
+    },
+    {
+      "versionCode": 42,
+      "versionName": "2.23.3",
+      "date": "2026-11-21",
+      "description": "Fix: Xiaomi HyperOS / MIUI ozel varsayilan baslatici yonlendirme ve rehber bildirim motoru (v2.23.3)"
     }
   ]
 }
