@@ -1284,26 +1284,8 @@ public class MainActivity extends Activity {
         authorText.setText("Saf Ekran v" + currentVersion + " | Geliştirici: Vezir");
         authorText.setTextColor(Color.parseColor("#4CAF50"));
         authorText.setTextSize(Math.round(12 * sScale));
-        authorText.setPadding(0, 0, 0, dpToPx(6));
+        authorText.setPadding(0, 0, 0, dpToPx(8));
         layout.addView(authorText);
-
-        // Güncellemeleri Denetle Butonu
-        Button checkUpdateBtn = new Button(this);
-        checkUpdateBtn.setText("🔄 Güncellemeleri Denetle");
-        checkUpdateBtn.setTextSize(Math.round(11 * sScale));
-        checkUpdateBtn.setTextColor(Color.parseColor("#80D8FF"));
-        setupTvFocusHighlight(checkUpdateBtn, Color.parseColor("#1C2A38"), 4);
-        LinearLayout.LayoutParams upLp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, (int) (dpToPx(38) * Math.min(1.3f, sScale)));
-        upLp.bottomMargin = dpToPx(8);
-        checkUpdateBtn.setLayoutParams(upLp);
-        checkUpdateBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startUpdateCheckFlow(sScale);
-            }
-        });
-        layout.addView(checkUpdateBtn);
 
         // 0. ARAYÜZ ÖLÇEĞİ (GÖZLÜK VE TV MENÜ BÜYÜTME - EN ÜSTTE)
         TextView scaleHeader = new TextView(this);
@@ -1530,6 +1512,25 @@ public class MainActivity extends Activity {
 
         actionBlock.addView(saveBtn);
         actionBlock.addView(subRow);
+
+        // En altta: Güncellemeleri Denetle Butonu
+        Button checkUpdateBtn = new Button(this);
+        checkUpdateBtn.setText("🔄 Güncellemeleri Denetle");
+        checkUpdateBtn.setTextSize(Math.round(11 * sScale));
+        checkUpdateBtn.setTextColor(Color.parseColor("#80D8FF"));
+        setupTvFocusHighlight(checkUpdateBtn, Color.parseColor("#1C2A38"), 4);
+        LinearLayout.LayoutParams upLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, (int) (dpToPx(40) * Math.min(1.3f, sScale)));
+        upLp.topMargin = dpToPx(8);
+        checkUpdateBtn.setLayoutParams(upLp);
+        checkUpdateBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startUpdateCheckFlow(sScale);
+            }
+        });
+        actionBlock.addView(checkUpdateBtn);
+
         layout.addView(actionBlock);
 
         scroll.addView(layout);
