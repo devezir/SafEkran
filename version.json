@@ -1,12 +1,12 @@
 {
   "appName": "Saf Ekran",
   "packageName": "com.safekran.launcher",
-  "versionCode": 36,
-  "versionName": "2.21.3",
+  "versionCode": 37,
+  "versionName": "2.22.0",
   "developer": "Vezir",
   "schemaVersion": 1,
   "createdDate": "2026-11-19",
-  "apkName": "SafEkran_v2.21.3_vc36.apk",
+  "apkName": "SafEkran_v2.22.0_vc37.apk",
   "history": [
     {
       "versionCode": 1,
@@ -223,6 +223,12 @@
       "versionName": "2.21.3",
       "date": "2026-11-21",
       "description": "Feat: TV Pil Kutusu AC Guc Tespiti, Canli TV Odak Cercevesi, Ayarlar Menusu Arayuz Olcegi (v2.21.3)"
+    },
+    {
+      "versionCode": 37,
+      "versionName": "2.22.0",
+      "date": "2026-11-21",
+      "description": "Feat: Uygulama ici guncelleme denetleme, dogrudan APK indirme ve kurulum motoru (v2.22.0)"
     }
   ]
 }

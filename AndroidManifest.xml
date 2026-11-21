@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.safekran.launcher"
-    android:versionCode="36"
-    android:versionName="2.21.3">
+    android:versionCode="37"
+    android:versionName="2.22.0">
 
     <uses-sdk
         android:minSdkVersion="21"
         android:targetSdkVersion="33" />
 
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- Android 11+ cihazlarda hem TV hem sideload tüm uygulamaları görebilmek için -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
@@ -51,6 +53,12 @@
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <provider
+            android:name="com.safekran.launcher.util.ApkProvider"
+            android:authorities="com.safekran.launcher.apkprovider"
+            android:exported="false"
+            android:grantUriPermissions="true" />
 
     </application>
 

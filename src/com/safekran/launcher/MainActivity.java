@@ -33,6 +33,7 @@ import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -46,6 +47,8 @@ import com.safekran.launcher.model.TileType;
 import com.safekran.launcher.model.WorkspaceConfig;
 import com.safekran.launcher.ui.TileView;
 import com.safekran.launcher.ui.WorkspaceView;
+import com.safekran.launcher.util.ApkProvider;
+import com.safekran.launcher.util.UpdateManager;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -1274,15 +1277,33 @@ public class MainActivity extends Activity {
 
         // 1. İmza & Sürüm Başlığı
         TextView authorText = new TextView(this);
-        String currentVersion = "2.21.2";
+        String currentVersion = "2.21.3";
         try {
             currentVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception ignored) {}
         authorText.setText("Saf Ekran v" + currentVersion + " | Geliştirici: Vezir");
         authorText.setTextColor(Color.parseColor("#4CAF50"));
         authorText.setTextSize(Math.round(12 * sScale));
-        authorText.setPadding(0, 0, 0, dpToPx(8));
+        authorText.setPadding(0, 0, 0, dpToPx(6));
         layout.addView(authorText);
+
+        // Güncellemeleri Denetle Butonu
+        Button checkUpdateBtn = new Button(this);
+        checkUpdateBtn.setText("🔄 Güncellemeleri Denetle");
+        checkUpdateBtn.setTextSize(Math.round(11 * sScale));
+        checkUpdateBtn.setTextColor(Color.parseColor("#80D8FF"));
+        setupTvFocusHighlight(checkUpdateBtn, Color.parseColor("#1C2A38"), 4);
+        LinearLayout.LayoutParams upLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, (int) (dpToPx(38) * Math.min(1.3f, sScale)));
+        upLp.bottomMargin = dpToPx(8);
+        checkUpdateBtn.setLayoutParams(upLp);
+        checkUpdateBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startUpdateCheckFlow(sScale);
+            }
+        });
+        layout.addView(checkUpdateBtn);
 
         // 0. ARAYÜZ ÖLÇEĞİ (GÖZLÜK VE TV MENÜ BÜYÜTME - EN ÜSTTE)
         TextView scaleHeader = new TextView(this);
@@ -1580,6 +1601,225 @@ public class MainActivity extends Activity {
             bg.setCornerRadius(dpToPx(8));
             window.setBackgroundDrawable(bg);
         }
+    }
+
+    private void startUpdateCheckFlow(final float sScale) {
+        final AlertDialog checkDialog = new AlertDialog.Builder(this).create();
+        LinearLayout checkLayout = new LinearLayout(this);
+        checkLayout.setOrientation(LinearLayout.HORIZONTAL);
+        checkLayout.setGravity(Gravity.CENTER_VERTICAL);
+        checkLayout.setPadding(dpToPx(20), dpToPx(20), dpToPx(20), dpToPx(20));
+
+        ProgressBar spinner = new ProgressBar(this);
+        checkLayout.addView(spinner);
+
+        TextView checkMsg = new TextView(this);
+        checkMsg.setText("   Güncellemeler denetleniyor...");
+        checkMsg.setTextColor(Color.WHITE);
+        checkMsg.setTextSize(Math.round(13 * sScale));
+        checkLayout.addView(checkMsg);
+
+        checkDialog.setView(checkLayout);
+        checkDialog.setCancelable(false);
+        checkDialog.show();
+
+        UpdateManager.checkForUpdate(this, new UpdateManager.CheckCallback() {
+            @Override
+            public void onSuccess(final UpdateManager.UpdateInfo info) {
+                if (checkDialog.isShowing()) checkDialog.dismiss();
+
+                if (!info.hasUpdate) {
+                    AlertDialog.Builder alert = new AlertDialog.Builder(MainActivity.this);
+                    alert.setTitle("✅ En Güncel Sürümdesiniz");
+                    alert.setMessage("Mevcut Sürüm: v" + info.currentVersionName + " (Yapı: " + info.currentVersionCode + ")\n\nSaf Ekran en güncel sürümdedir.");
+                    alert.setPositiveButton("Tamam", null);
+                    alert.show();
+                    return;
+                }
+
+                // Yeni Sürüm Bulundu Diyaloğu
+                final AlertDialog updateDialog = new AlertDialog.Builder(MainActivity.this).create();
+                ScrollView sv = new ScrollView(MainActivity.this);
+                LinearLayout uLayout = new LinearLayout(MainActivity.this);
+                uLayout.setOrientation(LinearLayout.VERTICAL);
+                uLayout.setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16));
+
+                TextView titleView = new TextView(MainActivity.this);
+                titleView.setText("🎉 Yeni Sürüm Mevcut: v" + info.remoteVersionName);
+                titleView.setTextColor(Color.parseColor("#4CAF50"));
+                titleView.setTextSize(Math.round(15 * sScale));
+                titleView.setTypeface(Typeface.DEFAULT_BOLD);
+                titleView.setPadding(0, 0, 0, dpToPx(6));
+                uLayout.addView(titleView);
+
+                TextView versionSub = new TextView(MainActivity.this);
+                String sizeStr = info.fileSize > 0 ? " (" + (info.fileSize / 1024) + " KB)" : "";
+                versionSub.setText("Kurulu: v" + info.currentVersionName + " ➔ Yeni: v" + info.remoteVersionName + sizeStr);
+                versionSub.setTextColor(Color.parseColor("#80D8FF"));
+                versionSub.setTextSize(Math.round(11 * sScale));
+                versionSub.setPadding(0, 0, 0, dpToPx(10));
+                uLayout.addView(versionSub);
+
+                if (info.releaseNotes != null && !info.releaseNotes.trim().isEmpty()) {
+                    TextView notesTitle = new TextView(MainActivity.this);
+                    notesTitle.setText("📋 Sürüm Notları / Yenilikler:");
+                    notesTitle.setTextColor(Color.parseColor("#FFD54F"));
+                    notesTitle.setTextSize(Math.round(12 * sScale));
+                    notesTitle.setTypeface(Typeface.DEFAULT_BOLD);
+                    notesTitle.setPadding(0, 0, 0, dpToPx(4));
+                    uLayout.addView(notesTitle);
+
+                    TextView notesBody = new TextView(MainActivity.this);
+                    notesBody.setText(info.releaseNotes.trim());
+                    notesBody.setTextColor(Color.parseColor("#CFD8DC"));
+                    notesBody.setTextSize(Math.round(11 * sScale));
+                    notesBody.setPadding(dpToPx(10), dpToPx(8), dpToPx(10), dpToPx(10));
+
+                    GradientDrawable notesBg = new GradientDrawable();
+                    notesBg.setColor(Color.parseColor("#1C2A38"));
+                    notesBg.setCornerRadius(dpToPx(6));
+                    notesBody.setBackground(notesBg);
+                    uLayout.addView(notesBody);
+                }
+
+                LinearLayout btnRow = new LinearLayout(MainActivity.this);
+                btnRow.setOrientation(LinearLayout.HORIZONTAL);
+                btnRow.setPadding(0, dpToPx(14), 0, 0);
+
+                final Button dlBtn = new Button(MainActivity.this);
+                dlBtn.setText("📥 Hemen İndir ve Kur");
+                dlBtn.setTextSize(Math.round(11 * sScale));
+                dlBtn.setTextColor(Color.WHITE);
+                setupTvFocusToggleButton(dlBtn, true, 4);
+                LinearLayout.LayoutParams dlLp = new LinearLayout.LayoutParams(0, (int) (dpToPx(42) * Math.min(1.3f, sScale)), 1.2f);
+                dlLp.rightMargin = dpToPx(4);
+                dlBtn.setLayoutParams(dlLp);
+
+                Button laterBtn = new Button(MainActivity.this);
+                laterBtn.setText("Daha Sonra");
+                laterBtn.setTextSize(Math.round(11 * sScale));
+                laterBtn.setTextColor(Color.parseColor("#CFD8DC"));
+                setupTvFocusHighlight(laterBtn, Color.parseColor("#37474F"), 4);
+                LinearLayout.LayoutParams ltLp = new LinearLayout.LayoutParams(0, (int) (dpToPx(42) * Math.min(1.3f, sScale)), 0.8f);
+                laterBtn.setLayoutParams(ltLp);
+
+                btnRow.addView(dlBtn);
+                btnRow.addView(laterBtn);
+                uLayout.addView(btnRow);
+
+                sv.addView(uLayout);
+                updateDialog.setView(sv);
+
+                updateDialog.setOnShowListener(new DialogInterface.OnShowListener() {
+                    @Override
+                    public void onShow(DialogInterface dialog) {
+                        dlBtn.requestFocus();
+                    }
+                });
+
+                dlBtn.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        updateDialog.dismiss();
+                        startDownloadFlow(info, sScale);
+                    }
+                });
+
+                laterBtn.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        updateDialog.dismiss();
+                    }
+                });
+
+                updateDialog.show();
+            }
+
+            @Override
+            public void onError(final String message) {
+                if (checkDialog.isShowing()) checkDialog.dismiss();
+                AlertDialog.Builder alert = new AlertDialog.Builder(MainActivity.this);
+                alert.setTitle("⚠️ Güncelleme Denetlenemedi");
+                alert.setMessage("Güncelleme sunucusuna bağlanırken hata oluştu:\n" + message + "\n\nLütfen internet bağlantınızı kontrol edip tekrar deneyin.");
+                alert.setPositiveButton("Tamam", null);
+                alert.show();
+            }
+        });
+    }
+
+    private void startDownloadFlow(final UpdateManager.UpdateInfo info, final float sScale) {
+        final AlertDialog downloadDialog = new AlertDialog.Builder(this).create();
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(dpToPx(18), dpToPx(18), dpToPx(18), dpToPx(18));
+
+        TextView dlTitle = new TextView(this);
+        dlTitle.setText("Saf Ekran v" + info.remoteVersionName + " İndiriliyor...");
+        dlTitle.setTextColor(Color.WHITE);
+        dlTitle.setTextSize(Math.round(13 * sScale));
+        dlTitle.setTypeface(Typeface.DEFAULT_BOLD);
+        dlTitle.setPadding(0, 0, 0, dpToPx(10));
+        layout.addView(dlTitle);
+
+        final ProgressBar progressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        progressBar.setMax(100);
+        progressBar.setProgress(0);
+        progressBar.setIndeterminate(false);
+        LinearLayout.LayoutParams pbLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(18));
+        pbLp.bottomMargin = dpToPx(8);
+        progressBar.setLayoutParams(pbLp);
+        layout.addView(progressBar);
+
+        final TextView statusText = new TextView(this);
+        statusText.setText("Sunucuya bağlanılıyor...");
+        statusText.setTextColor(Color.parseColor("#80D8FF"));
+        statusText.setTextSize(Math.round(11 * sScale));
+        statusText.setGravity(Gravity.CENTER);
+        layout.addView(statusText);
+
+        downloadDialog.setView(layout);
+        downloadDialog.setCancelable(false);
+        downloadDialog.show();
+
+        UpdateManager.downloadUpdate(this, info.downloadUrl, new UpdateManager.DownloadCallback() {
+            @Override
+            public void onProgress(final int percent, final long downloadedBytes, final long totalBytes) {
+                if (percent >= 0) {
+                    progressBar.setIndeterminate(false);
+                    progressBar.setProgress(percent);
+                    String dKb = String.format(Locale.US, "%.0f", downloadedBytes / 1024f);
+                    String tKb = totalBytes > 0 ? String.format(Locale.US, "%.0f", totalBytes / 1024f) : "?";
+                    statusText.setText("%" + percent + " (" + dKb + " KB / " + tKb + " KB)");
+                } else {
+                    progressBar.setIndeterminate(true);
+                    statusText.setText((downloadedBytes / 1024) + " KB indirildi...");
+                }
+            }
+
+            @Override
+            public void onCompleted(final File apkFile) {
+                if (downloadDialog.isShowing()) downloadDialog.dismiss();
+                Toast.makeText(MainActivity.this, "İndirme tamamlandı! Kurulum başlatılıyor...", Toast.LENGTH_SHORT).show();
+                UpdateManager.installApk(MainActivity.this, apkFile);
+            }
+
+            @Override
+            public void onError(final String message) {
+                if (downloadDialog.isShowing()) downloadDialog.dismiss();
+                AlertDialog.Builder alert = new AlertDialog.Builder(MainActivity.this);
+                alert.setTitle("❌ İndirme Başarısız");
+                alert.setMessage("APK indirilirken bir sorun oluştu:\n" + message);
+                alert.setPositiveButton("Tekrar Dene", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        startDownloadFlow(info, sScale);
+                    }
+                });
+                alert.setNegativeButton("Kapat", null);
+                alert.show();
+            }
+        });
     }
 
     private void addSectionHeader(LinearLayout layout, String title) {
