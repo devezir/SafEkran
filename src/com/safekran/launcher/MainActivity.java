@@ -86,6 +86,12 @@ public class MainActivity extends Activity {
     // Uzun basma sonrası artçı tıklamaları yutan emniyet damgası (Debounce Guard)
     private long lastLongClickTimestamp = 0;
 
+    // Çift tıklama ve kuyruk yığılmasını önleyen emniyet damgası
+    private long lastTileClickTimestamp = 0;
+
+    // Başlatıcı Ayarları penceresinin tekil örneği (Çift açılmayı engeller)
+    private AlertDialog launcherSettingsDialog = null;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -227,9 +233,14 @@ public class MainActivity extends Activity {
     }
 
     private void onTileClicked(Tile tile, TileView tv) {
-        if (SystemClock.uptimeMillis() - lastLongClickTimestamp < 800) {
+        long now = SystemClock.uptimeMillis();
+        if (now - lastLongClickTimestamp < 800) {
             return;
         }
+        if (now - lastTileClickTimestamp < 400) {
+            return;
+        }
+        lastTileClickTimestamp = now;
 
         if (workspaceView != null) {
             workspaceView.setTvSelectedTile(tv);
@@ -1313,7 +1324,9 @@ public class MainActivity extends Activity {
     }
 
     private void openLauncherSettingsDialog() {
-        final AlertDialog[] dialogRef = new AlertDialog[1];
+        if (launcherSettingsDialog != null && launcherSettingsDialog.isShowing()) {
+            return;
+        }
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
 
         final float sScale = (config != null) ? config.settingsUiScale : 1.0f;
@@ -1412,10 +1425,11 @@ public class MainActivity extends Activity {
                 if (Math.abs(config.settingsUiScale - newScale) > 0.01f) {
                     config.settingsUiScale = newScale;
                     WorkspaceStorage.saveWorkspace(MainActivity.this, config);
-                    if (dialogRef[0] != null && dialogRef[0].isShowing()) {
-                        dialogRef[0].dismiss();
-                        openLauncherSettingsDialog();
+                    if (launcherSettingsDialog != null) {
+                        launcherSettingsDialog.dismiss();
+                        launcherSettingsDialog = null;
                     }
+                    openLauncherSettingsDialog();
                 }
             }
         };
@@ -1586,12 +1600,11 @@ public class MainActivity extends Activity {
 
         // 6. Gizlenen ve Özel Kutular
         LinearLayout secHidden = addAccordionSection(layout, allSections, "6. GİZLENEN VE ÖZEL KUTULAR", false, sScale);
-        final List<AppInfo> currentHidden = getHiddenOrMissingApps();
         Button hiddenBtn = new Button(this);
         hiddenBtn.setText("👁️ Gizlenen Uygulamaları ve Özel Kutuları Yönet");
         hiddenBtn.setTextSize(Math.round(11 * sScale));
         hiddenBtn.setTextColor(Color.WHITE);
-        setupTvFocusHighlight(hiddenBtn, currentHidden.isEmpty() ? Color.parseColor("#37474F") : Color.parseColor("#00695C"), 4);
+        setupTvFocusHighlight(hiddenBtn, Color.parseColor("#00695C"), 4);
         hiddenBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -1724,8 +1737,8 @@ public class MainActivity extends Activity {
         scroll.addView(layout);
         builder.setView(scroll);
 
-        final AlertDialog dialog = builder.create();
-        dialogRef[0] = dialog;
+        launcherSettingsDialog = builder.create();
+        final AlertDialog dialog = launcherSettingsDialog;
 
         saveBtn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -1759,6 +1772,7 @@ public class MainActivity extends Activity {
         dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
             @Override
             public void onDismiss(DialogInterface d) {
+                launcherSettingsDialog = null;
                 setupTileClickListeners();
             }
         });

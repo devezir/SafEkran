@@ -1,12 +1,12 @@
 {
   "appName": "Saf Ekran",
   "packageName": "com.safekran.launcher",
-  "versionCode": 40,
-  "versionName": "2.23.1",
+  "versionCode": 41,
+  "versionName": "2.23.2",
   "developer": "Vezir",
   "schemaVersion": 1,
   "createdDate": "2026-11-19",
-  "apkName": "SafEkran_v2.23.1_vc40.apk",
+  "apkName": "SafEkran_v2.23.2_vc41.apk",
   "history": [
     {
       "versionCode": 1,
@@ -247,6 +247,12 @@
       "versionName": "2.23.1",
       "date": "2026-11-21",
       "description": "Fix: Kurulum oncesi izin on denetimi (Pre-Flight) ve akilli onbellek ile tekrar indirme dongusunun onlenmesi (v2.23.1)"
+    },
+    {
+      "versionCode": 41,
+      "versionName": "2.23.2",
+      "date": "2026-11-21",
+      "description": "Fix: Baslatici ayarlarinda agir disk taramasinin kaldirilmasi, tekil pencere kilidi ve cift tiklama engeli (v2.23.2)"
     }
   ]
 }
