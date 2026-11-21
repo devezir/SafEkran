@@ -154,6 +154,7 @@ public class MainActivity extends Activity {
             workspaceView.refreshStatusTiles();
             workspaceView.playTurnstileAnimation();
         }
+        checkPendingUpdateOnResume();
     }
 
     @Override
@@ -1909,7 +1910,11 @@ public class MainActivity extends Activity {
                     @Override
                     public void onClick(View v) {
                         updateDialog.dismiss();
-                        startDownloadFlow(info, sScale);
+                        if (!UpdateManager.hasInstallPermission(MainActivity.this)) {
+                            showInstallPermissionGuideDialog(info, sScale);
+                        } else {
+                            startDownloadFlow(info, sScale);
+                        }
                     }
                 });
 
@@ -1935,7 +1940,61 @@ public class MainActivity extends Activity {
         });
     }
 
+    private void showInstallPermissionGuideDialog(final UpdateManager.UpdateInfo info, final float sScale) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("⚠️ Kurulum İzni Gerekli");
+        builder.setMessage("Saf Ekran güncellemelerini kurabilmek için sonraki ekranda 'Bu kaynaktan izin ver' anahtarını açmanız gerekmektedir.\n\nİzni açıp geri döndüğünüzde indirme ve kurulum otomatik olarak başlayacaktır.");
+        builder.setPositiveButton("İzin Ver ve Devam Et", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface d, int which) {
+                getSharedPreferences("safekran_update", Context.MODE_PRIVATE).edit()
+                        .putBoolean("pending_install_flow", true)
+                        .putInt("pending_remote_vc", info.remoteVersionCode)
+                        .putString("pending_remote_vn", info.remoteVersionName)
+                        .putString("pending_dl_url", info.downloadUrl)
+                        .apply();
+                UpdateManager.requestInstallPermission(MainActivity.this);
+            }
+        });
+        builder.setNegativeButton("Vazgeç", null);
+        AlertDialog dialog = builder.create();
+        dialog.show();
+    }
+
+    private void checkPendingUpdateOnResume() {
+        android.content.SharedPreferences sp = getSharedPreferences("safekran_update", Context.MODE_PRIVATE);
+        boolean pending = sp.getBoolean("pending_install_flow", false);
+        if (!pending) return;
+
+        if (UpdateManager.hasInstallPermission(this)) {
+            sp.edit().remove("pending_install_flow").apply();
+
+            int remoteVc = sp.getInt("pending_remote_vc", 0);
+            String remoteVn = sp.getString("pending_remote_vn", "");
+            String dlUrl = sp.getString("pending_dl_url", "");
+            float scale = (config != null) ? config.settingsUiScale : 1.0f;
+
+            File apkFile = ApkProvider.getUpdateApkFile(this);
+            if (UpdateManager.isApkReadyAndValid(this, remoteVc)) {
+                Toast.makeText(this, "Kurulum izni verildi! Güncelleme başlatılıyor...", Toast.LENGTH_SHORT).show();
+                UpdateManager.installApk(this, apkFile);
+            } else if (dlUrl != null && !dlUrl.isEmpty()) {
+                UpdateManager.UpdateInfo info = new UpdateManager.UpdateInfo(
+                        true, 0, "", remoteVc, remoteVn, "", "", dlUrl, 0);
+                Toast.makeText(this, "Kurulum izni verildi! İndirme başlatılıyor...", Toast.LENGTH_SHORT).show();
+                startDownloadFlow(info, scale);
+            }
+        }
+    }
+
     private void startDownloadFlow(final UpdateManager.UpdateInfo info, final float sScale) {
+        File existingFile = ApkProvider.getUpdateApkFile(this);
+        if (UpdateManager.isApkReadyAndValid(this, info.remoteVersionCode)) {
+            Toast.makeText(this, "Güncelleme paketi hazır. Kurulum başlatılıyor...", Toast.LENGTH_SHORT).show();
+            UpdateManager.installApk(this, existingFile);
+            return;
+        }
+
         final AlertDialog downloadDialog = new AlertDialog.Builder(this).create();
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);

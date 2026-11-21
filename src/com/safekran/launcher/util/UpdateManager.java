@@ -315,6 +315,44 @@ public class UpdateManager {
         }).start();
     }
 
+    public static boolean hasInstallPermission(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            return context.getPackageManager().canRequestPackageInstalls();
+        }
+        return true;
+    }
+
+    public static void requestInstallPermission(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            try {
+                Intent manageIntent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES);
+                manageIntent.setData(Uri.parse("package:" + context.getPackageName()));
+                manageIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(manageIntent);
+            } catch (Exception e) {
+                try {
+                    Intent altIntent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES);
+                    altIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    context.startActivity(altIntent);
+                } catch (Exception ignored) {}
+            }
+        }
+    }
+
+    public static boolean isApkReadyAndValid(Context context, int expectedVersionCode) {
+        try {
+            File file = ApkProvider.getUpdateApkFile(context);
+            if (!file.exists() || file.length() < 10000) return false;
+            PackageInfo pi = context.getPackageManager().getPackageArchiveInfo(file.getAbsolutePath(), 0);
+            if (pi != null && context.getPackageName().equals(pi.packageName)) {
+                if (expectedVersionCode <= 0 || pi.versionCode == expectedVersionCode) {
+                    return true;
+                }
+            }
+        } catch (Exception ignored) {}
+        return false;
+    }
+
     public static void installApk(Context context, File apkFile) {
         if (apkFile == null || !apkFile.exists() || apkFile.length() < 10000) {
             Toast.makeText(context, "İndirilen APK dosyası doğrulanamadı.", Toast.LENGTH_SHORT).show();
