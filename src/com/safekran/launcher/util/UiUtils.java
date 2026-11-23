@@ -22,7 +22,8 @@ import android.widget.Toast;
  */
 public final class UiUtils {
 
-    public static final int COLOR_TV_CYAN_STROKE = Color.parseColor("#00E5FF");
+    public static final int COLOR_CYAN_ACCENT = Color.parseColor("#00E5FF");
+    public static final int COLOR_TV_CYAN_STROKE = COLOR_CYAN_ACCENT;
     public static final int COLOR_FOCUS_DARK = Color.parseColor("#37474F");
     public static final int COLOR_DARK_SURFACE = Color.parseColor("#263238");
     public static final int COLOR_CARD_DARK = Color.parseColor("#1C2A38");

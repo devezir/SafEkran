@@ -13,7 +13,6 @@ import android.os.Build;
 import android.provider.AlarmClock;
 import android.provider.CalendarContract;
 import android.provider.Settings;
-import android.widget.Toast;
 
 import java.util.Locale;
 
@@ -86,6 +85,22 @@ public final class IntentUtils {
     }
 
     /**
+     * Verilen eylemleri (action) sırayla dener, hiçbiri açılamazsa genel sistem ayarlarına fallback yapar.
+     */
+    public static boolean openSettingOrFallback(Context context, String... actions) {
+        if (context == null) return false;
+        if (actions != null) {
+            for (String action : actions) {
+                if (action != null && launchSafely(context, new Intent(action))) {
+                    return true;
+                }
+            }
+        }
+        openSystemSettings(context);
+        return false;
+    }
+
+    /**
      * Genel Sistem Ayarlarını açar (Öncelik: Android TV -> Standart Ayarlar -> Fallback).
      */
     public static void openSystemSettings(Context context) {
@@ -95,7 +110,7 @@ public final class IntentUtils {
         if (launchSafely(context, new Intent(Settings.ACTION_SETTINGS))) return;
         if (launchSafely(context, new Intent("android.settings.SETTINGS"))) return;
 
-        Toast.makeText(context, "Sistem ayarları açılamadı.", Toast.LENGTH_SHORT).show();
+        UiUtils.showToast(context, "Sistem ayarları açılamadı.");
     }
 
     /**
@@ -104,45 +119,35 @@ public final class IntentUtils {
     public static void openBatterySettings(Context context) {
         if (context == null) return;
         if (openTvSettings(context)) return;
-        if (launchSafely(context, new Intent(Intent.ACTION_POWER_USAGE_SUMMARY))) return;
-        openSystemSettings(context);
+        openSettingOrFallback(context, Intent.ACTION_POWER_USAGE_SUMMARY);
     }
 
     /**
      * RAM / Uygulama Yönetimi ayarlarını açar.
      */
     public static void openRamSettings(Context context) {
-        if (context == null) return;
-        if (launchSafely(context, new Intent(Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS))) return;
-        openSystemSettings(context);
+        openSettingOrFallback(context, Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS);
     }
 
     /**
      * Depolama ayarlarını açar.
      */
     public static void openStorageSettings(Context context) {
-        if (context == null) return;
-        if (launchSafely(context, new Intent(Settings.ACTION_INTERNAL_STORAGE_SETTINGS))) return;
-        openSystemSettings(context);
+        openSettingOrFallback(context, Settings.ACTION_INTERNAL_STORAGE_SETTINGS);
     }
 
     /**
      * Ağ / Wi-Fi ayarlarını açar.
      */
     public static void openNetworkSettings(Context context) {
-        if (context == null) return;
-        if (launchSafely(context, new Intent(Settings.ACTION_WIFI_SETTINGS))) return;
-        if (launchSafely(context, new Intent(Settings.ACTION_WIRELESS_SETTINGS))) return;
-        openSystemSettings(context);
+        openSettingOrFallback(context, Settings.ACTION_WIFI_SETTINGS, Settings.ACTION_WIRELESS_SETTINGS);
     }
 
     /**
      * Bluetooth ayarlarını açar.
      */
     public static void openBluetoothSettings(Context context) {
-        if (context == null) return;
-        if (launchSafely(context, new Intent(Settings.ACTION_BLUETOOTH_SETTINGS))) return;
-        openSystemSettings(context);
+        openSettingOrFallback(context, Settings.ACTION_BLUETOOTH_SETTINGS);
     }
 
     /**
@@ -165,8 +170,7 @@ public final class IntentUtils {
         };
         if (launchAnyPackage(context, clockPackages)) return;
 
-        if (launchSafely(context, new Intent(Settings.ACTION_DATE_SETTINGS))) return;
-        openSystemSettings(context);
+        openSettingOrFallback(context, Settings.ACTION_DATE_SETTINGS);
     }
 
     /**
@@ -199,7 +203,7 @@ public final class IntentUtils {
         if (launchAnyPackage(context, calPackages)) return;
 
         if (launchSafely(context, new Intent(Settings.ACTION_DATE_SETTINGS))) return;
-        Toast.makeText(context, "Takvim uygulaması bulunamadı.", Toast.LENGTH_SHORT).show();
+        UiUtils.showToast(context, "Takvim uygulaması bulunamadı.");
     }
 
     /**
@@ -245,7 +249,7 @@ public final class IntentUtils {
      */
     public static void openXiaomiDefaultAppsSettings(Context context) {
         if (context == null) return;
-        Toast.makeText(context, "Açılan ekranda 'Başlatıcı' (Home) seçeneğine dokunup 'Saf Ekran'ı seçiniz.", Toast.LENGTH_LONG).show();
+        UiUtils.showToastLong(context, "Açılan ekranda 'Başlatıcı' (Home) seçeneğine dokunup 'Saf Ekran'ı seçiniz.");
 
         // 1. MIUI / HyperOS Özel Varsayılan Uygulamalar İntenti
         if (launchSafely(context, new Intent("miui.intent.action.PREFERRED_APP_SETTINGS"))) return;
@@ -255,14 +259,8 @@ public final class IntentUtils {
         miuiComponent.setClassName("com.android.settings", "com.android.settings.Settings$PreferredSettingsActivity");
         if (launchSafely(context, miuiComponent)) return;
 
-        // 3. Standart Varsayılan Uygulamalar Ekranı
-        if (launchSafely(context, new Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS))) return;
-
-        // 4. ACTION_HOME_SETTINGS
-        if (launchSafely(context, new Intent(Settings.ACTION_HOME_SETTINGS))) return;
-
-        // 5. Genel Sistem Ayarları Fallback
-        openSystemSettings(context);
+        // 3. Standart Varsayılan Uygulamalar veya Genel Fallback
+        openSettingOrFallback(context, Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS, Settings.ACTION_HOME_SETTINGS);
     }
 
     /**
@@ -319,7 +317,7 @@ public final class IntentUtils {
             activity.startActivity(chooser);
             return true;
         } catch (Exception e) {
-            Toast.makeText(activity, "Sistem seçicisi açılamadı.", Toast.LENGTH_SHORT).show();
+            UiUtils.showToast(activity, "Sistem seçicisi açılamadı.");
             return false;
         }
     }
@@ -338,13 +336,13 @@ public final class IntentUtils {
                         activity.startActivity(roleIntent);
                         return true;
                     } else {
-                        Toast.makeText(activity, "Saf Ekran zaten varsayılan başlatıcı.", Toast.LENGTH_SHORT).show();
+                        UiUtils.showToast(activity, "Saf Ekran zaten varsayılan başlatıcı.");
                         return true;
                     }
                 }
             } catch (Exception ignored) {}
         }
-        Toast.makeText(activity, "Bu cihazda Google RoleManager penceresi desteklenmiyor. Diğer seçenekleri deneyiniz.", Toast.LENGTH_LONG).show();
+        UiUtils.showToastLong(activity, "Bu cihazda Google RoleManager penceresi desteklenmiyor. Diğer seçenekleri deneyiniz.");
         return false;
     }
 
@@ -360,14 +358,14 @@ public final class IntentUtils {
                 intent.setData(Uri.parse("package:" + curHome));
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 if (launchSafely(activity, intent)) {
-                    Toast.makeText(activity, "Açılan ekranda 'Varsayılanları Temizle'ye basıp ardından Kumandadan HOME tuşuna basınız.", Toast.LENGTH_LONG).show();
+                    UiUtils.showToastLong(activity, "Açılan ekranda 'Varsayılanları Temizle'ye basıp ardından Kumandadan HOME tuşuna basınız.");
                     return true;
                 }
             } catch (Exception ignored) {}
         }
         // Eğer mevcut başlatıcı özel olarak bulunamazsa genel uygulama ayarlarını aç
         openRamSettings(activity);
-        Toast.makeText(activity, "Mevcut başlatıcınızı seçip 'Varsayılanları Temizle' butonuna basınız.", Toast.LENGTH_LONG).show();
+        UiUtils.showToastLong(activity, "Mevcut başlatıcınızı seçip 'Varsayılanları Temizle' butonuna basınız.");
         return true;
     }
 
@@ -375,11 +373,7 @@ public final class IntentUtils {
      * Sistem Ana Ekran Ayarları sayfalarını sırayla açmayı dener.
      */
     public static boolean openHomeSettings(Context context) {
-        if (context == null) return false;
-        if (launchSafely(context, new Intent(Settings.ACTION_HOME_SETTINGS))) return true;
-        if (launchSafely(context, new Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS))) return true;
-        openSystemSettings(context);
-        return false;
+        return openSettingOrFallback(context, Settings.ACTION_HOME_SETTINGS, Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS);
     }
 
     /**
@@ -413,7 +407,7 @@ public final class IntentUtils {
                         activity.startActivity(roleIntent);
                         return;
                     } else {
-                        Toast.makeText(activity, "Saf Ekran zaten varsayılan başlatıcı.", Toast.LENGTH_SHORT).show();
+                        UiUtils.showToast(activity, "Saf Ekran zaten varsayılan başlatıcı.");
                         return;
                     }
                 }

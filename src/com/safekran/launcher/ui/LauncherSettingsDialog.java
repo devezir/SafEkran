@@ -108,7 +108,7 @@ public final class LauncherSettingsDialog {
             currentVersion = activity.getPackageManager().getPackageInfo(activity.getPackageName(), 0).versionName;
         } catch (Exception ignored) {}
         authorText.setText("Saf Ekran v" + currentVersion + " | Geliştirici: Vezir");
-        authorText.setTextColor(Color.parseColor("#4CAF50"));
+        authorText.setTextColor(UiUtils.COLOR_GREEN_SUCCESS);
         authorText.setTextSize(Math.round(12 * Math.min(1.4f, sScale)));
         authorText.setPadding(0, 0, 0, UiUtils.dpToPx(activity, 8));
         layout.addView(authorText);
@@ -133,7 +133,7 @@ public final class LauncherSettingsDialog {
 
         final TextView scaleValText = new TextView(activity);
         scaleValText.setText("%" + currentPct);
-        scaleValText.setTextColor(Color.parseColor("#00E5FF"));
+        scaleValText.setTextColor(UiUtils.COLOR_CYAN_ACCENT);
         scaleValText.setTextSize(Math.round(13 * sScale));
         scaleValText.setTypeface(Typeface.DEFAULT_BOLD);
         scaleValText.setGravity(Gravity.END);

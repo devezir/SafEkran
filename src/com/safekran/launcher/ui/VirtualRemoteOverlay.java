@@ -188,49 +188,33 @@ public class VirtualRemoteOverlay {
         return remoteLayout;
     }
 
-    private Button createRemoteButton(String text, final int keyCode) {
+    private Button createOverlayButton(String text, int keyCode, int wDp, int hDp,
+                                       float textSizeSp, int bgColor, int mlDp, int mtDp, int mrDp, int mbDp) {
         final Button btn = new Button(context);
         btn.setText(text);
         btn.setTextColor(Color.WHITE);
-        btn.setTextSize(12);
-        btn.setBackgroundColor(Color.parseColor("#33FFFFFF"));
+        btn.setTextSize(textSizeSp);
+        btn.setBackgroundColor(bgColor);
         btn.setFocusable(false);
-        int size = UiUtils.dpToPx(context, 38);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(size, size);
-        int m = UiUtils.dpToPx(context, 2);
-        lp.setMargins(m, m, m, m);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                UiUtils.dpToPx(context, wDp), UiUtils.dpToPx(context, hDp));
+        lp.setMargins(UiUtils.dpToPx(context, mlDp), UiUtils.dpToPx(context, mtDp),
+                UiUtils.dpToPx(context, mrDp), UiUtils.dpToPx(context, mbDp));
         btn.setLayoutParams(lp);
         attachKeyClick(btn, keyCode);
         return btn;
+    }
+
+    private Button createRemoteButton(String text, final int keyCode) {
+        return createOverlayButton(text, keyCode, 38, 38, 12, Color.parseColor("#33FFFFFF"), 2, 2, 2, 2);
     }
 
     private Button createColorRemoteButton(String text, final int keyCode) {
-        final Button btn = new Button(context);
-        btn.setText(text);
-        btn.setTextSize(12);
-        btn.setBackgroundColor(Color.parseColor("#26FFFFFF"));
-        btn.setFocusable(false);
-        int size = UiUtils.dpToPx(context, 34);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(size, size);
-        int m = UiUtils.dpToPx(context, 2);
-        lp.setMargins(m, 0, m, 0);
-        btn.setLayoutParams(lp);
-        attachKeyClick(btn, keyCode);
-        return btn;
+        return createOverlayButton(text, keyCode, 34, 34, 12, Color.parseColor("#26FFFFFF"), 2, 0, 2, 0);
     }
 
     private Button createActionButton(String text, final int keyCode) {
-        final Button btn = new Button(context);
-        btn.setText(text);
-        btn.setTextColor(Color.WHITE);
-        btn.setTextSize(10);
-        btn.setBackgroundColor(Color.parseColor("#26FFFFFF"));
-        btn.setFocusable(false);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(UiUtils.dpToPx(context, 64), UiUtils.dpToPx(context, 32));
-        lp.setMargins(UiUtils.dpToPx(context, 3), UiUtils.dpToPx(context, 4), UiUtils.dpToPx(context, 3), 0);
-        btn.setLayoutParams(lp);
-        attachKeyClick(btn, keyCode);
-        return btn;
+        return createOverlayButton(text, keyCode, 64, 32, 10, Color.parseColor("#26FFFFFF"), 3, 4, 3, 0);
     }
 
     private void attachKeyClick(final Button btn, final int keyCode) {

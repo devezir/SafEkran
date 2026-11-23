@@ -128,13 +128,31 @@ public class WorkspaceView extends ViewGroup {
         return calculatedCols;
     }
 
-    public void updateAllTileFontSizes() {
-        for (int i = 0; i < getChildCount(); i++) {
+    public interface TileVisitor {
+        void visit(TileView tileView);
+    }
+
+    /**
+     * Çalışma alanındaki tüm TileView çocuklarını gezen merkezi ziyaretçi döngüsü.
+     */
+    public void forEachTile(TileVisitor visitor) {
+        if (visitor == null) return;
+        int count = getChildCount();
+        for (int i = 0; i < count; i++) {
             View child = getChildAt(i);
             if (child instanceof TileView) {
-                ((TileView) child).refreshDynamicSizes();
+                visitor.visit((TileView) child);
             }
         }
+    }
+
+    public void updateAllTileFontSizes() {
+        forEachTile(new TileVisitor() {
+            @Override
+            public void visit(TileView tv) {
+                tv.refreshDynamicSizes();
+            }
+        });
     }
 
     public void rebuildViews() {
@@ -572,34 +590,33 @@ public class WorkspaceView extends ViewGroup {
     }
 
     public TileView selectFirstVisibleTile() {
-        int count = getChildCount();
-        if (count == 0) return null;
+        if (getChildCount() == 0) return null;
 
-        int currentScrollY = getScrollY();
-        TileView bestCandidate = null;
+        final int currentScrollY = getScrollY();
+        final TileView[] bestCandidate = new TileView[1];
+        final TileView[] targetFound = new TileView[1];
 
-        for (int i = 0; i < count; i++) {
-            View child = getChildAt(i);
-            if (child instanceof TileView && child.getVisibility() == View.VISIBLE) {
-                TileView tv = (TileView) child;
+        forEachTile(new TileVisitor() {
+            @Override
+            public void visit(TileView tv) {
+                if (targetFound[0] != null || tv.getVisibility() != View.VISIBLE) return;
                 Tile t = tv.getTile();
                 if (t != null && t.type != TileType.SPACER) {
-                    if (bestCandidate == null) {
-                        bestCandidate = tv;
+                    if (bestCandidate[0] == null) {
+                        bestCandidate[0] = tv;
                     }
                     if (tv.getBottom() > currentScrollY + safeTop) {
-                        setTvSelectedTile(tv);
-                        return tv;
+                        targetFound[0] = tv;
                     }
                 }
             }
-        }
+        });
 
-        if (bestCandidate != null) {
-            setTvSelectedTile(bestCandidate);
-            return bestCandidate;
+        TileView chosen = (targetFound[0] != null) ? targetFound[0] : bestCandidate[0];
+        if (chosen != null) {
+            setTvSelectedTile(chosen);
         }
-        return null;
+        return chosen;
     }
 
     public void executeTvSelected() {
@@ -643,17 +660,15 @@ public class WorkspaceView extends ViewGroup {
             return;
         }
 
-        java.util.List<TileView> validTiles = new java.util.ArrayList<TileView>();
-        for (int i = 0; i < count; i++) {
-            View child = getChildAt(i);
-            if (child instanceof TileView && child.getVisibility() == View.VISIBLE) {
-                TileView tv = (TileView) child;
-                Tile t = tv.getTile();
-                if (t != null) {
+        final java.util.List<TileView> validTiles = new java.util.ArrayList<TileView>();
+        forEachTile(new TileVisitor() {
+            @Override
+            public void visit(TileView tv) {
+                if (tv.getVisibility() == View.VISIBLE && tv.getTile() != null) {
                     validTiles.add(tv);
                 }
             }
-        }
+        });
 
         if (validTiles.isEmpty()) return;
 
@@ -832,34 +847,26 @@ public class WorkspaceView extends ViewGroup {
         }
     }
 
-    public void updateBatteryStatus(int pct, boolean isCharging) {
-        int count = getChildCount();
-        for (int i = 0; i < count; i++) {
-            View child = getChildAt(i);
-            if (child instanceof TileView) {
-                TileView tv = (TileView) child;
+    public void updateBatteryStatus(final int pct, final boolean isCharging) {
+        forEachTile(new TileVisitor() {
+            @Override
+            public void visit(TileView tv) {
                 if (tv.getTile() != null && tv.getTile().type == TileType.BATTERY) {
                     tv.updateBatteryData(pct, isCharging);
                 }
             }
-        }
+        });
     }
 
     public void refreshStatusTiles() {
-        int count = getChildCount();
-        for (int i = 0; i < count; i++) {
-            View child = getChildAt(i);
-            if (child instanceof TileView) {
-                TileView tv = (TileView) child;
-                if (tv.getTile() != null && (tv.getTile().type == TileType.BATTERY ||
-                        tv.getTile().type == TileType.RAM ||
-                        tv.getTile().type == TileType.STORAGE ||
-                        tv.getTile().type == TileType.NETWORK ||
-                        tv.getTile().type == TileType.BLUETOOTH)) {
+        forEachTile(new TileVisitor() {
+            @Override
+            public void visit(TileView tv) {
+                if (tv.getTile() != null && tv.getTile().isStatusTile()) {
                     tv.refreshStatusData();
                 }
             }
-        }
+        });
     }
 
     public void playTurnstileAnimation() {
@@ -867,22 +874,22 @@ public class WorkspaceView extends ViewGroup {
         post(new Runnable() {
             @Override
             public void run() {
-                int count = getChildCount();
-                if (count == 0) return;
-                for (int i = 0; i < count; i++) {
-                    View child = getChildAt(i);
-                    if (child instanceof TileView) {
-                        Tile t = ((TileView) child).getTile();
+                if (getChildCount() == 0) return;
+                forEachTile(new TileVisitor() {
+                    @Override
+                    public void visit(TileView tv) {
+                        Tile t = tv.getTile();
+                        if (t == null) return;
                         // Orijinal Windows Phone Cascade Turnstile:
                         // Sağ-çaprazdan belirgin süzülme ve yumuşak yerine oturma
-                        child.setAlpha(0f);
-                        child.setTranslationX(dpToPx(75f));
-                        child.setTranslationY(dpToPx(25f));
-                        child.setScaleX(0.88f);
-                        child.setScaleY(0.88f);
+                        tv.setAlpha(0f);
+                        tv.setTranslationX(dpToPx(75f));
+                        tv.setTranslationY(dpToPx(25f));
+                        tv.setScaleX(0.88f);
+                        tv.setScaleY(0.88f);
 
                         int delay = Math.min(380, (t.row * 40) + (t.col * 22));
-                        child.animate()
+                        tv.animate()
                                 .alpha(1f)
                                 .translationX(0f)
                                 .translationY(0f)
@@ -893,7 +900,7 @@ public class WorkspaceView extends ViewGroup {
                                 .setInterpolator(new android.view.animation.DecelerateInterpolator(1.8f))
                                 .start();
                     }
-                }
+                });
             }
         });
     }

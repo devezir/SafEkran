@@ -119,7 +119,7 @@ public final class UpdateFlowManager {
         if (info.releaseNotes != null && !info.releaseNotes.trim().isEmpty()) {
             TextView notesTitle = new TextView(activity);
             notesTitle.setText("📋 Sürüm Notları / Yenilikler:");
-            notesTitle.setTextColor(Color.parseColor("#FFD54F"));
+            notesTitle.setTextColor(UiUtils.COLOR_AMBER);
             notesTitle.setTextSize(Math.round(12 * sScale));
             notesTitle.setTypeface(Typeface.DEFAULT_BOLD);
             notesTitle.setPadding(0, 0, 0, UiUtils.dpToPx(activity, 4));

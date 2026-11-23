@@ -286,30 +286,32 @@ public class MainActivity extends Activity {
         }
     }
 
+    private final TileContextMenuHelper.TileContextMenuListener contextMenuListener = new TileContextMenuHelper.TileContextMenuListener() {
+        @Override
+        public void onSaveAndRefresh(String message) {
+            saveAndRefresh(message);
+        }
+
+        @Override
+        public void onStartTileMove(Tile t) {
+            startTileMove(t);
+        }
+
+        @Override
+        public void onOpenClockApp() {
+            IntentUtils.openClockApp(MainActivity.this);
+        }
+
+        @Override
+        public void onOpenLauncherSettings() {
+            openLauncherSettingsDialog();
+        }
+    };
+
     private void onTileLongClicked(final Tile tile) {
         lastLongClickTimestamp = SystemClock.uptimeMillis();
         TileContextMenuHelper.openTileContextMenu(this, config, iconCache, tile,
-                workspaceView.getCalculatedCols(), new TileContextMenuHelper.TileContextMenuListener() {
-                    @Override
-                    public void onSaveAndRefresh(String message) {
-                        saveAndRefresh(message);
-                    }
-
-                    @Override
-                    public void onStartTileMove(Tile t) {
-                        startTileMove(t);
-                    }
-
-                    @Override
-                    public void onOpenClockApp() {
-                        IntentUtils.openClockApp(MainActivity.this);
-                    }
-
-                    @Override
-                    public void onOpenLauncherSettings() {
-                        openLauncherSettingsDialog();
-                    }
-                });
+                workspaceView.getCalculatedCols(), contextMenuListener);
     }
 
     private void startTileMove(final Tile tile) {
@@ -409,28 +411,7 @@ public class MainActivity extends Activity {
     }
 
     private void openHiddenAppsDialog(final Tile anchorTile) {
-        TileContextMenuHelper.openHiddenAppsDialog(this, config, iconCache, anchorTile,
-                new TileContextMenuHelper.TileContextMenuListener() {
-                    @Override
-                    public void onSaveAndRefresh(String message) {
-                        saveAndRefresh(message);
-                    }
-
-                    @Override
-                    public void onStartTileMove(Tile tile) {
-                        startTileMove(tile);
-                    }
-
-                    @Override
-                    public void onOpenClockApp() {
-                        IntentUtils.openClockApp(MainActivity.this);
-                    }
-
-                    @Override
-                    public void onOpenLauncherSettings() {
-                        openLauncherSettingsDialog();
-                    }
-                });
+        TileContextMenuHelper.openHiddenAppsDialog(this, config, iconCache, anchorTile, contextMenuListener);
     }
 
     private void swapTilePositions(Tile t1, Tile t2) {

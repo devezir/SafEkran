@@ -452,29 +452,11 @@ public class TileView extends FrameLayout {
             if (isLightMode()) {
                 iconView.setColorFilter(Color.parseColor("#111111"));
             }
-        } else if (tile.type == TileType.COLOR_RED) {
+        } else if (tile.isColorTile()) {
             if ("APP".equals(tile.actionType) && appIcon != null) {
                 iconView.setImageDrawable(appIcon);
             } else {
-                iconView.setImageResource(R.drawable.ic_color_red);
-            }
-        } else if (tile.type == TileType.COLOR_GREEN) {
-            if ("APP".equals(tile.actionType) && appIcon != null) {
-                iconView.setImageDrawable(appIcon);
-            } else {
-                iconView.setImageResource(R.drawable.ic_color_green);
-            }
-        } else if (tile.type == TileType.COLOR_YELLOW) {
-            if ("APP".equals(tile.actionType) && appIcon != null) {
-                iconView.setImageDrawable(appIcon);
-            } else {
-                iconView.setImageResource(R.drawable.ic_color_yellow);
-            }
-        } else if (tile.type == TileType.COLOR_BLUE) {
-            if ("APP".equals(tile.actionType) && appIcon != null) {
-                iconView.setImageDrawable(appIcon);
-            } else {
-                iconView.setImageResource(R.drawable.ic_color_blue);
+                iconView.setImageResource(getColorDrawableRes(tile.type));
             }
         } else {
             if (appIcon != null) {
@@ -519,54 +501,8 @@ public class TileView extends FrameLayout {
         int strokeWidthFocused = dpToPx(getContext(), 2);
         int strokeWidthNormal = dpToPx(getContext(), 1);
 
-        if (tile.type == TileType.COLOR_RED) {
-            focusedDrawable.setColor(Color.parseColor(isLight ? "#FFCDD2" : "#33D32F2F"));
-            focusedDrawable.setStroke(strokeWidthFocused, Color.parseColor(isLight ? "#C62828" : "#FF5252"));
-
-            if ("FLOATING".equals(style)) {
-                normalDrawable.setColor(Color.TRANSPARENT);
-            } else if ("FOCUS_ONLY".equals(style)) {
-                normalDrawable.setColor(Color.parseColor(isLight ? "#FFFFFF" : "#1A1212"));
-            } else { // ALWAYS
-                normalDrawable.setColor(Color.parseColor(isLight ? "#FFFFFF" : "#1A1212"));
-                normalDrawable.setStroke(strokeWidthNormal, Color.parseColor("#80E53935"));
-            }
-        } else if (tile.type == TileType.COLOR_GREEN) {
-            focusedDrawable.setColor(Color.parseColor(isLight ? "#C8E6C9" : "#33388E3C"));
-            focusedDrawable.setStroke(strokeWidthFocused, Color.parseColor(isLight ? "#2E7D32" : "#69F0AE"));
-
-            if ("FLOATING".equals(style)) {
-                normalDrawable.setColor(Color.TRANSPARENT);
-            } else if ("FOCUS_ONLY".equals(style)) {
-                normalDrawable.setColor(Color.parseColor(isLight ? "#FFFFFF" : "#121A14"));
-            } else {
-                normalDrawable.setColor(Color.parseColor(isLight ? "#FFFFFF" : "#121A14"));
-                normalDrawable.setStroke(strokeWidthNormal, Color.parseColor("#8043A047"));
-            }
-        } else if (tile.type == TileType.COLOR_YELLOW) {
-            focusedDrawable.setColor(Color.parseColor(isLight ? "#FFF9C4" : "#33FBC02D"));
-            focusedDrawable.setStroke(strokeWidthFocused, Color.parseColor(isLight ? "#F57F17" : "#FFFF00"));
-
-            if ("FLOATING".equals(style)) {
-                normalDrawable.setColor(Color.TRANSPARENT);
-            } else if ("FOCUS_ONLY".equals(style)) {
-                normalDrawable.setColor(Color.parseColor(isLight ? "#FFFFFF" : "#1A1810"));
-            } else {
-                normalDrawable.setColor(Color.parseColor(isLight ? "#FFFFFF" : "#1A1810"));
-                normalDrawable.setStroke(strokeWidthNormal, Color.parseColor("#80FBC02D"));
-            }
-        } else if (tile.type == TileType.COLOR_BLUE) {
-            focusedDrawable.setColor(Color.parseColor(isLight ? "#BBDEFB" : "#331976D2"));
-            focusedDrawable.setStroke(strokeWidthFocused, Color.parseColor(isLight ? "#0D47A1" : "#448AFF"));
-
-            if ("FLOATING".equals(style)) {
-                normalDrawable.setColor(Color.TRANSPARENT);
-            } else if ("FOCUS_ONLY".equals(style)) {
-                normalDrawable.setColor(Color.parseColor(isLight ? "#FFFFFF" : "#10151A"));
-            } else {
-                normalDrawable.setColor(Color.parseColor(isLight ? "#FFFFFF" : "#10151A"));
-                normalDrawable.setStroke(strokeWidthNormal, Color.parseColor("#801E88E5"));
-            }
+        if (tile.isColorTile()) {
+            applyColorTileStyle(focusedDrawable, normalDrawable, style, isLight, strokeWidthFocused, strokeWidthNormal);
         } else {
             // Standart Kutular (Uygulamalar, Saat, Ayarlar vs.)
             if (isLight) {
@@ -848,6 +784,56 @@ public class TileView extends FrameLayout {
             float availW = Math.max(10f, w - dpToPx(getContext(), 10));
             float maxSp = Math.max(8.0f, Math.min(14f, availHDp * 0.18f));
             autoFitText(infoSecondaryView, maxSp, 7.0f, availW);
+        }
+    }
+
+    private int getColorDrawableRes(TileType type) {
+        if (type == TileType.COLOR_RED) return R.drawable.ic_color_red;
+        if (type == TileType.COLOR_GREEN) return R.drawable.ic_color_green;
+        if (type == TileType.COLOR_YELLOW) return R.drawable.ic_color_yellow;
+        if (type == TileType.COLOR_BLUE) return R.drawable.ic_color_blue;
+        return R.mipmap.ic_launcher;
+    }
+
+    private void applyColorTileStyle(GradientDrawable focused, GradientDrawable normal,
+                                     String style, boolean isLight, int strokeWFocused, int strokeWNormal) {
+        int focusedBg;
+        int focusedStroke;
+        int normalDarkBg;
+        int alwaysStroke;
+
+        if (tile.type == TileType.COLOR_RED) {
+            focusedBg = Color.parseColor(isLight ? "#FFCDD2" : "#33D32F2F");
+            focusedStroke = Color.parseColor(isLight ? "#C62828" : "#FF5252");
+            normalDarkBg = Color.parseColor("#1A1212");
+            alwaysStroke = Color.parseColor("#80E53935");
+        } else if (tile.type == TileType.COLOR_GREEN) {
+            focusedBg = Color.parseColor(isLight ? "#C8E6C9" : "#33388E3C");
+            focusedStroke = Color.parseColor(isLight ? "#2E7D32" : "#69F0AE");
+            normalDarkBg = Color.parseColor("#121A14");
+            alwaysStroke = Color.parseColor("#8043A047");
+        } else if (tile.type == TileType.COLOR_YELLOW) {
+            focusedBg = Color.parseColor(isLight ? "#FFF9C4" : "#33FBC02D");
+            focusedStroke = Color.parseColor(isLight ? "#F57F17" : "#FFFF00");
+            normalDarkBg = Color.parseColor("#1A1810");
+            alwaysStroke = Color.parseColor("#80FBC02D");
+        } else { // BLUE
+            focusedBg = Color.parseColor(isLight ? "#BBDEFB" : "#331976D2");
+            focusedStroke = Color.parseColor(isLight ? "#0D47A1" : "#448AFF");
+            normalDarkBg = Color.parseColor("#10151A");
+            alwaysStroke = Color.parseColor("#801E88E5");
+        }
+
+        focused.setColor(focusedBg);
+        focused.setStroke(strokeWFocused, focusedStroke);
+
+        if ("FLOATING".equals(style)) {
+            normal.setColor(Color.TRANSPARENT);
+        } else if ("FOCUS_ONLY".equals(style)) {
+            normal.setColor(isLight ? Color.WHITE : normalDarkBg);
+        } else { // ALWAYS
+            normal.setColor(isLight ? Color.WHITE : normalDarkBg);
+            normal.setStroke(strokeWNormal, alwaysStroke);
         }
     }
 

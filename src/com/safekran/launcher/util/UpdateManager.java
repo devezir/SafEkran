@@ -8,16 +8,13 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
-import android.widget.Toast;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
@@ -126,7 +123,7 @@ public class UpdateManager {
                 return null;
             }
 
-            String jsonStr = readStream(conn.getInputStream());
+            String jsonStr = IoUtils.readStreamToString(conn.getInputStream());
             JSONObject root = new JSONObject(jsonStr);
 
             String tagName = root.optString("tag_name", "");
@@ -185,7 +182,7 @@ public class UpdateManager {
                 return null;
             }
 
-            String jsonStr = readStream(conn.getInputStream());
+            String jsonStr = IoUtils.readStreamToString(conn.getInputStream());
             JSONObject root = new JSONObject(jsonStr);
 
             int remoteVc = root.optInt("versionCode", 0);
@@ -355,7 +352,7 @@ public class UpdateManager {
 
     public static void installApk(Context context, File apkFile) {
         if (apkFile == null || !apkFile.exists() || apkFile.length() < 10000) {
-            Toast.makeText(context, "İndirilen APK dosyası doğrulanamadı.", Toast.LENGTH_SHORT).show();
+            UiUtils.showToast(context, "İndirilen APK dosyası doğrulanamadı.");
             return;
         }
 
@@ -367,7 +364,7 @@ public class UpdateManager {
                     manageIntent.setData(Uri.parse("package:" + context.getPackageName()));
                     manageIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     context.startActivity(manageIntent);
-                    Toast.makeText(context, "Güncellemeyi kurabilmek için lütfen Saf Ekran'a izin verin.", Toast.LENGTH_LONG).show();
+                    UiUtils.showToastLong(context, "Güncellemeyi kurabilmek için lütfen Saf Ekran'a izin verin.");
                     return;
                 } catch (Exception ignored) {}
             }
@@ -388,7 +385,7 @@ public class UpdateManager {
             intent.setDataAndType(uri, "application/vnd.android.package-archive");
             context.startActivity(intent);
         } catch (Exception e) {
-            Toast.makeText(context, "Paket kurucu başlatılamadı: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            UiUtils.showToastLong(context, "Paket kurucu başlatılamadı: " + e.getMessage());
         }
     }
 
@@ -406,16 +403,5 @@ public class UpdateManager {
             }
         } catch (Exception ignored) {}
         return false;
-    }
-
-    private static String readStream(InputStream is) throws Exception {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(is, "UTF-8"));
-        StringBuilder sb = new StringBuilder();
-        String line;
-        while ((line = reader.readLine()) != null) {
-            sb.append(line).append("\n");
-        }
-        reader.close();
-        return sb.toString();
     }
 }
