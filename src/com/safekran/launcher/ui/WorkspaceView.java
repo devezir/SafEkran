@@ -512,14 +512,31 @@ public class WorkspaceView extends ViewGroup {
     }
 
     public void smoothScrollTo(int targetY) {
+        if (!scroller.isFinished()) {
+            scroller.abortAnimation();
+        }
         int dy = targetY - getScrollY();
-        scroller.startScroll(0, getScrollY(), 0, dy, 250);
+        scroller.startScroll(0, getScrollY(), 0, dy, 150);
         postInvalidateOnAnimation();
     }
 
     // ==========================================
     // TV SEÇİM İMLECİ & 2D UZAYSAL GEZİNTİ MOTORU
     // ==========================================
+
+    public TileView findTileView(Tile tile) {
+        if (tile == null) return null;
+        for (int i = 0; i < getChildCount(); i++) {
+            View child = getChildAt(i);
+            if (child instanceof TileView) {
+                TileView tv = (TileView) child;
+                if (tv.getTile() == tile) {
+                    return tv;
+                }
+            }
+        }
+        return null;
+    }
 
     public void setTvSelectedTile(TileView target) {
         if (tvSelectedTile != null && tvSelectedTile != target) {
@@ -552,13 +569,15 @@ public class WorkspaceView extends ViewGroup {
         int currentScrollY = getScrollY();
         int viewH = getHeight();
 
-        int visibleWindowBottom = viewH - safeBottom;
+        int buffer = (int) dpToPx(24);
+        int visibleWindowBottom = viewH - safeBottom - buffer;
+        int visibleWindowTop = safeTop + buffer;
 
         if (childBottom - currentScrollY > visibleWindowBottom) {
-            int targetY = Math.min(maxScrollY, childBottom - visibleWindowBottom);
+            int targetY = Math.min(maxScrollY, childBottom - visibleWindowBottom + buffer);
             smoothScrollTo(targetY);
-        } else if (childTop - currentScrollY < safeTop) {
-            int targetY = Math.max(0, childTop - safeTop);
+        } else if (childTop - currentScrollY < visibleWindowTop) {
+            int targetY = Math.max(0, childTop - visibleWindowTop);
             smoothScrollTo(targetY);
         }
     }

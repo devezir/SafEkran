@@ -265,6 +265,7 @@ public class MainActivity extends Activity {
             WorkspaceStorage.saveWorkspace(this, config);
             workspaceView.rebuildViews();
             setupTileClickListeners();
+            updateRemoteTitleWithSelected();
             return;
         }
 
@@ -716,6 +717,17 @@ public class MainActivity extends Activity {
                         saveAndRefresh("Boşluk alçaltıldı (" + tile.rowSpan + " satır).");
                     } else if (which == 4) {
                         selectedMovingTile = tile;
+                        workspaceView.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                TileView tv = workspaceView.findTileView(tile);
+                                if (tv != null) {
+                                    workspaceView.setTvSelectedTile(tv);
+                                    workspaceView.ensureTileVisible(tv);
+                                }
+                                updateRemoteTitleWithSelected();
+                            }
+                        });
                         Toast.makeText(MainActivity.this, "Boşluk seçildi. Kumanda yön tuşlarıyla veya hedef kutuya dokunarak yerini değiştirin. Bırakmak için [OK] tuşuna basın.", Toast.LENGTH_LONG).show();
                     } else if (which == 5) {
                         config.tiles.remove(tile);
@@ -780,6 +792,17 @@ public class MainActivity extends Activity {
                 int maxC = workspaceView.getCalculatedCols();
                 if (effectiveWhich == 0) {
                     selectedMovingTile = tile;
+                    workspaceView.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            TileView tv = workspaceView.findTileView(tile);
+                            if (tv != null) {
+                                workspaceView.setTvSelectedTile(tv);
+                                workspaceView.ensureTileVisible(tv);
+                            }
+                            updateRemoteTitleWithSelected();
+                        }
+                    });
                     Toast.makeText(MainActivity.this, tile.label + " seçildi. Kumanda yön tuşlarıyla veya hedef kutuya dokunarak yerini değiştirin. Bırakmak için [OK] tuşuna basın.", Toast.LENGTH_LONG).show();
                 } else if (effectiveWhich == 1) {
                     tile.colSpan = Math.min(maxC, tile.colSpan + 1);
@@ -827,7 +850,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void moveTileInStream(Tile tile, int delta) {
+    private void moveTileInStream(final Tile tile, int delta) {
         int currentIndex = config.tiles.indexOf(tile);
         if (currentIndex < 0) return;
 
@@ -842,6 +865,18 @@ public class MainActivity extends Activity {
             workspaceView.rebuildViews();
             setupTileClickListeners();
         }
+
+        workspaceView.post(new Runnable() {
+            @Override
+            public void run() {
+                TileView tv = workspaceView.findTileView(tile);
+                if (tv != null) {
+                    workspaceView.setTvSelectedTile(tv);
+                    workspaceView.ensureTileVisible(tv);
+                }
+                updateRemoteTitleWithSelected();
+            }
+        });
     }
 
     private void launchApp(Tile tile) {
@@ -1151,7 +1186,7 @@ public class MainActivity extends Activity {
         } catch (Exception ignored) {}
         authorText.setText("Saf Ekran v" + currentVersion + " | Geliştirici: Vezir");
         authorText.setTextColor(Color.parseColor("#4CAF50"));
-        authorText.setTextSize(Math.round(12 * sScale));
+        authorText.setTextSize(Math.round(12 * Math.min(1.4f, sScale)));
         authorText.setPadding(0, 0, 0, dpToPx(8));
         layout.addView(authorText);
 
@@ -1188,14 +1223,23 @@ public class MainActivity extends Activity {
         scaleRow.setOrientation(LinearLayout.HORIZONTAL);
         scaleRow.setGravity(Gravity.CENTER_VERTICAL);
         scaleRow.setPadding(0, 0, 0, dpToPx(6));
+        scaleRow.setClipChildren(false);
+        scaleRow.setClipToPadding(false);
+
+        int btnW = (int) (dpToPx(42) * Math.min(1.4f, sScale));
+        int btnH = (int) (dpToPx(38) * Math.min(1.4f, sScale));
 
         final Button minusBtn = new Button(this);
         minusBtn.setText("－");
-        minusBtn.setTextSize(Math.round(14 * sScale));
         minusBtn.setTextColor(Color.WHITE);
+        minusBtn.setTypeface(Typeface.DEFAULT_BOLD);
+        minusBtn.setGravity(Gravity.CENTER);
+        minusBtn.setPadding(0, 0, 0, 0);
+        minusBtn.setIncludeFontPadding(false);
+        minusBtn.setMinHeight(0);
+        minusBtn.setMinimumWidth(0);
+        minusBtn.setTextSize(Math.round(16 * Math.min(1.4f, sScale)));
         setupTvFocusHighlight(minusBtn, Color.parseColor("#37474F"), 4);
-        int btnW = (int) (dpToPx(44) * Math.min(1.3f, sScale));
-        int btnH = (int) (dpToPx(38) * Math.min(1.3f, sScale));
         LinearLayout.LayoutParams minusLp = new LinearLayout.LayoutParams(btnW, btnH);
         minusLp.rightMargin = dpToPx(4);
         minusBtn.setLayoutParams(minusLp);
@@ -1213,8 +1257,14 @@ public class MainActivity extends Activity {
 
         final Button plusBtn = new Button(this);
         plusBtn.setText("＋");
-        plusBtn.setTextSize(Math.round(14 * sScale));
         plusBtn.setTextColor(Color.WHITE);
+        plusBtn.setTypeface(Typeface.DEFAULT_BOLD);
+        plusBtn.setGravity(Gravity.CENTER);
+        plusBtn.setPadding(0, 0, 0, 0);
+        plusBtn.setIncludeFontPadding(false);
+        plusBtn.setMinHeight(0);
+        plusBtn.setMinimumWidth(0);
+        plusBtn.setTextSize(Math.round(16 * Math.min(1.4f, sScale)));
         setupTvFocusHighlight(plusBtn, Color.parseColor("#37474F"), 4);
         LinearLayout.LayoutParams plusLp = new LinearLayout.LayoutParams(btnW, btnH);
         plusLp.leftMargin = dpToPx(4);
@@ -1336,9 +1386,13 @@ public class MainActivity extends Activity {
             defaultLauncherBtn.setTextColor(Color.WHITE);
             setupTvFocusHighlight(defaultLauncherBtn, Color.parseColor("#E65100"), 4);
         }
-        defaultLauncherBtn.setTextSize(Math.round(11 * sScale));
+        defaultLauncherBtn.setTextSize(Math.round(11 * Math.min(1.4f, sScale)));
+        defaultLauncherBtn.setSingleLine(false);
+        defaultLauncherBtn.setGravity(Gravity.CENTER);
+        defaultLauncherBtn.setPadding(dpToPx(12), dpToPx(8), dpToPx(12), dpToPx(8));
+        defaultLauncherBtn.setMinHeight((int) (dpToPx(42) * Math.min(1.4f, sScale)));
         LinearLayout.LayoutParams defLp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, (int) (dpToPx(40) * Math.min(1.3f, sScale)));
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         defLp.setMargins(0, dpToPx(4), 0, dpToPx(8));
         defaultLauncherBtn.setLayoutParams(defLp);
         defaultLauncherBtn.setOnClickListener(new View.OnClickListener() {
@@ -1524,11 +1578,15 @@ public class MainActivity extends Activity {
         Button saveBtn = new Button(this);
         saveBtn.setText("💾 Ayarları Kaydet");
         saveBtn.setTextColor(Color.WHITE);
-        saveBtn.setTextSize(Math.round(13 * sScale));
+        saveBtn.setTextSize(Math.round(13 * Math.min(1.4f, sScale)));
         saveBtn.setTypeface(Typeface.DEFAULT_BOLD);
+        saveBtn.setSingleLine(false);
+        saveBtn.setGravity(Gravity.CENTER);
+        saveBtn.setPadding(dpToPx(12), dpToPx(8), dpToPx(12), dpToPx(8));
+        saveBtn.setMinHeight((int) (dpToPx(44) * Math.min(1.4f, sScale)));
         setupTvFocusHighlight(saveBtn, Color.parseColor("#2E7D32"), 4);
         LinearLayout.LayoutParams saveLp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, (int) (dpToPx(44) * Math.min(1.3f, sScale)));
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         saveLp.bottomMargin = dpToPx(8);
         saveBtn.setLayoutParams(saveLp);
 
@@ -1539,18 +1597,26 @@ public class MainActivity extends Activity {
         Button backupBtn = new Button(this);
         backupBtn.setText("🔄 Yedek / Geri Yükle");
         backupBtn.setTextColor(Color.WHITE);
-        backupBtn.setTextSize(Math.round(11 * sScale));
+        backupBtn.setTextSize(Math.round(11 * Math.min(1.4f, sScale)));
+        backupBtn.setSingleLine(false);
+        backupBtn.setGravity(Gravity.CENTER);
+        backupBtn.setPadding(dpToPx(6), dpToPx(6), dpToPx(6), dpToPx(6));
+        backupBtn.setMinHeight((int) (dpToPx(40) * Math.min(1.4f, sScale)));
         setupTvFocusHighlight(backupBtn, Color.parseColor("#37474F"), 4);
-        LinearLayout.LayoutParams bLp = new LinearLayout.LayoutParams(0, (int) (dpToPx(40) * Math.min(1.3f, sScale)), 1f);
+        LinearLayout.LayoutParams bLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
         bLp.rightMargin = dpToPx(4);
         backupBtn.setLayoutParams(bLp);
 
         Button resetBtn = new Button(this);
         resetBtn.setText("⚠️ Fabrika Ayarları");
         resetBtn.setTextColor(Color.WHITE);
-        resetBtn.setTextSize(Math.round(11 * sScale));
+        resetBtn.setTextSize(Math.round(11 * Math.min(1.4f, sScale)));
+        resetBtn.setSingleLine(false);
+        resetBtn.setGravity(Gravity.CENTER);
+        resetBtn.setPadding(dpToPx(6), dpToPx(6), dpToPx(6), dpToPx(6));
+        resetBtn.setMinHeight((int) (dpToPx(40) * Math.min(1.4f, sScale)));
         setupTvFocusHighlight(resetBtn, Color.parseColor("#8B0000"), 4);
-        LinearLayout.LayoutParams rLp = new LinearLayout.LayoutParams(0, (int) (dpToPx(40) * Math.min(1.3f, sScale)), 1f);
+        LinearLayout.LayoutParams rLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
         rLp.leftMargin = dpToPx(4);
         resetBtn.setLayoutParams(rLp);
 
@@ -1563,11 +1629,15 @@ public class MainActivity extends Activity {
         // En altta: Güncellemeleri Denetle Butonu
         Button checkUpdateBtn = new Button(this);
         checkUpdateBtn.setText("🔄 Güncellemeleri Denetle");
-        checkUpdateBtn.setTextSize(Math.round(11 * sScale));
+        checkUpdateBtn.setTextSize(Math.round(11 * Math.min(1.4f, sScale)));
         checkUpdateBtn.setTextColor(Color.parseColor("#80D8FF"));
+        checkUpdateBtn.setSingleLine(false);
+        checkUpdateBtn.setGravity(Gravity.CENTER);
+        checkUpdateBtn.setPadding(dpToPx(12), dpToPx(8), dpToPx(12), dpToPx(8));
+        checkUpdateBtn.setMinHeight((int) (dpToPx(40) * Math.min(1.4f, sScale)));
         setupTvFocusHighlight(checkUpdateBtn, Color.parseColor("#1C2A38"), 4);
         LinearLayout.LayoutParams upLp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, (int) (dpToPx(40) * Math.min(1.3f, sScale)));
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         upLp.topMargin = dpToPx(8);
         checkUpdateBtn.setLayoutParams(upLp);
         checkUpdateBtn.setOnClickListener(new View.OnClickListener() {
@@ -2399,6 +2469,7 @@ public class MainActivity extends Activity {
 
         if (keyCode == KeyEvent.KEYCODE_BACK) {
             selectedMovingTile = null;
+            updateRemoteTitleWithSelected();
             Toast.makeText(this, "Taşıma işlemi iptal edildi.", Toast.LENGTH_SHORT).show();
             return true;
         }
@@ -2418,6 +2489,7 @@ public class MainActivity extends Activity {
             return true;
         } else if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
             selectedMovingTile = null;
+            updateRemoteTitleWithSelected();
             Toast.makeText(this, "Kutu konumu bırakıldı.", Toast.LENGTH_SHORT).show();
             return true;
         }
@@ -2454,6 +2526,14 @@ public class MainActivity extends Activity {
 
     private void updateRemoteTitleWithSelected() {
         if (remoteTitleView != null && workspaceView != null) {
+            if (selectedMovingTile != null) {
+                if (selectedMovingTile.type == TileType.SPACER) {
+                    remoteTitleView.setText("📦 [TAŞINIYOR] " + selectedMovingTile.colSpan + "x" + selectedMovingTile.rowSpan + " Boşluk");
+                } else {
+                    remoteTitleView.setText("📦 [TAŞINIYOR] " + selectedMovingTile.label);
+                }
+                return;
+            }
             TileView sel = workspaceView.getTvSelectedTile();
             if (sel == null) {
                 View focused = workspaceView.findFocus();

@@ -1,12 +1,12 @@
 {
   "appName": "Saf Ekran",
   "packageName": "com.safekran.launcher",
-  "versionCode": 45,
-  "versionName": "2.24.2",
+  "versionCode": 46,
+  "versionName": "2.24.3",
   "developer": "Vezir",
   "schemaVersion": 1,
   "createdDate": "2026-11-19",
-  "apkName": "SafEkran_v2.24.2_vc45.apk",
+  "apkName": "SafEkran_v2.24.3_vc46.apk",
   "history": [
     {
       "versionCode": 1,
@@ -277,6 +277,12 @@
       "versionName": "2.24.2",
       "date": "2026-11-23",
       "description": "Fix: Slider ile arayüz ölçeklemede menünün üst üste çift/üçlü açılması ve odak kaybının engellenmesi"
+    },
+    {
+      "versionCode": 46,
+      "versionName": "2.24.3",
+      "date": "2026-11-23",
+      "description": "Fix: Kutu tasimada otomatik ekran takibi, slider eksi-arti butonlari ve esnek baslatici butonu (v2.24.3)"
     }
   ]
 }
