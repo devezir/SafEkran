@@ -166,100 +166,54 @@ public class WorkspaceStorage {
         config.tiles.clear();
 
         int maxCols = Math.max(2, cols);
-        int currentCol = 0;
-        int currentRow = 0;
+        int[] cursor = new int[]{0, 0}; // [col, row]
 
         // 1. Saat Kutusu (2 Sütun genişlik, eğer 2'den az sütun varsa 1)
         int clockSpan = Math.min(2, maxCols);
-        Tile clockTile = new Tile(TileType.CLOCK, "Saat", currentCol, currentRow, clockSpan, 1);
-        config.tiles.add(clockTile);
-        currentCol += clockSpan;
+        addTile(config, TileType.CLOCK, "Saat", clockSpan, 1, cursor, maxCols);
 
         // 2. Tarih Kutusu (Varsayılan 2 Sütun genişlik)
         int dateSpan = Math.min(2, maxCols);
-        if (currentCol + dateSpan > maxCols) {
-            currentCol = 0;
-            currentRow++;
-        }
-        Tile dateTile = new Tile(TileType.DATE, "Tarih", currentCol, currentRow, dateSpan, 1);
-        config.tiles.add(dateTile);
-        currentCol += dateSpan;
+        addTile(config, TileType.DATE, "Tarih", dateSpan, 1, cursor, maxCols);
 
-        // 2. Kumanda 4 Renk Butonları (Kırmızı, Yeşil, Sarı, Mavi)
-        if (currentCol >= maxCols) { currentCol = 0; currentRow++; }
-        Tile redTile = new Tile(TileType.COLOR_RED, "🔴 Kırmızı Tuş", currentCol, currentRow, 1, 1);
-        redTile.actionType = "NONE";
-        config.tiles.add(redTile);
-        currentCol += 1;
+        // 3. Kumanda 4 Renk Butonları (Kırmızı, Yeşil, Sarı, Mavi)
+        addTile(config, TileType.COLOR_RED, "🔴 Kırmızı Tuş", 1, 1, cursor, maxCols).actionType = "NONE";
+        addTile(config, TileType.COLOR_GREEN, "🟢 Gizlenenler", 1, 1, cursor, maxCols).actionType = "HIDDEN_APPS";
+        addTile(config, TileType.COLOR_YELLOW, "🟡 Tema", 1, 1, cursor, maxCols).actionType = "THEME_TOGGLE";
+        addTile(config, TileType.COLOR_BLUE, "🔵 Ayarlar", 1, 1, cursor, maxCols).actionType = "LAUNCHER_SETTINGS";
 
-        if (currentCol >= maxCols) { currentCol = 0; currentRow++; }
-        Tile greenTile = new Tile(TileType.COLOR_GREEN, "🟢 Gizlenenler", currentCol, currentRow, 1, 1);
-        greenTile.actionType = "HIDDEN_APPS";
-        config.tiles.add(greenTile);
-        currentCol += 1;
+        // 4. Sistem Durum Kutuları (Pil, RAM, Depolama, Ağ, Bluetooth, Sistem Ayarları)
+        addTile(config, TileType.BATTERY, "Pil", 1, 1, cursor, maxCols);
+        addTile(config, TileType.RAM, "RAM", 1, 1, cursor, maxCols);
+        addTile(config, TileType.STORAGE, "Depolama", 1, 1, cursor, maxCols);
+        addTile(config, TileType.NETWORK, "Ağ", 1, 1, cursor, maxCols);
+        addTile(config, TileType.BLUETOOTH, "Bluetooth", 1, 1, cursor, maxCols);
+        addTile(config, TileType.LAUNCHER_SETTINGS, "Başlatıcı Ayarları", 1, 1, cursor, maxCols);
+        addTile(config, TileType.SYSTEM_SETTINGS, "Sistem Ayarları", 1, 1, cursor, maxCols);
 
-        if (currentCol >= maxCols) { currentCol = 0; currentRow++; }
-        Tile yellowTile = new Tile(TileType.COLOR_YELLOW, "🟡 Tema", currentCol, currentRow, 1, 1);
-        yellowTile.actionType = "THEME_TOGGLE";
-        config.tiles.add(yellowTile);
-        currentCol += 1;
-
-        if (currentCol >= maxCols) { currentCol = 0; currentRow++; }
-        Tile blueTile = new Tile(TileType.COLOR_BLUE, "🔵 Ayarlar", currentCol, currentRow, 1, 1);
-        blueTile.actionType = "LAUNCHER_SETTINGS";
-        config.tiles.add(blueTile);
-        currentCol += 1;
-
-        // 3. Sistem Durum Kutuları (Pil, RAM, Depolama, Ağ, Bluetooth, Sistem Ayarları)
-        if (currentCol >= maxCols) { currentCol = 0; currentRow++; }
-        Tile batteryTile = new Tile(TileType.BATTERY, "Pil", currentCol, currentRow, 1, 1);
-        config.tiles.add(batteryTile);
-        currentCol += 1;
-
-        if (currentCol >= maxCols) { currentCol = 0; currentRow++; }
-        Tile ramTile = new Tile(TileType.RAM, "RAM", currentCol, currentRow, 1, 1);
-        config.tiles.add(ramTile);
-        currentCol += 1;
-
-        if (currentCol >= maxCols) { currentCol = 0; currentRow++; }
-        Tile storageTile = new Tile(TileType.STORAGE, "Depolama", currentCol, currentRow, 1, 1);
-        config.tiles.add(storageTile);
-        currentCol += 1;
-
-        if (currentCol >= maxCols) { currentCol = 0; currentRow++; }
-        Tile networkTile = new Tile(TileType.NETWORK, "Ağ", currentCol, currentRow, 1, 1);
-        config.tiles.add(networkTile);
-        currentCol += 1;
-
-        if (currentCol >= maxCols) { currentCol = 0; currentRow++; }
-        Tile btTile = new Tile(TileType.BLUETOOTH, "Bluetooth", currentCol, currentRow, 1, 1);
-        config.tiles.add(btTile);
-        currentCol += 1;
-
-        if (currentCol >= maxCols) { currentCol = 0; currentRow++; }
-        Tile launcherSettingsTile = new Tile(TileType.LAUNCHER_SETTINGS, "Başlatıcı Ayarları", currentCol, currentRow, 1, 1);
-        config.tiles.add(launcherSettingsTile);
-        currentCol += 1;
-
-        if (currentCol >= maxCols) { currentCol = 0; currentRow++; }
-        Tile sysSettingsTile = new Tile(TileType.SYSTEM_SETTINGS, "Sistem Ayarları", currentCol, currentRow, 1, 1);
-        config.tiles.add(sysSettingsTile);
-        currentCol += 1;
-
-        // 4. Yüklü Uygulamalar (HİÇ KESİNTİ OLMADAN AYNI SATIRDAN DEVAM EDER)
+        // 5. Yüklü Uygulamalar (HİÇ KESİNTİ OLMADAN AYNI SATIRDAN DEVAM EDER)
         for (AppInfo app : apps) {
-            if (currentCol >= maxCols) {
-                currentCol = 0;
-                currentRow++;
-            }
-
-            Tile appTile = new Tile(TileType.APP, app.label, currentCol, currentRow, 1, 1);
+            Tile appTile = addTile(config, TileType.APP, app.label, 1, 1, cursor, maxCols);
             appTile.packageName = app.packageName;
             appTile.activityName = app.activityName;
-            config.tiles.add(appTile);
-
-            currentCol += 1;
         }
+    }
+
+    private static void placeTile(WorkspaceConfig config, Tile tile, int[] cursor, int maxCols) {
+        if (cursor[0] + tile.colSpan > maxCols) {
+            cursor[0] = 0;
+            cursor[1]++;
+        }
+        tile.col = cursor[0];
+        tile.row = cursor[1];
+        config.tiles.add(tile);
+        cursor[0] += tile.colSpan;
+    }
+
+    private static Tile addTile(WorkspaceConfig config, TileType type, String title, int colSpan, int rowSpan, int[] cursor, int maxCols) {
+        Tile tile = new Tile(type, title, 0, 0, colSpan, rowSpan);
+        placeTile(config, tile, cursor, maxCols);
+        return tile;
     }
 
     public static String exportToJsonString(WorkspaceConfig config) {

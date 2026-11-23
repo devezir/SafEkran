@@ -19,6 +19,7 @@ import com.safekran.launcher.model.SafeArea;
 import com.safekran.launcher.model.Tile;
 import com.safekran.launcher.model.TileType;
 import com.safekran.launcher.model.WorkspaceConfig;
+import com.safekran.launcher.util.UiUtils;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -103,7 +104,7 @@ public class WorkspaceView extends ViewGroup {
     }
 
     private float dpToPx(float dp) {
-        return dp * getContext().getResources().getDisplayMetrics().density;
+        return UiUtils.dpToPxFloat(getContext(), dp);
     }
 
     public void setConfig(WorkspaceConfig config, Map<String, Drawable> icons) {

@@ -48,6 +48,8 @@ import com.safekran.launcher.model.WorkspaceConfig;
 import com.safekran.launcher.ui.TileView;
 import com.safekran.launcher.ui.WorkspaceView;
 import com.safekran.launcher.util.ApkProvider;
+import com.safekran.launcher.util.IntentUtils;
+import com.safekran.launcher.util.UiUtils;
 import com.safekran.launcher.util.UpdateManager;
 
 import java.io.BufferedReader;
@@ -308,23 +310,11 @@ public class MainActivity extends Activity {
     }
 
     private void openNetworkSettings() {
-        try {
-            startActivity(new Intent(Settings.ACTION_WIFI_SETTINGS));
-        } catch (Exception e) {
-            try {
-                startActivity(new Intent(Settings.ACTION_WIRELESS_SETTINGS));
-            } catch (Exception e2) {
-                openSystemSettings();
-            }
-        }
+        IntentUtils.openNetworkSettings(this);
     }
 
     private void openBluetoothSettings() {
-        try {
-            startActivity(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS));
-        } catch (Exception e) {
-            openSystemSettings();
-        }
+        IntentUtils.openBluetoothSettings(this);
     }
 
     private List<AppInfo> getHiddenOrMissingApps() {
@@ -892,349 +882,43 @@ public class MainActivity extends Activity {
 
 
     private void openClockApp() {
-        try {
-            // 1. Standart Alarm Clock Intent
-            Intent clockIntent = new Intent(AlarmClock.ACTION_SHOW_ALARMS);
-            clockIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            if (getPackageManager().resolveActivity(clockIntent, 0) != null) {
-                startActivity(clockIntent);
-                return;
-            }
-        } catch (Exception ignored) {}
-
-        // 2. Yaygın Cihaz Saat Paketleri (Google, AOSP, Xiaomi, Samsung, Oppo, Huawei)
-        String[] clockPackages = new String[]{
-                "com.google.android.deskclock",
-                "com.android.deskclock",
-                "com.sec.android.app.clockpackage",
-                "com.miui.clock",
-                "com.coloros.alarmclock",
-                "com.huawei.android.totemweather"
-        };
-        for (String pkg : clockPackages) {
-            try {
-                Intent pIntent = getPackageManager().getLaunchIntentForPackage(pkg);
-                if (pIntent != null) {
-                    pIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    startActivity(pIntent);
-                    return;
-                }
-            } catch (Exception ignored) {}
-        }
-
-        // 3. Sistem Tarih ve Saat Ayarları
-        try {
-            Intent dateIntent = new Intent(Settings.ACTION_DATE_SETTINGS);
-            dateIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            if (getPackageManager().resolveActivity(dateIntent, 0) != null) {
-                startActivity(dateIntent);
-                return;
-            }
-        } catch (Exception ignored) {}
-
-        // 4. Genel Sistem Ayarları
-        openSystemSettings();
+        IntentUtils.openClockApp(this);
     }
 
     private void openCalendarApp() {
-        try {
-            // 1. Standart Takvim Intent
-            Intent calIntent = new Intent(Intent.ACTION_MAIN);
-            calIntent.addCategory(Intent.CATEGORY_APP_CALENDAR);
-            calIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            if (getPackageManager().resolveActivity(calIntent, 0) != null) {
-                startActivity(calIntent);
-                return;
-            }
-        } catch (Exception ignored) {}
-
-        try {
-            // 2. Calendar Contract URI (günün takvimini açar)
-            Uri.Builder builder = CalendarContract.CONTENT_URI.buildUpon();
-            builder.appendPath("time");
-            ContentUris.appendId(builder, System.currentTimeMillis());
-            Intent viewIntent = new Intent(Intent.ACTION_VIEW, builder.build());
-            viewIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            if (getPackageManager().resolveActivity(viewIntent, 0) != null) {
-                startActivity(viewIntent);
-                return;
-            }
-        } catch (Exception ignored) {}
-
-        // 3. Yaygın OEM Takvim Paketleri (Google, Samsung, Xiaomi, Huawei)
-        String[] calPackages = new String[]{
-                "com.google.android.calendar",
-                "com.samsung.android.calendar",
-                "com.android.calendar",
-                "com.miui.calendar",
-                "com.bbk.calendar",
-                "com.huawei.calendar"
-        };
-        for (String pkg : calPackages) {
-            try {
-                Intent pIntent = getPackageManager().getLaunchIntentForPackage(pkg);
-                if (pIntent != null) {
-                    pIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    startActivity(pIntent);
-                    return;
-                }
-            } catch (Exception ignored) {}
-        }
-
-        // 4. Sistem Tarih Ayarları (fallback)
-        try {
-            Intent dateIntent = new Intent(Settings.ACTION_DATE_SETTINGS);
-            dateIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            if (getPackageManager().resolveActivity(dateIntent, 0) != null) {
-                startActivity(dateIntent);
-                return;
-            }
-        } catch (Exception ignored) {}
-
-        Toast.makeText(this, "Takvim uygulaması bulunamadı.", Toast.LENGTH_SHORT).show();
+        IntentUtils.openCalendarApp(this);
     }
 
     private void openBatterySettings() {
-        // 1. Android TV: Eğer TV ortamı veya com.android.tv.settings mevcutsa yerel sistem ayarlarına (Cihaz Tercihleri) git
-        try {
-            Intent tvIntent = new Intent(Intent.ACTION_MAIN);
-            tvIntent.setClassName("com.android.tv.settings", "com.android.tv.settings.MainSettings");
-            tvIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            if (getPackageManager().resolveActivity(tvIntent, 0) != null) {
-                startActivity(tvIntent);
-                return;
-            }
-        } catch (Exception ignored) {}
-
-        try {
-            Intent tvPkg = getPackageManager().getLaunchIntentForPackage("com.android.tv.settings");
-            if (tvPkg != null) {
-                tvPkg.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                startActivity(tvPkg);
-                return;
-            }
-        } catch (Exception ignored) {}
-
-        // 2. Bataryalı Mobil Cihazlar: Standart Pil Kullanım Özeti
-        try {
-            Intent bIntent = new Intent(Intent.ACTION_POWER_USAGE_SUMMARY);
-            bIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            if (getPackageManager().resolveActivity(bIntent, 0) != null) {
-                startActivity(bIntent);
-                return;
-            }
-        } catch (Exception ignored) {}
-
-        openSystemSettings();
+        IntentUtils.openBatterySettings(this);
     }
 
     private void openRamSettings() {
-        try {
-            Intent rIntent = new Intent(Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS);
-            rIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            if (getPackageManager().resolveActivity(rIntent, 0) != null) {
-                startActivity(rIntent);
-                return;
-            }
-        } catch (Exception ignored) {}
-        openSystemSettings();
+        IntentUtils.openRamSettings(this);
     }
 
     private void openStorageSettings() {
-        try {
-            Intent sIntent = new Intent(Settings.ACTION_INTERNAL_STORAGE_SETTINGS);
-            sIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            if (getPackageManager().resolveActivity(sIntent, 0) != null) {
-                startActivity(sIntent);
-                return;
-            }
-        } catch (Exception ignored) {}
-        openSystemSettings();
+        IntentUtils.openStorageSettings(this);
     }
 
     private void openSystemSettings() {
-        // 1. Android TV: Saf Android TV Sistem Ayarları (com.android.tv.settings)
-        try {
-            Intent tvIntent = new Intent(Intent.ACTION_MAIN);
-            tvIntent.setClassName("com.android.tv.settings", "com.android.tv.settings.MainSettings");
-            tvIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            if (getPackageManager().resolveActivity(tvIntent, 0) != null) {
-                startActivity(tvIntent);
-                return;
-            }
-        } catch (Exception ignored) {}
-
-        try {
-            Intent tvPkg = getPackageManager().getLaunchIntentForPackage("com.android.tv.settings");
-            if (tvPkg != null) {
-                tvPkg.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                startActivity(tvPkg);
-                return;
-            }
-        } catch (Exception ignored) {}
-
-        // 2. Standart Android Ayarları
-        try {
-            Intent intent = new Intent(Settings.ACTION_SETTINGS);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(intent);
-        } catch (Exception e) {
-            try {
-                Intent altIntent = new Intent("android.settings.SETTINGS");
-                altIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                startActivity(altIntent);
-            } catch (Exception ex) {
-                Toast.makeText(this, "Sistem ayarları açılamadı.", Toast.LENGTH_SHORT).show();
-            }
-        }
+        IntentUtils.openSystemSettings(this);
     }
 
     private boolean isDefaultLauncher() {
-        try {
-            Intent intent = new Intent(Intent.ACTION_MAIN);
-            intent.addCategory(Intent.CATEGORY_HOME);
-            android.content.pm.ResolveInfo resolveInfo = getPackageManager().resolveActivity(
-                    intent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY);
-            if (resolveInfo != null && resolveInfo.activityInfo != null) {
-                return getPackageName().equals(resolveInfo.activityInfo.packageName);
-            }
-        } catch (Exception ignored) {}
-        return false;
+        return IntentUtils.isDefaultLauncher(this);
     }
 
     private boolean isXiaomiOrHyperOS() {
-        String man = Build.MANUFACTURER != null ? Build.MANUFACTURER.toLowerCase(Locale.US) : "";
-        String brand = Build.BRAND != null ? Build.BRAND.toLowerCase(Locale.US) : "";
-        if (man.contains("xiaomi") || man.contains("redmi") || man.contains("poco") ||
-            brand.contains("xiaomi") || brand.contains("redmi") || brand.contains("poco")) {
-            return true;
-        }
-        try {
-            Class<?> spCls = Class.forName("android.os.SystemProperties");
-            java.lang.reflect.Method getMethod = spCls.getMethod("get", String.class);
-            String miuiVer = (String) getMethod.invoke(null, "ro.miui.ui.version.name");
-            if (miuiVer != null && !miuiVer.trim().isEmpty()) {
-                return true;
-            }
-        } catch (Exception ignored) {}
-        return false;
+        return IntentUtils.isXiaomiOrHyperOS();
     }
 
     private void openXiaomiDefaultAppsSettings() {
-        Toast.makeText(this, "Açılan ekranda 'Başlatıcı' (Home) seçeneğine dokunup 'Saf Ekran'ı seçiniz.", Toast.LENGTH_LONG).show();
-
-        // 1. MIUI / HyperOS Özel Varsayılan Uygulamalar İntenti
-        try {
-            Intent miuiIntent = new Intent("miui.intent.action.PREFERRED_APP_SETTINGS");
-            miuiIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            if (getPackageManager().resolveActivity(miuiIntent, 0) != null) {
-                startActivity(miuiIntent);
-                return;
-            }
-        } catch (Exception ignored) {}
-
-        // 2. Xiaomi Settings PreferredSettingsActivity
-        try {
-            Intent miuiComponent = new Intent();
-            miuiComponent.setClassName("com.android.settings", "com.android.settings.Settings$PreferredSettingsActivity");
-            miuiComponent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            if (getPackageManager().resolveActivity(miuiComponent, 0) != null) {
-                startActivity(miuiComponent);
-                return;
-            }
-        } catch (Exception ignored) {}
-
-        // 3. Standart Varsayılan Uygulamalar Ekranı (HyperOS'ta doğrudan Varsayılan Uygulamaları açar)
-        try {
-            Intent defaultApps = new Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS);
-            defaultApps.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            if (getPackageManager().resolveActivity(defaultApps, 0) != null) {
-                startActivity(defaultApps);
-                return;
-            }
-        } catch (Exception ignored) {}
-
-        // 4. ACTION_HOME_SETTINGS
-        try {
-            Intent homeSettings = new Intent(Settings.ACTION_HOME_SETTINGS);
-            homeSettings.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            if (getPackageManager().resolveActivity(homeSettings, 0) != null) {
-                startActivity(homeSettings);
-                return;
-            }
-        } catch (Exception ignored) {}
-
-        // 5. Genel Sistem Ayarları
-        openSystemSettings();
+        IntentUtils.openXiaomiDefaultAppsSettings(this);
     }
 
     private void promptSetDefaultLauncher() {
-        // 0. Xiaomi HyperOS / MIUI Tespiti:
-        // Xiaomi Google RoleManager'ı sessizce iptal ettiği için doğrudan Xiaomi Varsayılan Uygulamalar ekranını açıyoruz
-        if (isXiaomiOrHyperOS()) {
-            openXiaomiDefaultAppsSettings();
-            return;
-        }
-
-        boolean handled = false;
-
-        // 1. Android 10+ (API 29+): RoleManager.ROLE_HOME
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            try {
-                android.app.role.RoleManager roleManager = (android.app.role.RoleManager) getSystemService(Context.ROLE_SERVICE);
-                if (roleManager != null && roleManager.isRoleAvailable(android.app.role.RoleManager.ROLE_HOME)) {
-                    if (!roleManager.isRoleHeld(android.app.role.RoleManager.ROLE_HOME)) {
-                        Intent roleIntent = roleManager.createRequestRoleIntent(android.app.role.RoleManager.ROLE_HOME);
-                        startActivity(roleIntent);
-                        handled = true;
-                    } else {
-                        Toast.makeText(this, "Saf Ekran zaten varsayılan başlatıcı.", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                }
-            } catch (Exception ignored) {}
-        }
-
-        if (handled) return;
-
-        // 2. Android 7.0 - 9.0 (veya RoleManager desteklenmeyen ROM'lar): ACTION_HOME_SETTINGS
-        try {
-            Intent homeSettings = new Intent(Settings.ACTION_HOME_SETTINGS);
-            homeSettings.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            if (getPackageManager().resolveActivity(homeSettings, 0) != null) {
-                startActivity(homeSettings);
-                handled = true;
-            }
-        } catch (Exception ignored) {}
-
-        if (handled) return;
-
-        // 3. Android TV / AOSP Ayarları (com.android.tv.settings veya ACTION_MANAGE_DEFAULT_APPS_SETTINGS)
-        try {
-            Intent defaultApps = new Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS);
-            defaultApps.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            if (getPackageManager().resolveActivity(defaultApps, 0) != null) {
-                startActivity(defaultApps);
-                handled = true;
-            }
-        } catch (Exception ignored) {}
-
-        if (handled) return;
-
-        // 4. Android 5.0 - 6.0 ve Genel Fallback: HOME Intent ile Sistem Seçicisini Tetikleme
-        try {
-            Intent homeIntent = new Intent(Intent.ACTION_MAIN);
-            homeIntent.addCategory(Intent.CATEGORY_HOME);
-            homeIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            Intent chooser = Intent.createChooser(homeIntent, "Varsayılan Başlatıcıyı Seçin");
-            chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(chooser);
-            handled = true;
-        } catch (Exception ignored) {}
-
-        if (!handled) {
-            openSystemSettings();
-        }
+        IntentUtils.promptSetDefaultLauncher(this);
     }
 
     // ==========================================
@@ -1248,100 +932,19 @@ public class MainActivity extends Activity {
     }
 
     private void setupTvFocusHighlight(final View view, final int normalColor, final int normalRadiusDp) {
-        final GradientDrawable normalDrawable = new GradientDrawable();
-        normalDrawable.setColor(normalColor);
-        normalDrawable.setCornerRadius(dpToPx(normalRadiusDp));
-
-        final GradientDrawable focusedDrawable = new GradientDrawable();
-        focusedDrawable.setColor(Color.parseColor("#37474F"));
-        focusedDrawable.setCornerRadius(dpToPx(normalRadiusDp));
-        focusedDrawable.setStroke(dpToPx(2.5f), Color.parseColor("#00E5FF")); // Canlı Parlak Cyan TV Odak Çerçevesi
-
-        view.setBackground(normalDrawable);
-        view.setOnFocusChangeListener(new View.OnFocusChangeListener() {
-            @Override
-            public void onFocusChange(View v, boolean hasFocus) {
-                if (hasFocus) {
-                    v.setBackground(focusedDrawable);
-                    v.animate().scaleX(1.02f).scaleY(1.02f).setDuration(100).start();
-                } else {
-                    v.setBackground(normalDrawable);
-                    v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start();
-                }
-            }
-        });
+        UiUtils.setupTvFocusHighlight(view, normalColor, normalRadiusDp);
     }
 
     private void setupTvFocusToggleButton(final Button btn, final boolean isSelected, final int radiusDp) {
-        final int bgColor = isSelected ? Color.parseColor("#2E7D32") : Color.parseColor("#37474F");
-        final GradientDrawable normalDrawable = new GradientDrawable();
-        normalDrawable.setColor(bgColor);
-        normalDrawable.setCornerRadius(dpToPx(radiusDp));
-        if (isSelected) {
-            normalDrawable.setStroke(dpToPx(1.5f), Color.parseColor("#81C784"));
-        }
-
-        final GradientDrawable focusedDrawable = new GradientDrawable();
-        focusedDrawable.setColor(isSelected ? Color.parseColor("#388E3C") : Color.parseColor("#455A64"));
-        focusedDrawable.setCornerRadius(dpToPx(radiusDp));
-        focusedDrawable.setStroke(dpToPx(2.5f), Color.parseColor("#00E5FF"));
-
-        btn.setBackground(normalDrawable);
-        btn.setTextColor(isSelected ? Color.WHITE : Color.parseColor("#CFD8DC"));
-        btn.setTypeface(isSelected ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
-
-        btn.setOnFocusChangeListener(new View.OnFocusChangeListener() {
-            @Override
-            public void onFocusChange(View v, boolean hasFocus) {
-                if (hasFocus) {
-                    v.setBackground(focusedDrawable);
-                    v.animate().scaleX(1.04f).scaleY(1.04f).setDuration(100).start();
-                } else {
-                    v.setBackground(normalDrawable);
-                    v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start();
-                }
-            }
-        });
+        UiUtils.setupTvFocusToggleButton(btn, isSelected, radiusDp);
     }
 
     private void setupTvFocusCheckBox(final CheckBox cb) {
-        final GradientDrawable focusedDrawable = new GradientDrawable();
-        focusedDrawable.setColor(Color.parseColor("#263238"));
-        focusedDrawable.setCornerRadius(dpToPx(4));
-        focusedDrawable.setStroke(dpToPx(2.0f), Color.parseColor("#00E5FF"));
-
-        cb.setOnFocusChangeListener(new View.OnFocusChangeListener() {
-            @Override
-            public void onFocusChange(View v, boolean hasFocus) {
-                if (hasFocus) {
-                    v.setBackground(focusedDrawable);
-                    v.animate().scaleX(1.02f).scaleY(1.02f).setDuration(100).start();
-                } else {
-                    v.setBackground(null);
-                    v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start();
-                }
-            }
-        });
+        UiUtils.setupTvFocusCheckBox(cb);
     }
 
     private void setupTvFocusSlider(final SeekBar sb) {
-        final GradientDrawable focusedDrawable = new GradientDrawable();
-        focusedDrawable.setColor(Color.parseColor("#1A2327"));
-        focusedDrawable.setCornerRadius(dpToPx(6));
-        focusedDrawable.setStroke(dpToPx(2.0f), Color.parseColor("#00E5FF"));
-
-        sb.setOnFocusChangeListener(new View.OnFocusChangeListener() {
-            @Override
-            public void onFocusChange(View v, boolean hasFocus) {
-                if (hasFocus) {
-                    v.setBackground(focusedDrawable);
-                    v.animate().scaleX(1.02f).scaleY(1.02f).setDuration(100).start();
-                } else {
-                    v.setBackground(null);
-                    v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start();
-                }
-            }
-        });
+        UiUtils.setupTvFocusSlider(sb);
     }
 
     private LinearLayout addAccordionSection(LinearLayout container, final List<AccordionSection> allSections,
@@ -2902,10 +2505,10 @@ public class MainActivity extends Activity {
     }
 
     private int dpToPx(int dp) {
-        return (int) (dp * getResources().getDisplayMetrics().density + 0.5f);
+        return UiUtils.dpToPx(this, dp);
     }
 
     private int dpToPx(float dp) {
-        return (int) (dp * getResources().getDisplayMetrics().density + 0.5f);
+        return UiUtils.dpToPx(this, dp);
     }
 }

@@ -33,6 +33,7 @@ import com.safekran.launcher.R;
 import com.safekran.launcher.model.Tile;
 import com.safekran.launcher.model.TileType;
 import com.safekran.launcher.model.WorkspaceConfig;
+import com.safekran.launcher.util.UiUtils;
 
 import java.io.File;
 
@@ -256,7 +257,7 @@ public class TileView extends FrameLayout {
         addView(dateContainer, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
     }
 
-    private void initBatteryTile(Context context) {
+    private void setupStatusTileContainer(Context context) {
         setVisibility(View.VISIBLE);
         setFocusable(true);
         setFocusableInTouchMode(false);
@@ -269,28 +270,11 @@ public class TileView extends FrameLayout {
         container.setClipChildren(false);
         container.setClipToPadding(false);
 
-        int level = -1, scale = -1, status = -1, plugged = -1;
-        boolean isPresent = true;
-        try {
-            IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
-            Intent batteryStatus = context.registerReceiver(null, ifilter);
-            if (batteryStatus != null) {
-                level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
-                scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
-                status = batteryStatus.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
-                isPresent = batteryStatus.getBooleanExtra(BatteryManager.EXTRA_PRESENT, true);
-                plugged = batteryStatus.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
-            }
-        } catch (Exception ignored) {}
-
-        boolean isCharging = (status == BatteryManager.BATTERY_STATUS_CHARGING ||
-                status == BatteryManager.BATTERY_STATUS_FULL);
-        int pct = (level >= 0 && scale > 0) ? Math.round((level / (float) scale) * 100) : 100;
-
         infoPrimaryView = new TextView(context);
         infoPrimaryView.setTypeface(Typeface.DEFAULT_BOLD);
         infoPrimaryView.setGravity(Gravity.CENTER);
         infoPrimaryView.setSingleLine(true);
+        infoPrimaryView.setEllipsize(TextUtils.TruncateAt.END);
         container.addView(infoPrimaryView, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
@@ -303,7 +287,11 @@ public class TileView extends FrameLayout {
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
         addView(container, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
-        applyBatteryDisplay(pct, isCharging, isPresent, plugged);
+    }
+
+    private void initBatteryTile(Context context) {
+        setupStatusTileContainer(context);
+        updateBatteryData();
     }
 
     private void applyBatteryDisplay(int pct, boolean isCharging, boolean isPresent, int plugged) {
@@ -381,25 +369,28 @@ public class TileView extends FrameLayout {
     }
 
     private void autoFitText(TextView tv, float maxSp, float minSp, float availWidthPx) {
-        if (tv == null || availWidthPx <= 0) return;
-        CharSequence cs = tv.getText();
-        if (cs == null || cs.length() == 0) return;
-        String text = cs.toString();
+        UiUtils.autoFitText(tv, maxSp, minSp, availWidthPx);
+    }
 
-        float density = getResources().getDisplayMetrics().density;
-        android.text.TextPaint paint = new android.text.TextPaint(tv.getPaint());
-        float targetPx = maxSp * density;
-        paint.setTextSize(targetPx);
-        float textWidth = paint.measureText(text);
-
-        if (textWidth > availWidthPx && textWidth > 0) {
-            targetPx = targetPx * (availWidthPx / textWidth);
-        }
-        float minPx = minSp * density;
-        if (targetPx < minPx) {
-            targetPx = minPx;
-        }
-        tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, targetPx);
+    public void updateBatteryData() {
+        if (infoPrimaryView == null || infoSecondaryView == null) return;
+        int level = -1, scale = -1, status = -1, plugged = -1;
+        boolean isPresent = true;
+        try {
+            IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+            Intent batteryStatus = getContext().registerReceiver(null, ifilter);
+            if (batteryStatus != null) {
+                level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+                scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+                status = batteryStatus.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
+                isPresent = batteryStatus.getBooleanExtra(BatteryManager.EXTRA_PRESENT, true);
+                plugged = batteryStatus.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
+            }
+        } catch (Exception ignored) {}
+        boolean isCharging = (status == BatteryManager.BATTERY_STATUS_CHARGING ||
+                status == BatteryManager.BATTERY_STATUS_FULL);
+        int pct = (level >= 0 && scale > 0) ? Math.round((level / (float) scale) * 100) : 100;
+        applyBatteryDisplay(pct, isCharging, isPresent, plugged);
     }
 
     public void updateBatteryData(int pct, boolean isCharging) {
@@ -411,86 +402,12 @@ public class TileView extends FrameLayout {
         applyBatteryDisplay(pct, isCharging, isPresent, plugged);
     }
 
-    public void refreshStatusData() {
-        if (tile.type == TileType.BATTERY) {
-            int level = -1, scale = -1, status = -1, plugged = -1;
-            boolean isPresent = true;
-            try {
-                IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
-                Intent batteryStatus = getContext().registerReceiver(null, ifilter);
-                if (batteryStatus != null) {
-                    level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
-                    scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
-                    status = batteryStatus.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
-                    isPresent = batteryStatus.getBooleanExtra(BatteryManager.EXTRA_PRESENT, true);
-                    plugged = batteryStatus.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
-                }
-            } catch (Exception ignored) {}
-            boolean isCharging = (status == BatteryManager.BATTERY_STATUS_CHARGING ||
-                    status == BatteryManager.BATTERY_STATUS_FULL);
-            int pct = (level >= 0 && scale > 0) ? Math.round((level / (float) scale) * 100) : 100;
-            updateBatteryData(pct, isCharging, isPresent, plugged);
-        } else if (tile.type == TileType.RAM) {
-            if (infoPrimaryView == null || infoSecondaryView == null) return;
-            int usedPct = 0;
-            double usedGb = 0, totalGb = 0;
-            try {
-                ActivityManager am = (ActivityManager) getContext().getSystemService(Context.ACTIVITY_SERVICE);
-                ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
-                if (am != null) {
-                    am.getMemoryInfo(mi);
-                    long totalMem = mi.totalMem;
-                    long availMem = mi.availMem;
-                    long usedMem = totalMem - availMem;
-                    usedPct = (totalMem > 0) ? (int) Math.round((usedMem / (double) totalMem) * 100) : 0;
-                    usedGb = usedMem / (1024.0 * 1024.0 * 1024.0);
-                    totalGb = totalMem / (1024.0 * 1024.0 * 1024.0);
-                }
-            } catch (Exception ignored) {}
-            setInfoPrimary("RAM: %" + usedPct, usedPct > 85 ? Color.parseColor("#E53935") : getTextColor());
-            setInfoSecondary(String.format(java.util.Locale.US, "%.1f / %.1f GB", usedGb, totalGb));
-        } else if (tile.type == TileType.STORAGE) {
-            if (infoPrimaryView == null) return;
-            long freeGb = 0;
-            try {
-                File path = Environment.getDataDirectory();
-                StatFs stat = new StatFs(path.getPath());
-                long blockSize, availableBlocks;
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-                    blockSize = stat.getBlockSizeLong();
-                    availableBlocks = stat.getAvailableBlocksLong();
-                } else {
-                    blockSize = stat.getBlockSize();
-                    availableBlocks = stat.getAvailableBlocks();
-                }
-                freeGb = (availableBlocks * blockSize) / (1024L * 1024L * 1024L);
-            } catch (Exception ignored) {}
-            setInfoPrimary(freeGb + " GB Boş", getTextColor());
-            setInfoSecondary("Depolama");
-        } else if (tile.type == TileType.NETWORK) {
-            updateNetworkData();
-        } else if (tile.type == TileType.BLUETOOTH) {
-            updateBluetoothData();
-        }
-    }
-
-    private void initRamTile(Context context) {
-        setVisibility(View.VISIBLE);
-        setFocusable(true);
-        setFocusableInTouchMode(false);
-        setClickable(true);
-        applyTileBackground();
-
-        LinearLayout container = new LinearLayout(context);
-        container.setOrientation(LinearLayout.VERTICAL);
-        container.setGravity(Gravity.CENTER);
-        container.setClipChildren(false);
-        container.setClipToPadding(false);
-
+    private void updateRamData() {
+        if (infoPrimaryView == null || infoSecondaryView == null) return;
         int usedPct = 0;
         double usedGb = 0, totalGb = 0;
         try {
-            ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+            ActivityManager am = (ActivityManager) getContext().getSystemService(Context.ACTIVITY_SERVICE);
             ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
             if (am != null) {
                 am.getMemoryInfo(mi);
@@ -502,41 +419,12 @@ public class TileView extends FrameLayout {
                 totalGb = totalMem / (1024.0 * 1024.0 * 1024.0);
             }
         } catch (Exception ignored) {}
-
-        infoPrimaryView = new TextView(context);
-        infoPrimaryView.setTypeface(Typeface.DEFAULT_BOLD);
-        infoPrimaryView.setGravity(Gravity.CENTER);
-        infoPrimaryView.setSingleLine(true);
-        infoPrimaryView.setEllipsize(TextUtils.TruncateAt.END);
-        container.addView(infoPrimaryView, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-
-        infoSecondaryView = new TextView(context);
-        infoSecondaryView.setTextColor(isLightMode() ? Color.parseColor("#666666") : Color.parseColor("#AAAAAA"));
-        infoSecondaryView.setGravity(Gravity.CENTER);
-        infoSecondaryView.setSingleLine(true);
-        infoSecondaryView.setEllipsize(TextUtils.TruncateAt.END);
-        container.addView(infoSecondaryView, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-
-        addView(container, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
         setInfoPrimary("RAM: %" + usedPct, usedPct > 85 ? Color.parseColor("#E53935") : getTextColor());
         setInfoSecondary(String.format(java.util.Locale.US, "%.1f / %.1f GB", usedGb, totalGb));
     }
 
-    private void initStorageTile(Context context) {
-        setVisibility(View.VISIBLE);
-        setFocusable(true);
-        setFocusableInTouchMode(false);
-        setClickable(true);
-        applyTileBackground();
-
-        LinearLayout container = new LinearLayout(context);
-        container.setOrientation(LinearLayout.VERTICAL);
-        container.setGravity(Gravity.CENTER);
-        container.setClipChildren(false);
-        container.setClipToPadding(false);
-
+    private void updateStorageData() {
+        if (infoPrimaryView == null) return;
         long freeGb = 0;
         try {
             File path = Environment.getDataDirectory();
@@ -551,59 +439,32 @@ public class TileView extends FrameLayout {
             }
             freeGb = (availableBlocks * blockSize) / (1024L * 1024L * 1024L);
         } catch (Exception ignored) {}
-
-        infoPrimaryView = new TextView(context);
-        infoPrimaryView.setTypeface(Typeface.DEFAULT_BOLD);
-        infoPrimaryView.setGravity(Gravity.CENTER);
-        infoPrimaryView.setSingleLine(true);
-        infoPrimaryView.setEllipsize(TextUtils.TruncateAt.END);
-        container.addView(infoPrimaryView, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-
-        infoSecondaryView = new TextView(context);
-        infoSecondaryView.setTextColor(isLightMode() ? Color.parseColor("#666666") : Color.parseColor("#AAAAAA"));
-        infoSecondaryView.setGravity(Gravity.CENTER);
-        infoSecondaryView.setSingleLine(true);
-        infoSecondaryView.setEllipsize(TextUtils.TruncateAt.END);
-        container.addView(infoSecondaryView, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-
-        addView(container, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
         setInfoPrimary(freeGb + " GB Boş", getTextColor());
         setInfoSecondary("Depolama");
     }
 
-    private void initNetworkTile(Context context) {
-        setVisibility(View.VISIBLE);
-        setFocusable(true);
-        setFocusableInTouchMode(false);
-        setClickable(true);
-        applyTileBackground();
+    public void refreshStatusData() {
+        if (tile.type == TileType.BATTERY) {
+            updateBatteryData();
+        } else if (tile.type == TileType.RAM) {
+            updateRamData();
+        } else if (tile.type == TileType.STORAGE) {
+            updateStorageData();
+        } else if (tile.type == TileType.NETWORK) {
+            updateNetworkData();
+        } else if (tile.type == TileType.BLUETOOTH) {
+            updateBluetoothData();
+        }
+    }
 
-        LinearLayout container = new LinearLayout(context);
-        container.setOrientation(LinearLayout.VERTICAL);
-        container.setGravity(Gravity.CENTER);
-        container.setClipChildren(false);
-        container.setClipToPadding(false);
+    private void initRamTile(Context context) {
+        setupStatusTileContainer(context);
+        updateRamData();
+    }
 
-        infoPrimaryView = new TextView(context);
-        infoPrimaryView.setTypeface(Typeface.DEFAULT_BOLD);
-        infoPrimaryView.setGravity(Gravity.CENTER);
-        infoPrimaryView.setSingleLine(true);
-        infoPrimaryView.setEllipsize(TextUtils.TruncateAt.END);
-        container.addView(infoPrimaryView, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-
-        infoSecondaryView = new TextView(context);
-        infoSecondaryView.setTextColor(isLightMode() ? Color.parseColor("#666666") : Color.parseColor("#AAAAAA"));
-        infoSecondaryView.setGravity(Gravity.CENTER);
-        infoSecondaryView.setSingleLine(true);
-        infoSecondaryView.setEllipsize(TextUtils.TruncateAt.END);
-        container.addView(infoSecondaryView, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-
-        addView(container, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
-        updateNetworkData();
+    private void initStorageTile(Context context) {
+        setupStatusTileContainer(context);
+        updateStorageData();
     }
 
     private void updateNetworkData() {
@@ -646,36 +507,13 @@ public class TileView extends FrameLayout {
         }
     }
 
+    private void initNetworkTile(Context context) {
+        setupStatusTileContainer(context);
+        updateNetworkData();
+    }
+
     private void initBluetoothTile(Context context) {
-        setVisibility(View.VISIBLE);
-        setFocusable(true);
-        setFocusableInTouchMode(false);
-        setClickable(true);
-        applyTileBackground();
-
-        LinearLayout container = new LinearLayout(context);
-        container.setOrientation(LinearLayout.VERTICAL);
-        container.setGravity(Gravity.CENTER);
-        container.setClipChildren(false);
-        container.setClipToPadding(false);
-
-        infoPrimaryView = new TextView(context);
-        infoPrimaryView.setTypeface(Typeface.DEFAULT_BOLD);
-        infoPrimaryView.setGravity(Gravity.CENTER);
-        infoPrimaryView.setSingleLine(true);
-        infoPrimaryView.setEllipsize(TextUtils.TruncateAt.END);
-        container.addView(infoPrimaryView, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-
-        infoSecondaryView = new TextView(context);
-        infoSecondaryView.setTextColor(isLightMode() ? Color.parseColor("#666666") : Color.parseColor("#AAAAAA"));
-        infoSecondaryView.setGravity(Gravity.CENTER);
-        infoSecondaryView.setSingleLine(true);
-        infoSecondaryView.setEllipsize(TextUtils.TruncateAt.END);
-        container.addView(infoSecondaryView, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-
-        addView(container, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+        setupStatusTileContainer(context);
         updateBluetoothData();
     }
 
@@ -1151,6 +989,6 @@ public class TileView extends FrameLayout {
     }
 
     private int dpToPx(Context context, int dp) {
-        return (int) (dp * context.getResources().getDisplayMetrics().density + 0.5f);
+        return UiUtils.dpToPx(context, dp);
     }
 }

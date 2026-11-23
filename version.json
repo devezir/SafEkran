@@ -1,12 +1,12 @@
 {
   "appName": "Saf Ekran",
   "packageName": "com.safekran.launcher",
-  "versionCode": 42,
-  "versionName": "2.23.3",
+  "versionCode": 43,
+  "versionName": "2.24.0",
   "developer": "Vezir",
   "schemaVersion": 1,
   "createdDate": "2026-11-19",
-  "apkName": "SafEkran_v2.23.3_vc42.apk",
+  "apkName": "SafEkran_v2.24.0_vc43.apk",
   "history": [
     {
       "versionCode": 1,
@@ -259,6 +259,12 @@
       "versionName": "2.23.3",
       "date": "2026-11-21",
       "description": "Fix: Xiaomi HyperOS / MIUI ozel varsayilan baslatici yonlendirme ve rehber bildirim motoru (v2.23.3)"
+    },
+    {
+      "versionCode": 43,
+      "versionName": "2.24.0",
+      "date": "2026-11-23",
+      "description": "Tam modüler mimari (UiUtils, IntentUtils), kod tabanı DRY sadeleştirmesi ve kapsamlı repo dokümantasyonu (v2.24.0)"
     }
   ]
 }
