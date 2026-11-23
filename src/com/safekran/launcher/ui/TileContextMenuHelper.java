@@ -52,87 +52,8 @@ public final class TileContextMenuHelper {
     }
 
     public static List<Tile> getMissingSpecialTiles(WorkspaceConfig config) {
-        List<Tile> missing = new ArrayList<Tile>();
-        boolean hasRed = false, hasGreen = false, hasYellow = false, hasBlue = false;
-        boolean hasSettings = false, hasClock = false, hasDate = false;
-        boolean hasBattery = false, hasRam = false, hasStorage = false;
-        boolean hasNetwork = false, hasBluetooth = false, hasSysSettings = false;
-
-        if (config != null && config.tiles != null) {
-            for (Tile t : config.tiles) {
-                if (t.type == TileType.COLOR_RED) hasRed = true;
-                else if (t.type == TileType.COLOR_GREEN) hasGreen = true;
-                else if (t.type == TileType.COLOR_YELLOW) hasYellow = true;
-                else if (t.type == TileType.COLOR_BLUE) hasBlue = true;
-                else if (t.type == TileType.LAUNCHER_SETTINGS) hasSettings = true;
-                else if (t.type == TileType.SYSTEM_SETTINGS) hasSysSettings = true;
-                else if (t.type == TileType.CLOCK) hasClock = true;
-                else if (t.type == TileType.DATE) hasDate = true;
-                else if (t.type == TileType.BATTERY) hasBattery = true;
-                else if (t.type == TileType.RAM) hasRam = true;
-                else if (t.type == TileType.STORAGE) hasStorage = true;
-                else if (t.type == TileType.NETWORK) hasNetwork = true;
-                else if (t.type == TileType.BLUETOOTH) hasBluetooth = true;
-            }
-        }
-
-        if (!hasClock) {
-            Tile c = new Tile(TileType.CLOCK, "Saat", 0, 0, 2, 1);
-            missing.add(c);
-        }
-        if (!hasDate) {
-            Tile d = new Tile(TileType.DATE, "Tarih", 0, 0, 2, 1);
-            missing.add(d);
-        }
-        if (!hasBattery) {
-            Tile bt = new Tile(TileType.BATTERY, "Pil", 0, 0, 1, 1);
-            missing.add(bt);
-        }
-        if (!hasRam) {
-            Tile rm = new Tile(TileType.RAM, "RAM", 0, 0, 1, 1);
-            missing.add(rm);
-        }
-        if (!hasStorage) {
-            Tile stg = new Tile(TileType.STORAGE, "Depolama", 0, 0, 1, 1);
-            missing.add(stg);
-        }
-        if (!hasNetwork) {
-            Tile nw = new Tile(TileType.NETWORK, "Ağ", 0, 0, 1, 1);
-            missing.add(nw);
-        }
-        if (!hasBluetooth) {
-            Tile bt = new Tile(TileType.BLUETOOTH, "Bluetooth", 0, 0, 1, 1);
-            missing.add(bt);
-        }
-        if (!hasRed) {
-            Tile r = new Tile(TileType.COLOR_RED, "🔴 Kırmızı Tuş", 0, 0, 1, 1);
-            r.actionType = "NONE";
-            missing.add(r);
-        }
-        if (!hasGreen) {
-            Tile g = new Tile(TileType.COLOR_GREEN, "🟢 Gizlenenler", 0, 0, 1, 1);
-            g.actionType = "HIDDEN_APPS";
-            missing.add(g);
-        }
-        if (!hasYellow) {
-            Tile y = new Tile(TileType.COLOR_YELLOW, "🟡 Tema", 0, 0, 1, 1);
-            y.actionType = "THEME_TOGGLE";
-            missing.add(y);
-        }
-        if (!hasBlue) {
-            Tile b = new Tile(TileType.COLOR_BLUE, "🔵 Ayarlar", 0, 0, 1, 1);
-            b.actionType = "LAUNCHER_SETTINGS";
-            missing.add(b);
-        }
-        if (!hasSettings) {
-            Tile s = new Tile(TileType.LAUNCHER_SETTINGS, "Başlatıcı Ayarları", 0, 0, 1, 1);
-            missing.add(s);
-        }
-        if (!hasSysSettings) {
-            Tile ss = new Tile(TileType.SYSTEM_SETTINGS, "Sistem Ayarları", 0, 0, 1, 1);
-            missing.add(ss);
-        }
-        return missing;
+        if (config == null) return new ArrayList<Tile>();
+        return config.getMissingSpecialTiles();
     }
 
     public static void openHiddenAppsDialog(final Activity activity,
@@ -159,11 +80,7 @@ public final class TileContextMenuHelper {
 
         for (int i = 0; i < missingSpecials.size(); i++) {
             Tile st = missingSpecials.get(i);
-            String prefix = "[ÖZEL KUTU] ";
-            if (st.type == TileType.COLOR_RED || st.type == TileType.COLOR_GREEN ||
-                    st.type == TileType.COLOR_YELLOW || st.type == TileType.COLOR_BLUE) {
-                prefix = "[RENK KUTUSU] ";
-            }
+            String prefix = st.isColorTile() ? "[RENK KUTUSU] " : "[ÖZEL KUTU] ";
             items[idx++] = prefix + st.label + " Kutusunu Ekle";
         }
 
@@ -229,9 +146,7 @@ public final class TileContextMenuHelper {
                                                  final Map<String, Drawable> iconCache,
                                                  final Tile tile,
                                                  final TileContextMenuListener listener) {
-        final String prefix = (tile.type == TileType.COLOR_RED) ? "🔴 " :
-                (tile.type == TileType.COLOR_GREEN) ? "🟢 " :
-                (tile.type == TileType.COLOR_YELLOW) ? "🟡 " : "🔵 ";
+        final String prefix = tile.getColorPrefix();
 
         String[] actions = new String[]{
                 "📱 Bir Uygulama Ata (YouTube, Netflix vb.)...",
@@ -303,9 +218,7 @@ public final class TileContextMenuHelper {
                 } else if (which == 5) {
                     tile.actionType = "NONE";
                     tile.packageName = "";
-                    String cName = (tile.type == TileType.COLOR_RED) ? "Kırmızı" :
-                            (tile.type == TileType.COLOR_GREEN) ? "Yeşil" :
-                            (tile.type == TileType.COLOR_YELLOW) ? "Sarı" : "Mavi";
+                    String cName = tile.getColorName();
                     tile.label = prefix + cName;
                     if (listener != null) {
                         listener.onSaveAndRefresh(tile.label + " güncellendi.");
@@ -365,10 +278,7 @@ public final class TileContextMenuHelper {
             return;
         }
 
-        final boolean isColorTile = (tile.type == TileType.COLOR_RED ||
-                tile.type == TileType.COLOR_GREEN ||
-                tile.type == TileType.COLOR_YELLOW ||
-                tile.type == TileType.COLOR_BLUE);
+        final boolean isColorTile = tile.isColorTile();
         final boolean isClockTile = (tile.type == TileType.CLOCK);
 
         final List<AppInfo> hiddenApps = getHiddenOrMissingApps(activity, config);

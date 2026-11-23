@@ -494,20 +494,24 @@ public class WorkspaceView extends ViewGroup {
         }
 
         if (focused != null && config != null) {
-            int childTop = child.getTop();
-            int childBottom = child.getBottom();
-            int currentScrollY = getScrollY();
-            int viewH = getHeight();
+            scrollChildIntoView(child.getTop(), child.getBottom(), 0);
+        }
+    }
 
-            int visibleWindowBottom = viewH - safeBottom;
+    public void scrollChildIntoView(int childTop, int childBottom, int buffer) {
+        if (config == null) return;
+        int currentScrollY = getScrollY();
+        int viewH = getHeight();
 
-            if (childBottom - currentScrollY > visibleWindowBottom) {
-                int targetY = Math.min(maxScrollY, childBottom - visibleWindowBottom);
-                smoothScrollTo(targetY);
-            } else if (childTop - currentScrollY < safeTop) {
-                int targetY = Math.max(0, childTop - safeTop);
-                smoothScrollTo(targetY);
-            }
+        int visibleWindowBottom = viewH - safeBottom - buffer;
+        int visibleWindowTop = safeTop + buffer;
+
+        if (childBottom - currentScrollY > visibleWindowBottom) {
+            int targetY = Math.min(maxScrollY, childBottom - visibleWindowBottom + buffer);
+            smoothScrollTo(targetY);
+        } else if (childTop - currentScrollY < visibleWindowTop) {
+            int targetY = Math.max(0, childTop - visibleWindowTop);
+            smoothScrollTo(targetY);
         }
     }
 
@@ -563,23 +567,8 @@ public class WorkspaceView extends ViewGroup {
     }
 
     public void ensureTileVisible(TileView target) {
-        if (target == null || config == null) return;
-        int childTop = target.getTop();
-        int childBottom = target.getBottom();
-        int currentScrollY = getScrollY();
-        int viewH = getHeight();
-
-        int buffer = (int) dpToPx(24);
-        int visibleWindowBottom = viewH - safeBottom - buffer;
-        int visibleWindowTop = safeTop + buffer;
-
-        if (childBottom - currentScrollY > visibleWindowBottom) {
-            int targetY = Math.min(maxScrollY, childBottom - visibleWindowBottom + buffer);
-            smoothScrollTo(targetY);
-        } else if (childTop - currentScrollY < visibleWindowTop) {
-            int targetY = Math.max(0, childTop - visibleWindowTop);
-            smoothScrollTo(targetY);
-        }
+        if (target == null) return;
+        scrollChildIntoView(target.getTop(), target.getBottom(), (int) dpToPx(24));
     }
 
     public TileView selectFirstVisibleTile() {
@@ -614,37 +603,29 @@ public class WorkspaceView extends ViewGroup {
     }
 
     public void executeTvSelected() {
-        View focused = findFocus();
-        if (focused instanceof TileView) {
-            tvSelectedTile = (TileView) focused;
-            focused.performClick();
-            return;
-        }
-        if (tvSelectedTile != null) {
-            tvSelectedTile.performClick();
-        } else {
-            TileView first = selectFirstVisibleTile();
-            if (first != null) {
-                first.performClick();
-            }
+        TileView target = resolveTvTargetTile();
+        if (target != null) {
+            target.performClick();
         }
     }
 
     public void executeTvSelectedLongClick() {
+        TileView target = resolveTvTargetTile();
+        if (target != null) {
+            target.performLongClick();
+        }
+    }
+
+    private TileView resolveTvTargetTile() {
         View focused = findFocus();
         if (focused instanceof TileView) {
             tvSelectedTile = (TileView) focused;
-            focused.performLongClick();
-            return;
+            return tvSelectedTile;
         }
         if (tvSelectedTile != null) {
-            tvSelectedTile.performLongClick();
-        } else {
-            TileView first = selectFirstVisibleTile();
-            if (first != null) {
-                first.performLongClick();
-            }
+            return tvSelectedTile;
         }
+        return selectFirstVisibleTile();
     }
 
     public void navigateTv(int keyCode) {

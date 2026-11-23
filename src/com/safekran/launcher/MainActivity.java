@@ -248,7 +248,7 @@ public class MainActivity extends Activity {
                 openLauncherSettingsDialog();
                 break;
             case SYSTEM_SETTINGS:
-                openSystemSettings();
+                IntentUtils.openSystemSettings(this);
                 break;
             case COLOR_RED:
             case COLOR_GREEN:
@@ -263,22 +263,22 @@ public class MainActivity extends Activity {
                 setupTileClickListeners();
                 break;
             case DATE:
-                openCalendarApp();
+                IntentUtils.openCalendarApp(this);
                 break;
             case BATTERY:
-                openBatterySettings();
+                IntentUtils.openBatterySettings(this);
                 break;
             case RAM:
-                openRamSettings();
+                IntentUtils.openRamSettings(this);
                 break;
             case STORAGE:
-                openStorageSettings();
+                IntentUtils.openStorageSettings(this);
                 break;
             case NETWORK:
-                openNetworkSettings();
+                IntentUtils.openNetworkSettings(this);
                 break;
             case BLUETOOTH:
-                openBluetoothSettings();
+                IntentUtils.openBluetoothSettings(this);
                 break;
             case SPACER:
                 onTileLongClicked(tile);
@@ -302,7 +302,7 @@ public class MainActivity extends Activity {
 
                     @Override
                     public void onOpenClockApp() {
-                        openClockApp();
+                        IntentUtils.openClockApp(MainActivity.this);
                     }
 
                     @Override
@@ -358,7 +358,7 @@ public class MainActivity extends Activity {
         } else if ("LAUNCHER_SETTINGS".equals(action)) {
             openLauncherSettingsDialog();
         } else if ("SYSTEM_SETTINGS".equals(action)) {
-            openSystemSettings();
+            IntentUtils.openSystemSettings(this);
         } else {
             UiUtils.showToast(this, tile.label + " için işlem atanmamış. Kutuya uzun basarak işlem atayabilirsiniz.");
         }
@@ -403,9 +403,7 @@ public class MainActivity extends Activity {
             }
             executeColorAction(targetTile, targetView);
         } else {
-            String colorName = (colorType == TileType.COLOR_RED) ? "Kırmızı" :
-                    (colorType == TileType.COLOR_GREEN) ? "Yeşil" :
-                    (colorType == TileType.COLOR_YELLOW) ? "Sarı" : "Mavi";
+            String colorName = Tile.getColorName(colorType);
             UiUtils.showToast(this, colorName + " tuşuna ait kutu ana ekranda bulunmuyor.");
         }
     }
@@ -425,7 +423,7 @@ public class MainActivity extends Activity {
 
                     @Override
                     public void onOpenClockApp() {
-                        openClockApp();
+                        IntentUtils.openClockApp(MainActivity.this);
                     }
 
                     @Override
@@ -507,38 +505,6 @@ public class MainActivity extends Activity {
         } catch (Exception e) {
             UiUtils.showToast(this, "Hata: " + e.getMessage());
         }
-    }
-
-    private void openClockApp() {
-        IntentUtils.openClockApp(this);
-    }
-
-    private void openCalendarApp() {
-        IntentUtils.openCalendarApp(this);
-    }
-
-    private void openBatterySettings() {
-        IntentUtils.openBatterySettings(this);
-    }
-
-    private void openRamSettings() {
-        IntentUtils.openRamSettings(this);
-    }
-
-    private void openStorageSettings() {
-        IntentUtils.openStorageSettings(this);
-    }
-
-    private void openNetworkSettings() {
-        IntentUtils.openNetworkSettings(this);
-    }
-
-    private void openBluetoothSettings() {
-        IntentUtils.openBluetoothSettings(this);
-    }
-
-    private void openSystemSettings() {
-        IntentUtils.openSystemSettings(this);
     }
 
     private void openLauncherSettingsDialog() {

@@ -123,4 +123,64 @@ public class WorkspaceConfig {
         }
         return config;
     }
+
+    public boolean hasTileType(TileType type) {
+        if (tiles == null || type == null) return false;
+        for (Tile t : tiles) {
+            if (t.type == type) return true;
+        }
+        return false;
+    }
+
+    public List<Tile> getMissingSpecialTiles() {
+        List<Tile> missing = new ArrayList<Tile>();
+        if (!hasTileType(TileType.CLOCK)) {
+            missing.add(new Tile(TileType.CLOCK, "Saat", 0, 0, 2, 1));
+        }
+        if (!hasTileType(TileType.DATE)) {
+            missing.add(new Tile(TileType.DATE, "Tarih", 0, 0, 2, 1));
+        }
+        if (!hasTileType(TileType.BATTERY)) {
+            missing.add(new Tile(TileType.BATTERY, "Pil", 0, 0, 1, 1));
+        }
+        if (!hasTileType(TileType.RAM)) {
+            missing.add(new Tile(TileType.RAM, "RAM", 0, 0, 1, 1));
+        }
+        if (!hasTileType(TileType.STORAGE)) {
+            missing.add(new Tile(TileType.STORAGE, "Depolama", 0, 0, 1, 1));
+        }
+        if (!hasTileType(TileType.NETWORK)) {
+            missing.add(new Tile(TileType.NETWORK, "Ağ", 0, 0, 1, 1));
+        }
+        if (!hasTileType(TileType.BLUETOOTH)) {
+            missing.add(new Tile(TileType.BLUETOOTH, "Bluetooth", 0, 0, 1, 1));
+        }
+        if (!hasTileType(TileType.COLOR_RED)) {
+            Tile r = new Tile(TileType.COLOR_RED, "🔴 Kırmızı Tuş", 0, 0, 1, 1);
+            r.actionType = "NONE";
+            missing.add(r);
+        }
+        if (!hasTileType(TileType.COLOR_GREEN)) {
+            Tile g = new Tile(TileType.COLOR_GREEN, "🟢 Gizlenenler", 0, 0, 1, 1);
+            g.actionType = "HIDDEN_APPS";
+            missing.add(g);
+        }
+        if (!hasTileType(TileType.COLOR_YELLOW)) {
+            Tile y = new Tile(TileType.COLOR_YELLOW, "🟡 Tema", 0, 0, 1, 1);
+            y.actionType = "THEME_TOGGLE";
+            missing.add(y);
+        }
+        if (!hasTileType(TileType.COLOR_BLUE)) {
+            Tile b = new Tile(TileType.COLOR_BLUE, "🔵 Ayarlar", 0, 0, 1, 1);
+            b.actionType = "LAUNCHER_SETTINGS";
+            missing.add(b);
+        }
+        if (!hasTileType(TileType.LAUNCHER_SETTINGS)) {
+            missing.add(new Tile(TileType.LAUNCHER_SETTINGS, "Başlatıcı Ayarları", 0, 0, 1, 1));
+        }
+        if (!hasTileType(TileType.SYSTEM_SETTINGS)) {
+            missing.add(new Tile(TileType.SYSTEM_SETTINGS, "Sistem Ayarları", 0, 0, 1, 1));
+        }
+        return missing;
+    }
 }

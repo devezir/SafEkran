@@ -26,17 +26,8 @@ public class WorkspaceStorage {
         }
 
         try {
-            FileInputStream fis = new FileInputStream(file);
-            BufferedReader reader = new BufferedReader(new InputStreamReader(fis, "UTF-8"));
-            StringBuilder sb = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                sb.append(line);
-            }
-            reader.close();
-            fis.close();
-
-            JSONObject root = new JSONObject(sb.toString());
+            String jsonStr = com.safekran.launcher.util.IoUtils.readFileToString(file);
+            JSONObject root = new JSONObject(jsonStr);
             WorkspaceConfig config = WorkspaceConfig.fromJson(root);
 
             // Sürüm 4 Göçü (Otomatik Türetilen Sütun ve Boyut Modeli)
@@ -89,26 +80,21 @@ public class WorkspaceStorage {
             }
 
             // Sürüm 7 / Başlatıcı Ayarları dahil tüm özel kutuların eksiksiz ana ekranda olması
-            boolean hasBattery = false, hasRam = false, hasStorage = false, hasNetwork = false, hasBluetooth = false, hasLauncherSettings = false;
             int insertIndex = -1;
             for (int i = 0; i < config.tiles.size(); i++) {
-                Tile t = config.tiles.get(i);
-                if (t.type == TileType.BATTERY) hasBattery = true;
-                else if (t.type == TileType.RAM) hasRam = true;
-                else if (t.type == TileType.STORAGE) hasStorage = true;
-                else if (t.type == TileType.NETWORK) hasNetwork = true;
-                else if (t.type == TileType.BLUETOOTH) hasBluetooth = true;
-                else if (t.type == TileType.LAUNCHER_SETTINGS) hasLauncherSettings = true;
-                else if (t.type == TileType.SYSTEM_SETTINGS) insertIndex = i;
+                if (config.tiles.get(i).type == TileType.SYSTEM_SETTINGS) {
+                    insertIndex = i;
+                    break;
+                }
             }
             if (insertIndex < 0) insertIndex = Math.min(6, config.tiles.size());
 
-            if (!hasBattery) { config.tiles.add(insertIndex, new Tile(TileType.BATTERY, "Pil", 0, 0, 1, 1)); migrated = true; }
-            if (!hasRam) { config.tiles.add(insertIndex, new Tile(TileType.RAM, "RAM", 0, 0, 1, 1)); migrated = true; }
-            if (!hasStorage) { config.tiles.add(insertIndex, new Tile(TileType.STORAGE, "Depolama", 0, 0, 1, 1)); migrated = true; }
-            if (!hasNetwork) { config.tiles.add(insertIndex, new Tile(TileType.NETWORK, "Ağ", 0, 0, 1, 1)); migrated = true; }
-            if (!hasBluetooth) { config.tiles.add(insertIndex, new Tile(TileType.BLUETOOTH, "Bluetooth", 0, 0, 1, 1)); migrated = true; }
-            if (!hasLauncherSettings) { config.tiles.add(insertIndex, new Tile(TileType.LAUNCHER_SETTINGS, "Başlatıcı Ayarları", 0, 0, 1, 1)); migrated = true; }
+            if (!config.hasTileType(TileType.BATTERY)) { config.tiles.add(insertIndex, new Tile(TileType.BATTERY, "Pil", 0, 0, 1, 1)); migrated = true; }
+            if (!config.hasTileType(TileType.RAM)) { config.tiles.add(insertIndex, new Tile(TileType.RAM, "RAM", 0, 0, 1, 1)); migrated = true; }
+            if (!config.hasTileType(TileType.STORAGE)) { config.tiles.add(insertIndex, new Tile(TileType.STORAGE, "Depolama", 0, 0, 1, 1)); migrated = true; }
+            if (!config.hasTileType(TileType.NETWORK)) { config.tiles.add(insertIndex, new Tile(TileType.NETWORK, "Ağ", 0, 0, 1, 1)); migrated = true; }
+            if (!config.hasTileType(TileType.BLUETOOTH)) { config.tiles.add(insertIndex, new Tile(TileType.BLUETOOTH, "Bluetooth", 0, 0, 1, 1)); migrated = true; }
+            if (!config.hasTileType(TileType.LAUNCHER_SETTINGS)) { config.tiles.add(insertIndex, new Tile(TileType.LAUNCHER_SETTINGS, "Başlatıcı Ayarları", 0, 0, 1, 1)); migrated = true; }
 
             if (config.schemaVersion < 7) {
                 config.schemaVersion = 7;
@@ -129,11 +115,7 @@ public class WorkspaceStorage {
     public static boolean saveWorkspace(Context context, WorkspaceConfig config) {
         try {
             File file = new File(context.getFilesDir(), FILE_NAME);
-            FileOutputStream fos = new FileOutputStream(file);
-            String jsonStr = config.toJson().toString(2);
-            fos.write(jsonStr.getBytes("UTF-8"));
-            fos.flush();
-            fos.close();
+            com.safekran.launcher.util.IoUtils.writeStringToFile(file, config.toJson().toString(2));
             return true;
         } catch (Exception e) {
             e.printStackTrace();

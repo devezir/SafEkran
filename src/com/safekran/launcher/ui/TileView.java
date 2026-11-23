@@ -79,16 +79,8 @@ public class TileView extends FrameLayout {
             initClockTile(context);
         } else if (tile.type == TileType.DATE) {
             initDateTile(context);
-        } else if (tile.type == TileType.BATTERY) {
-            initBatteryTile(context);
-        } else if (tile.type == TileType.RAM) {
-            initRamTile(context);
-        } else if (tile.type == TileType.STORAGE) {
-            initStorageTile(context);
-        } else if (tile.type == TileType.NETWORK) {
-            initNetworkTile(context);
-        } else if (tile.type == TileType.BLUETOOTH) {
-            initBluetoothTile(context);
+        } else if (tile.isStatusTile()) {
+            initStatusTile(context);
         } else {
             initActionOrAppTile(context, appIcon);
         }
@@ -290,9 +282,9 @@ public class TileView extends FrameLayout {
         addView(container, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
     }
 
-    private void initBatteryTile(Context context) {
+    private void initStatusTile(Context context) {
         setupStatusTileContainer(context);
-        updateBatteryData();
+        refreshStatusData();
     }
 
     private void applyBatteryDisplay(int pct, boolean isCharging, boolean isPresent, int plugged) {
@@ -344,28 +336,23 @@ public class TileView extends FrameLayout {
     }
 
     private void fitInfoPrimary() {
-        if (infoPrimaryView == null) return;
-        int w = getWidth();
-        int h = getHeight();
-        if (w > 0 && h > 0) {
-            float density = getResources().getDisplayMetrics().density;
-            float availHDp = Math.max(10, (h - dpToPx(getContext(), 8)) / density);
-            float availW = Math.max(10f, w - dpToPx(getContext(), 10));
-            float maxSp = Math.max(9.5f, Math.min(24f, availHDp * 0.28f));
-            autoFitText(infoPrimaryView, maxSp, 7.5f, availW);
-        }
+        fitInfoText(infoPrimaryView, 0.28f, 24f, 9.5f, 7.5f);
     }
 
     private void fitInfoSecondary() {
-        if (infoSecondaryView == null) return;
+        fitInfoText(infoSecondaryView, 0.18f, 14f, 8.0f, 7.0f);
+    }
+
+    private void fitInfoText(TextView tv, float heightFactor, float maxSpLimit, float maxSpBase, float minSp) {
+        if (tv == null) return;
         int w = getWidth();
         int h = getHeight();
         if (w > 0 && h > 0) {
             float density = getResources().getDisplayMetrics().density;
-            float availHDp = Math.max(10, (h - dpToPx(getContext(), 8)) / density);
-            float availW = Math.max(10f, w - dpToPx(getContext(), 10));
-            float maxSp = Math.max(8.0f, Math.min(14f, availHDp * 0.18f));
-            autoFitText(infoSecondaryView, maxSp, 7.0f, availW);
+            float availHDp = Math.max(10, (h - UiUtils.dpToPx(getContext(), 8)) / density);
+            float availW = Math.max(10f, w - UiUtils.dpToPx(getContext(), 10));
+            float maxSp = Math.max(maxSpBase, Math.min(maxSpLimit, availHDp * heightFactor));
+            autoFitText(tv, maxSp, minSp, availW);
         }
     }
 
@@ -416,31 +403,11 @@ public class TileView extends FrameLayout {
         }
     }
 
-    private void initRamTile(Context context) {
-        setupStatusTileContainer(context);
-        updateRamData();
-    }
-
-    private void initStorageTile(Context context) {
-        setupStatusTileContainer(context);
-        updateStorageData();
-    }
-
     private void updateNetworkData() {
         if (infoPrimaryView == null || infoSecondaryView == null) return;
         SystemInfoHelper.StatusDisplay disp = SystemInfoHelper.getNetworkDisplay(getContext(), getTextColor());
         setInfoPrimary(disp.primary, disp.color);
         setInfoSecondary(disp.secondary);
-    }
-
-    private void initNetworkTile(Context context) {
-        setupStatusTileContainer(context);
-        updateNetworkData();
-    }
-
-    private void initBluetoothTile(Context context) {
-        setupStatusTileContainer(context);
-        updateBluetoothData();
     }
 
     private void updateBluetoothData() {

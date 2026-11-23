@@ -7,9 +7,11 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.text.TextUtils;
 import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -22,14 +24,65 @@ public final class UiUtils {
 
     public static final int COLOR_TV_CYAN_STROKE = Color.parseColor("#00E5FF");
     public static final int COLOR_FOCUS_DARK = Color.parseColor("#37474F");
+    public static final int COLOR_DARK_SURFACE = Color.parseColor("#263238");
+    public static final int COLOR_CARD_DARK = Color.parseColor("#1C2A38");
+    public static final int COLOR_DARK_BG = Color.parseColor("#1A2327");
     public static final int COLOR_CYAN_LIGHT = Color.parseColor("#80D8FF");
     public static final int COLOR_BLUE_LIGHT = Color.parseColor("#29B6F6");
+    public static final int COLOR_BLUE_HEADER = Color.parseColor("#0288D1");
+    public static final int COLOR_BLUE_NAVY = Color.parseColor("#0D47A1");
+    public static final int COLOR_TEAL = Color.parseColor("#00897B");
+    public static final int COLOR_TEAL_DARK = Color.parseColor("#00695C");
+    public static final int COLOR_PURPLE = Color.parseColor("#5E35B1");
+    public static final int COLOR_SLATE = Color.parseColor("#455A64");
+    public static final int COLOR_ORANGE = Color.parseColor("#E65100");
+    public static final int COLOR_AMBER = Color.parseColor("#FFD54F");
     public static final int COLOR_RED_ALERT = Color.parseColor("#E53935");
+    public static final int COLOR_RED_DARK = Color.parseColor("#8B0000");
     public static final int COLOR_GREEN_SUCCESS = Color.parseColor("#4CAF50");
+    public static final int COLOR_GREEN_DARK = Color.parseColor("#1B5E20");
+    public static final int COLOR_GREEN_MEDIUM = Color.parseColor("#2E7D32");
     public static final int COLOR_TEXT_LIGHT_GRAY = Color.parseColor("#CFD8DC");
+    public static final int COLOR_TEXT_MUTED = Color.parseColor("#B0BEC5");
 
     private UiUtils() {
         // Yardımcı sınıf, örneklenemez
+    }
+
+    public static Button createOptionButton(Context context, String title, String subtitle, int normalBgColor, float sScale) {
+        Button btn = new Button(context);
+        btn.setText(subtitle != null ? title + "\n" + subtitle : title);
+        btn.setTextSize(Math.round(11 * sScale));
+        btn.setTextColor(Color.WHITE);
+        setupTvFocusHighlight(btn, normalBgColor, 4);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        lp.setMargins(0, dpToPx(context, 4), 0, dpToPx(context, 6));
+        btn.setLayoutParams(lp);
+        btn.setPadding(dpToPx(context, 12), dpToPx(context, 10),
+                dpToPx(context, 12), dpToPx(context, 10));
+        btn.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+        return btn;
+    }
+
+    public static Button createTvButton(Context context, String text, int normalBgColor, int textColor, float sScale, int minHeightDp) {
+        Button btn = new Button(context);
+        btn.setText(text);
+        btn.setTextColor(textColor);
+        btn.setTextSize(Math.round(11 * Math.min(1.4f, sScale)));
+        btn.setSingleLine(false);
+        btn.setGravity(Gravity.CENTER);
+        int padH = dpToPx(context, 12);
+        int padV = dpToPx(context, 8);
+        btn.setPadding(padH, padV, padH, padV);
+        if (minHeightDp > 0) {
+            btn.setMinHeight((int) (dpToPx(context, minHeightDp) * Math.min(1.4f, sScale)));
+        }
+        setupTvFocusHighlight(btn, normalBgColor, 4);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        btn.setLayoutParams(lp);
+        return btn;
     }
 
     public static void showToast(Context context, String message) {

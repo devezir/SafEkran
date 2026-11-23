@@ -200,6 +200,40 @@ public class VirtualRemoteOverlay {
         int m = UiUtils.dpToPx(context, 2);
         lp.setMargins(m, m, m, m);
         btn.setLayoutParams(lp);
+        attachKeyClick(btn, keyCode);
+        return btn;
+    }
+
+    private Button createColorRemoteButton(String text, final int keyCode) {
+        final Button btn = new Button(context);
+        btn.setText(text);
+        btn.setTextSize(12);
+        btn.setBackgroundColor(Color.parseColor("#26FFFFFF"));
+        btn.setFocusable(false);
+        int size = UiUtils.dpToPx(context, 34);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(size, size);
+        int m = UiUtils.dpToPx(context, 2);
+        lp.setMargins(m, 0, m, 0);
+        btn.setLayoutParams(lp);
+        attachKeyClick(btn, keyCode);
+        return btn;
+    }
+
+    private Button createActionButton(String text, final int keyCode) {
+        final Button btn = new Button(context);
+        btn.setText(text);
+        btn.setTextColor(Color.WHITE);
+        btn.setTextSize(10);
+        btn.setBackgroundColor(Color.parseColor("#26FFFFFF"));
+        btn.setFocusable(false);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(UiUtils.dpToPx(context, 64), UiUtils.dpToPx(context, 32));
+        lp.setMargins(UiUtils.dpToPx(context, 3), UiUtils.dpToPx(context, 4), UiUtils.dpToPx(context, 3), 0);
+        btn.setLayoutParams(lp);
+        attachKeyClick(btn, keyCode);
+        return btn;
+    }
+
+    private void attachKeyClick(final Button btn, final int keyCode) {
         btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -215,53 +249,5 @@ public class VirtualRemoteOverlay {
                 }
             }
         });
-        return btn;
-    }
-
-    private Button createColorRemoteButton(String text, final int keyCode) {
-        final Button btn = new Button(context);
-        btn.setText(text);
-        btn.setTextSize(12);
-        btn.setBackgroundColor(Color.parseColor("#26FFFFFF"));
-        btn.setFocusable(false);
-        int size = UiUtils.dpToPx(context, 34);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(size, size);
-        int m = UiUtils.dpToPx(context, 2);
-        lp.setMargins(m, 0, m, 0);
-        btn.setLayoutParams(lp);
-        btn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                btn.setAlpha(0.4f);
-                btn.animate().alpha(1.0f).setDuration(120).start();
-                if (listener != null) {
-                    listener.onSendKeyEvent(keyCode);
-                }
-            }
-        });
-        return btn;
-    }
-
-    private Button createActionButton(String text, final int keyCode) {
-        final Button btn = new Button(context);
-        btn.setText(text);
-        btn.setTextColor(Color.WHITE);
-        btn.setTextSize(10);
-        btn.setBackgroundColor(Color.parseColor("#26FFFFFF"));
-        btn.setFocusable(false);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(UiUtils.dpToPx(context, 64), UiUtils.dpToPx(context, 32));
-        lp.setMargins(UiUtils.dpToPx(context, 3), UiUtils.dpToPx(context, 4), UiUtils.dpToPx(context, 3), 0);
-        btn.setLayoutParams(lp);
-        btn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                btn.setAlpha(0.4f);
-                btn.animate().alpha(1.0f).setDuration(120).start();
-                if (listener != null) {
-                    listener.onSendKeyEvent(keyCode);
-                }
-            }
-        });
-        return btn;
     }
 }

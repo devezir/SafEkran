@@ -40,6 +40,47 @@ public class Tile {
         this.rowSpan = Math.max(1, rowSpan);
     }
 
+    public boolean isColorTile() {
+        return type == TileType.COLOR_RED || type == TileType.COLOR_GREEN ||
+                type == TileType.COLOR_YELLOW || type == TileType.COLOR_BLUE;
+    }
+
+    public boolean isStatusTile() {
+        return type == TileType.BATTERY || type == TileType.RAM ||
+                type == TileType.STORAGE || type == TileType.NETWORK ||
+                type == TileType.BLUETOOTH;
+    }
+
+    public String getColorName() {
+        return getColorName(this.type);
+    }
+
+    public String getColorPrefix() {
+        return getColorPrefix(this.type);
+    }
+
+    public static String getColorName(TileType t) {
+        if (t == null) return "";
+        switch (t) {
+            case COLOR_RED: return "Kırmızı";
+            case COLOR_GREEN: return "Yeşil";
+            case COLOR_YELLOW: return "Sarı";
+            case COLOR_BLUE: return "Mavi";
+            default: return "";
+        }
+    }
+
+    public static String getColorPrefix(TileType t) {
+        if (t == null) return "";
+        switch (t) {
+            case COLOR_RED: return "🔴 ";
+            case COLOR_GREEN: return "🟢 ";
+            case COLOR_YELLOW: return "🟡 ";
+            case COLOR_BLUE: return "🔵 ";
+            default: return "";
+        }
+    }
+
     public JSONObject toJson() throws JSONException {
         JSONObject obj = new JSONObject();
         obj.put("id", id);

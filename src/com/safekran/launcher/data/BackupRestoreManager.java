@@ -59,46 +59,30 @@ public final class BackupRestoreManager {
 
         TextView info = new TextView(activity);
         info.setText("Yedekler cihazınızın Download (İndirilenler) klasöründe tarih ve saat etiketiyle saklanır.");
-        info.setTextColor(Color.parseColor("#B0BEC5"));
+        info.setTextColor(UiUtils.COLOR_TEXT_MUTED);
         info.setTextSize(12);
         info.setPadding(0, 0, 0, UiUtils.dpToPx(activity, 14));
         layout.addView(info);
 
         // 1. Download Klasörüne Yedekle Butonu
-        Button btnSaveDownload = new Button(activity);
-        btnSaveDownload.setText("📥 Download Klasörüne Yedekle (Tarihli)");
-        btnSaveDownload.setTextColor(Color.WHITE);
-        btnSaveDownload.setTypeface(Typeface.DEFAULT_BOLD);
-        btnSaveDownload.setBackgroundColor(Color.parseColor("#1B5E20"));
-        btnSaveDownload.setTextSize(12);
-        LinearLayout.LayoutParams p1 = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, UiUtils.dpToPx(activity, 44));
+        Button btnSaveDownload = UiUtils.createTvButton(
+                activity, "📥 Download Klasörüne Yedekle (Tarihli)", UiUtils.COLOR_GREEN_DARK, Color.WHITE, 1.0f, 44);
+        LinearLayout.LayoutParams p1 = (LinearLayout.LayoutParams) btnSaveDownload.getLayoutParams();
         p1.bottomMargin = UiUtils.dpToPx(activity, 8);
         btnSaveDownload.setLayoutParams(p1);
         layout.addView(btnSaveDownload);
 
         // 2. Download Klasöründen Seç ve Geri Yükle Butonu
-        Button btnRestoreDownload = new Button(activity);
-        btnRestoreDownload.setText("📂 Download'dan Seç ve Geri Yükle");
-        btnRestoreDownload.setTextColor(Color.WHITE);
-        btnRestoreDownload.setTypeface(Typeface.DEFAULT_BOLD);
-        btnRestoreDownload.setBackgroundColor(Color.parseColor("#0D47A1"));
-        btnRestoreDownload.setTextSize(12);
-        LinearLayout.LayoutParams p2 = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, UiUtils.dpToPx(activity, 44));
+        Button btnRestoreDownload = UiUtils.createTvButton(
+                activity, "📂 Download'dan Seç ve Geri Yükle", UiUtils.COLOR_BLUE_NAVY, Color.WHITE, 1.0f, 44);
+        LinearLayout.LayoutParams p2 = (LinearLayout.LayoutParams) btnRestoreDownload.getLayoutParams();
         p2.bottomMargin = UiUtils.dpToPx(activity, 8);
         btnRestoreDownload.setLayoutParams(p2);
         layout.addView(btnRestoreDownload);
 
         // 3. Panodan / Metinle Düzenleme (B Planı)
-        Button btnRawJson = new Button(activity);
-        btnRawJson.setText("📋 Panodan / Metin ile Yedekle");
-        btnRawJson.setTextColor(Color.parseColor("#ECEFF1"));
-        btnRawJson.setBackgroundColor(Color.parseColor("#37474F"));
-        btnRawJson.setTextSize(11);
-        LinearLayout.LayoutParams p3 = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, UiUtils.dpToPx(activity, 38));
-        btnRawJson.setLayoutParams(p3);
+        Button btnRawJson = UiUtils.createTvButton(
+                activity, "📋 Panodan / Metin ile Yedekle", UiUtils.COLOR_FOCUS_DARK, Color.WHITE, 1.0f, 38);
         layout.addView(btnRawJson);
 
         builder.setView(layout);
@@ -270,22 +254,10 @@ public final class BackupRestoreManager {
     }
 
     public static String readFileToString(File file) throws Exception {
-        FileInputStream fis = new FileInputStream(file);
-        BufferedReader reader = new BufferedReader(new InputStreamReader(fis, "UTF-8"));
-        StringBuilder sb = new StringBuilder();
-        String line;
-        while ((line = reader.readLine()) != null) {
-            sb.append(line).append("\n");
-        }
-        reader.close();
-        fis.close();
-        return sb.toString();
+        return com.safekran.launcher.util.IoUtils.readFileToString(file);
     }
 
     public static void writeStringToFile(File file, String content) throws Exception {
-        FileOutputStream fos = new FileOutputStream(file);
-        fos.write(content.getBytes("UTF-8"));
-        fos.flush();
-        fos.close();
+        com.safekran.launcher.util.IoUtils.writeStringToFile(file, content);
     }
 }

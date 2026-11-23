@@ -152,20 +152,7 @@ public final class LauncherSettingsDialog {
         int btnW = (int) (UiUtils.dpToPx(activity, 42) * Math.min(1.4f, sScale));
         int btnH = (int) (UiUtils.dpToPx(activity, 38) * Math.min(1.4f, sScale));
 
-        final Button minusBtn = new Button(activity);
-        minusBtn.setText("－");
-        minusBtn.setTextColor(Color.WHITE);
-        minusBtn.setTypeface(Typeface.DEFAULT_BOLD);
-        minusBtn.setGravity(Gravity.CENTER);
-        minusBtn.setPadding(0, 0, 0, 0);
-        minusBtn.setIncludeFontPadding(false);
-        minusBtn.setMinHeight(0);
-        minusBtn.setMinimumWidth(0);
-        minusBtn.setTextSize(Math.round(16 * Math.min(1.4f, sScale)));
-        UiUtils.setupTvFocusHighlight(minusBtn, Color.parseColor("#37474F"), 4);
-        LinearLayout.LayoutParams minusLp = new LinearLayout.LayoutParams(btnW, btnH);
-        minusLp.rightMargin = UiUtils.dpToPx(activity, 4);
-        minusBtn.setLayoutParams(minusLp);
+        final Button minusBtn = createStepperButton(activity, "－", sScale, btnW, btnH, 0, UiUtils.dpToPx(activity, 4));
 
         final SeekBar scaleSeekBar = new SeekBar(activity);
         scaleSeekBar.setMax(33);
@@ -178,20 +165,7 @@ public final class LauncherSettingsDialog {
         sbLp.setMargins(UiUtils.dpToPx(activity, 4), 0, UiUtils.dpToPx(activity, 4), 0);
         scaleSeekBar.setLayoutParams(sbLp);
 
-        final Button plusBtn = new Button(activity);
-        plusBtn.setText("＋");
-        plusBtn.setTextColor(Color.WHITE);
-        plusBtn.setTypeface(Typeface.DEFAULT_BOLD);
-        plusBtn.setGravity(Gravity.CENTER);
-        plusBtn.setPadding(0, 0, 0, 0);
-        plusBtn.setIncludeFontPadding(false);
-        plusBtn.setMinHeight(0);
-        plusBtn.setMinimumWidth(0);
-        plusBtn.setTextSize(Math.round(16 * Math.min(1.4f, sScale)));
-        UiUtils.setupTvFocusHighlight(plusBtn, Color.parseColor("#37474F"), 4);
-        LinearLayout.LayoutParams plusLp = new LinearLayout.LayoutParams(btnW, btnH);
-        plusLp.leftMargin = UiUtils.dpToPx(activity, 4);
-        plusBtn.setLayoutParams(plusLp);
+        final Button plusBtn = createStepperButton(activity, "＋", sScale, btnW, btnH, UiUtils.dpToPx(activity, 4), 0);
 
         scaleRow.addView(minusBtn);
         scaleRow.addView(scaleSeekBar);
@@ -303,11 +277,11 @@ public final class LauncherSettingsDialog {
         if (isDefault) {
             defaultLauncherBtn.setText("✅ Saf Ekran Varsayılan Başlatıcı");
             defaultLauncherBtn.setTextColor(Color.parseColor("#A5D6A7"));
-            UiUtils.setupTvFocusHighlight(defaultLauncherBtn, Color.parseColor("#1B5E20"), 4);
+            UiUtils.setupTvFocusHighlight(defaultLauncherBtn, UiUtils.COLOR_GREEN_DARK, 4);
         } else {
             defaultLauncherBtn.setText("🏠 Saf Ekran'ı Varsayılan Başlatıcı Yap");
             defaultLauncherBtn.setTextColor(Color.WHITE);
-            UiUtils.setupTvFocusHighlight(defaultLauncherBtn, Color.parseColor("#E65100"), 4);
+            UiUtils.setupTvFocusHighlight(defaultLauncherBtn, UiUtils.COLOR_ORANGE, 4);
         }
         defaultLauncherBtn.setTextSize(Math.round(11 * Math.min(1.4f, sScale)));
         defaultLauncherBtn.setSingleLine(false);
@@ -428,7 +402,7 @@ public final class LauncherSettingsDialog {
         hiddenBtn.setText("👁️ Gizlenen Uygulamaları ve Özel Kutuları Yönet");
         hiddenBtn.setTextSize(Math.round(11 * sScale));
         hiddenBtn.setTextColor(Color.WHITE);
-        UiUtils.setupTvFocusHighlight(hiddenBtn, Color.parseColor("#00695C"), 4);
+        UiUtils.setupTvFocusHighlight(hiddenBtn, UiUtils.COLOR_TEAL_DARK, 4);
         hiddenBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -442,7 +416,7 @@ public final class LauncherSettingsDialog {
 
         CheckBox cbLock = new CheckBox(activity);
         cbLock.setText("🔒 Düzeni Kilitle (Taşıma ve Silmeyi Engelle)");
-        cbLock.setTextColor(Color.parseColor("#FFD54F"));
+        cbLock.setTextColor(UiUtils.COLOR_AMBER);
         cbLock.setTextSize(Math.round(12 * sScale));
         cbLock.setChecked(config.isLayoutLocked);
         UiUtils.setupTvFocusCheckBox(cbLock);
@@ -457,7 +431,7 @@ public final class LauncherSettingsDialog {
         addSpacerBtn.setText("➕ Yeni Boşluk (Spacer) Ekle");
         addSpacerBtn.setTextSize(Math.round(11 * sScale));
         addSpacerBtn.setTextColor(Color.WHITE);
-        UiUtils.setupTvFocusHighlight(addSpacerBtn, Color.parseColor("#37474F"), 4);
+        UiUtils.setupTvFocusHighlight(addSpacerBtn, UiUtils.COLOR_FOCUS_DARK, 4);
         LinearLayout.LayoutParams spLp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         spLp.bottomMargin = UiUtils.dpToPx(activity, 6);
@@ -479,7 +453,7 @@ public final class LauncherSettingsDialog {
         reflowBtn.setText("🔄 Sıralamayı Varsayılana Sıfırla (Alfabeye Göre Sırala)");
         reflowBtn.setTextSize(Math.round(11 * sScale));
         reflowBtn.setTextColor(Color.WHITE);
-        UiUtils.setupTvFocusHighlight(reflowBtn, Color.parseColor("#37474F"), 4);
+        UiUtils.setupTvFocusHighlight(reflowBtn, UiUtils.COLOR_FOCUS_DARK, 4);
         reflowBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -509,7 +483,7 @@ public final class LauncherSettingsDialog {
         saveBtn.setPadding(UiUtils.dpToPx(activity, 12), UiUtils.dpToPx(activity, 8),
                 UiUtils.dpToPx(activity, 12), UiUtils.dpToPx(activity, 8));
         saveBtn.setMinHeight((int) (UiUtils.dpToPx(activity, 44) * Math.min(1.4f, sScale)));
-        UiUtils.setupTvFocusHighlight(saveBtn, Color.parseColor("#2E7D32"), 4);
+        UiUtils.setupTvFocusHighlight(saveBtn, UiUtils.COLOR_GREEN_MEDIUM, 4);
         LinearLayout.LayoutParams saveLp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         saveLp.bottomMargin = UiUtils.dpToPx(activity, 8);
@@ -528,7 +502,7 @@ public final class LauncherSettingsDialog {
         backupBtn.setPadding(UiUtils.dpToPx(activity, 6), UiUtils.dpToPx(activity, 6),
                 UiUtils.dpToPx(activity, 6), UiUtils.dpToPx(activity, 6));
         backupBtn.setMinHeight((int) (UiUtils.dpToPx(activity, 40) * Math.min(1.4f, sScale)));
-        UiUtils.setupTvFocusHighlight(backupBtn, Color.parseColor("#37474F"), 4);
+        UiUtils.setupTvFocusHighlight(backupBtn, UiUtils.COLOR_FOCUS_DARK, 4);
         LinearLayout.LayoutParams bLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
         bLp.rightMargin = UiUtils.dpToPx(activity, 4);
         backupBtn.setLayoutParams(bLp);
@@ -542,7 +516,7 @@ public final class LauncherSettingsDialog {
         resetBtn.setPadding(UiUtils.dpToPx(activity, 6), UiUtils.dpToPx(activity, 6),
                 UiUtils.dpToPx(activity, 6), UiUtils.dpToPx(activity, 6));
         resetBtn.setMinHeight((int) (UiUtils.dpToPx(activity, 40) * Math.min(1.4f, sScale)));
-        UiUtils.setupTvFocusHighlight(resetBtn, Color.parseColor("#8B0000"), 4);
+        UiUtils.setupTvFocusHighlight(resetBtn, UiUtils.COLOR_RED_DARK, 4);
         LinearLayout.LayoutParams rLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
         rLp.leftMargin = UiUtils.dpToPx(activity, 4);
         resetBtn.setLayoutParams(rLp);
@@ -563,7 +537,7 @@ public final class LauncherSettingsDialog {
         checkUpdateBtn.setPadding(UiUtils.dpToPx(activity, 12), UiUtils.dpToPx(activity, 8),
                 UiUtils.dpToPx(activity, 12), UiUtils.dpToPx(activity, 8));
         checkUpdateBtn.setMinHeight((int) (UiUtils.dpToPx(activity, 40) * Math.min(1.4f, sScale)));
-        UiUtils.setupTvFocusHighlight(checkUpdateBtn, Color.parseColor("#1C2A38"), 4);
+        UiUtils.setupTvFocusHighlight(checkUpdateBtn, UiUtils.COLOR_CARD_DARK, 4);
         LinearLayout.LayoutParams upLp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         upLp.topMargin = UiUtils.dpToPx(activity, 8);
@@ -829,5 +803,24 @@ public final class LauncherSettingsDialog {
                 UiUtils.setupTvFocusToggleButton(b, isSelected, 4);
             }
         }
+    }
+
+    private static Button createStepperButton(Activity activity, String text, float sScale, int btnW, int btnH, int leftMargin, int rightMargin) {
+        Button btn = new Button(activity);
+        btn.setText(text);
+        btn.setTextColor(Color.WHITE);
+        btn.setTypeface(Typeface.DEFAULT_BOLD);
+        btn.setGravity(Gravity.CENTER);
+        btn.setPadding(0, 0, 0, 0);
+        btn.setIncludeFontPadding(false);
+        btn.setMinHeight(0);
+        btn.setMinimumWidth(0);
+        btn.setTextSize(Math.round(16 * Math.min(1.4f, sScale)));
+        UiUtils.setupTvFocusHighlight(btn, UiUtils.COLOR_FOCUS_DARK, 4);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(btnW, btnH);
+        lp.leftMargin = leftMargin;
+        lp.rightMargin = rightMargin;
+        btn.setLayoutParams(lp);
+        return btn;
     }
 }
