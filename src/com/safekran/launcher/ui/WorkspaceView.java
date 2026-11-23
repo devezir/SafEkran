@@ -864,27 +864,37 @@ public class WorkspaceView extends ViewGroup {
 
     public void playTurnstileAnimation() {
         if (config == null || !config.animationEnabled) return;
-        int count = getChildCount();
-        for (int i = 0; i < count; i++) {
-            View child = getChildAt(i);
-            if (child instanceof TileView) {
-                Tile t = ((TileView) child).getTile();
-                child.setAlpha(0f);
-                child.setTranslationY(dpToPx(24));
-                child.setScaleX(0.96f);
-                child.setScaleY(0.96f);
+        post(new Runnable() {
+            @Override
+            public void run() {
+                int count = getChildCount();
+                if (count == 0) return;
+                for (int i = 0; i < count; i++) {
+                    View child = getChildAt(i);
+                    if (child instanceof TileView) {
+                        Tile t = ((TileView) child).getTile();
+                        // Orijinal Windows Phone Cascade Turnstile:
+                        // Sağ-çaprazdan belirgin süzülme ve yumuşak yerine oturma
+                        child.setAlpha(0f);
+                        child.setTranslationX(dpToPx(75f));
+                        child.setTranslationY(dpToPx(25f));
+                        child.setScaleX(0.88f);
+                        child.setScaleY(0.88f);
 
-                int delay = Math.min(260, (t.row * 35) + (t.col * 20));
-                child.animate()
-                        .alpha(1f)
-                        .translationY(0f)
-                        .scaleX(1f)
-                        .scaleY(1f)
-                        .setStartDelay(delay)
-                        .setDuration(220)
-                        .setInterpolator(new android.view.animation.DecelerateInterpolator(1.5f))
-                        .start();
+                        int delay = Math.min(380, (t.row * 40) + (t.col * 22));
+                        child.animate()
+                                .alpha(1f)
+                                .translationX(0f)
+                                .translationY(0f)
+                                .scaleX(1f)
+                                .scaleY(1f)
+                                .setStartDelay(delay)
+                                .setDuration(420)
+                                .setInterpolator(new android.view.animation.DecelerateInterpolator(1.8f))
+                                .start();
+                    }
+                }
             }
-        }
+        });
     }
 }

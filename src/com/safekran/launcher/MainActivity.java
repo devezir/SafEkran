@@ -999,7 +999,125 @@ public class MainActivity extends Activity {
         return content;
     }
 
+    private Button createSetupOptionButton(String title, String subtitle, int normalBgColor, float sScale) {
+        Button btn = new Button(this);
+        btn.setText(title + "\n" + subtitle);
+        btn.setTextSize(Math.round(11 * sScale));
+        btn.setTextColor(Color.WHITE);
+        setupTvFocusHighlight(btn, normalBgColor, 4);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        lp.setMargins(0, dpToPx(4), 0, dpToPx(6));
+        btn.setLayoutParams(lp);
+        btn.setPadding(dpToPx(12), dpToPx(10), dpToPx(12), dpToPx(10));
+        btn.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+        return btn;
+    }
+
+    private void showDefaultLauncherSetupDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        final float sScale = (config != null) ? config.settingsUiScale : 1.0f;
+
+        ScrollView scroll = new ScrollView(this);
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16));
+
+        TextView titleView = new TextView(this);
+        titleView.setText("🏠 Varsayılan Başlatıcı Kurulum Merkezi");
+        titleView.setTextSize(Math.round(15 * sScale));
+        titleView.setTextColor(Color.parseColor("#00E5FF"));
+        titleView.setTypeface(Typeface.DEFAULT_BOLD);
+        titleView.setPadding(0, 0, 0, dpToPx(6));
+        layout.addView(titleView);
+
+        TextView descView = new TextView(this);
+        descView.setText("Cihazınızın modeline ve Android sürümüne göre aşağıdaki yöntemlerden birini seçebilirsiniz:");
+        descView.setTextSize(Math.round(11 * sScale));
+        descView.setTextColor(Color.parseColor("#B0BEC5"));
+        descView.setPadding(0, 0, 0, dpToPx(12));
+        layout.addView(descView);
+
+        // 1. Otomatik Sistem Seçicisi (Tüm Cihazlar & TV)
+        Button b1 = createSetupOptionButton(
+                "🚀 1. Otomatik Sistem Seçicisi (Tüm Cihazlar & TV)",
+                "Evrensel Android seçicisini açar (Android 2.2 - 17)",
+                Color.parseColor("#0288D1"), sScale);
+        b1.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                IntentUtils.triggerHomeChooser(MainActivity.this);
+            }
+        });
+        layout.addView(b1);
+
+        // 2. Android TV & Google TV Özel Çözümü (Önerilen)
+        Button b2 = createSetupOptionButton(
+                "📺 2. Android TV & Google TV Çözümü (Önerilen)",
+                "Kilitli TV'lerde mevcut başlatıcının varsayılanını temizleme sayfası",
+                Color.parseColor("#00897B"), sScale);
+        b2.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                IntentUtils.openCurrentLauncherDetails(MainActivity.this);
+            }
+        });
+        layout.addView(b2);
+
+        // 3. Google Resmi Onay Penceresi (Android 10 - 17)
+        Button b3 = createSetupOptionButton(
+                "📱 3. Google Resmi Onay Penceresi (RoleManager)",
+                "Mobil telefonlar ve AOSP tabletler için resmi onay penceresi",
+                Color.parseColor("#5E35B1"), sScale);
+        b3.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                IntentUtils.triggerRoleManagerHome(MainActivity.this);
+            }
+        });
+        layout.addView(b3);
+
+        // 4. Sistem Ana Ekran Ayarları Sayfası
+        Button b4 = createSetupOptionButton(
+                "⚙️ 4. Sistem Ana Ekran Ayarları Sayfası",
+                "Cihazın kendi Ayarlar -> Varsayılan Uygulamalar / Ana Ekran menüsü",
+                Color.parseColor("#455A64"), sScale);
+        b4.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                IntentUtils.openHomeSettings(MainActivity.this);
+            }
+        });
+        layout.addView(b4);
+
+        // 5. Xiaomi / HyperOS / MIUI Özel Sayfası
+        Button b5 = createSetupOptionButton(
+                "🟠 5. Xiaomi / HyperOS / MIUI Özel Sayfası",
+                "Xiaomi cihazların gizlediği 'Varsayılan Başlatıcı' ayarını açar",
+                Color.parseColor("#E65100"), sScale);
+        b5.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                IntentUtils.openXiaomiDefaultAppsSettings(MainActivity.this);
+            }
+        });
+        layout.addView(b5);
+
+        // Alt Bilgi Kartı
+        TextView tipView = new TextView(this);
+        tipView.setText("💡 İpucu: Kumandanızdaki HOME tuşuna bastığınızda ekrana liste gelirse 'Saf Ekran'ı ve ardından 'Her Zaman'ı seçiniz.");
+        tipView.setTextSize(Math.round(11 * sScale));
+        tipView.setTextColor(Color.parseColor("#81C784"));
+        tipView.setPadding(0, dpToPx(10), 0, dpToPx(8));
+        layout.addView(tipView);
+
+        scroll.addView(layout);
+        builder.setView(scroll);
+        builder.setNegativeButton("Kapat", null);
+        AlertDialog d = builder.create();
+        d.show();
+    }
+
     private void openLauncherSettingsDialog() {
+        openLauncherSettingsDialog(false);
+    }
+
+    private void openLauncherSettingsDialog(final boolean keepSliderFocus) {
         if (launcherSettingsDialog != null && launcherSettingsDialog.isShowing()) {
             return;
         }
@@ -1073,6 +1191,8 @@ public class MainActivity extends Activity {
         scaleSeekBar.setMax(33);
         scaleSeekBar.setProgress(currentStep);
         scaleSeekBar.setKeyProgressIncrement(1);
+        scaleSeekBar.setFocusable(true);
+        scaleSeekBar.setFocusableInTouchMode(true);
         setupTvFocusSlider(scaleSeekBar);
         LinearLayout.LayoutParams sbLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
         sbLp.setMargins(dpToPx(4), 0, dpToPx(4), 0);
@@ -1105,10 +1225,36 @@ public class MainActivity extends Activity {
                         launcherSettingsDialog.dismiss();
                         launcherSettingsDialog = null;
                     }
-                    openLauncherSettingsDialog();
+                    openLauncherSettingsDialog(true);
                 }
             }
         };
+
+        scaleSeekBar.setOnKeyListener(new View.OnKeyListener() {
+            @Override
+            public boolean onKey(View v, int keyCode, KeyEvent event) {
+                if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                        int cur = scaleSeekBar.getProgress();
+                        if (cur < 33) {
+                            scaleSeekBar.setProgress(cur + 1);
+                            scaleHandler.removeCallbacks(applyScaleRunnable);
+                            scaleHandler.postDelayed(applyScaleRunnable, 350);
+                        }
+                        return true;
+                    } else if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                        int cur = scaleSeekBar.getProgress();
+                        if (cur > 0) {
+                            scaleSeekBar.setProgress(cur - 1);
+                            scaleHandler.removeCallbacks(applyScaleRunnable);
+                            scaleHandler.postDelayed(applyScaleRunnable, 350);
+                        }
+                        return true;
+                    }
+                }
+                return false;
+            }
+        });
 
         scaleSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
@@ -1177,7 +1323,7 @@ public class MainActivity extends Activity {
         defaultLauncherBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                promptSetDefaultLauncher();
+                showDefaultLauncherSetupDialog();
             }
         });
         layout.addView(defaultLauncherBtn);
@@ -1254,6 +1400,9 @@ public class MainActivity extends Activity {
         cbAnim.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 config.animationEnabled = isChecked;
+                if (isChecked && workspaceView != null) {
+                    workspaceView.playTurnstileAnimation();
+                }
             }
         });
         secTheme.addView(cbAnim);
@@ -1479,6 +1628,17 @@ public class MainActivity extends Activity {
             bg.setColor(Color.parseColor("#F0121212"));
             bg.setCornerRadius(dpToPx(8));
             window.setBackgroundDrawable(bg);
+        }
+
+        if (keepSliderFocus) {
+            scaleSeekBar.post(new Runnable() {
+                @Override
+                public void run() {
+                    scaleSeekBar.setFocusable(true);
+                    scaleSeekBar.setFocusableInTouchMode(true);
+                    scaleSeekBar.requestFocus();
+                }
+            });
         }
     }
 

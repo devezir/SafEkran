@@ -1,9 +1,13 @@
 package com.safekran.launcher.util;
 
 import android.app.Activity;
+import android.app.UiModeManager;
 import android.content.ContentUris;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
+import android.content.res.Configuration;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.AlarmClock;
@@ -262,7 +266,124 @@ public final class IntentUtils {
     }
 
     /**
-     * Kullanıcıya Saf Ekran'ı varsayılan başlatıcı yapması için uygun sistem dialoğunu açar.
+     * Cihazın Android TV / Google TV / Leanback tabanlı olup olmadığını tespit eder.
+     */
+    public static boolean isTv(Context context) {
+        if (context == null) return false;
+        try {
+            UiModeManager umm = (UiModeManager) context.getSystemService(Context.UI_MODE_SERVICE);
+            if (umm != null && umm.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION) {
+                return true;
+            }
+            PackageManager pm = context.getPackageManager();
+            if (pm != null) {
+                return pm.hasSystemFeature("android.software.leanback")
+                        || pm.hasSystemFeature("android.hardware.type.television");
+            }
+        } catch (Exception ignored) {}
+        return false;
+    }
+
+    /**
+     * Sistemde şu an varsayılan olarak tanımlı olan ana ekran uygulamasının paket adını döner.
+     */
+    public static String getCurrentHomePackage(Context context) {
+        if (context == null) return null;
+        try {
+            Intent intent = new Intent(Intent.ACTION_MAIN);
+            intent.addCategory(Intent.CATEGORY_HOME);
+            ResolveInfo resolveInfo = context.getPackageManager().resolveActivity(
+                    intent, PackageManager.MATCH_DEFAULT_ONLY);
+            if (resolveInfo != null && resolveInfo.activityInfo != null) {
+                return resolveInfo.activityInfo.packageName;
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    /**
+     * Tüm Android sürümlerinde evrensel sistem seçicisini (Chooser) tetikler.
+     */
+    public static boolean triggerHomeChooser(Activity activity) {
+        if (activity == null) return false;
+        try {
+            try {
+                activity.getPackageManager().clearPackagePreferredActivities(activity.getPackageName());
+            } catch (Exception ignored) {}
+
+            Intent homeIntent = new Intent(Intent.ACTION_MAIN);
+            homeIntent.addCategory(Intent.CATEGORY_HOME);
+            homeIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            Intent chooser = Intent.createChooser(homeIntent, "Varsayılan Başlatıcıyı Seçin");
+            chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            activity.startActivity(chooser);
+            return true;
+        } catch (Exception e) {
+            Toast.makeText(activity, "Sistem seçicisi açılamadı.", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+    }
+
+    /**
+     * Android 10+ (Q - Android 17+) Google RoleManager resmi onay dialoğunu açar.
+     */
+    public static boolean triggerRoleManagerHome(Activity activity) {
+        if (activity == null) return false;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            try {
+                android.app.role.RoleManager roleManager = (android.app.role.RoleManager) activity.getSystemService(Context.ROLE_SERVICE);
+                if (roleManager != null && roleManager.isRoleAvailable(android.app.role.RoleManager.ROLE_HOME)) {
+                    if (!roleManager.isRoleHeld(android.app.role.RoleManager.ROLE_HOME)) {
+                        Intent roleIntent = roleManager.createRequestRoleIntent(android.app.role.RoleManager.ROLE_HOME);
+                        activity.startActivity(roleIntent);
+                        return true;
+                    } else {
+                        Toast.makeText(activity, "Saf Ekran zaten varsayılan başlatıcı.", Toast.LENGTH_SHORT).show();
+                        return true;
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+        Toast.makeText(activity, "Bu cihazda Google RoleManager penceresi desteklenmiyor. Diğer seçenekleri deneyiniz.", Toast.LENGTH_LONG).show();
+        return false;
+    }
+
+    /**
+     * Android TV & Google TV Çözümü: Mevcut başlatıcının Uygulama Bilgisi ekranını açarak 'Varsayılanları Temizle' dedirtir.
+     */
+    public static boolean openCurrentLauncherDetails(Activity activity) {
+        if (activity == null) return false;
+        String curHome = getCurrentHomePackage(activity);
+        if (curHome != null && !activity.getPackageName().equals(curHome)) {
+            try {
+                Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                intent.setData(Uri.parse("package:" + curHome));
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                if (launchSafely(activity, intent)) {
+                    Toast.makeText(activity, "Açılan ekranda 'Varsayılanları Temizle'ye basıp ardından Kumandadan HOME tuşuna basınız.", Toast.LENGTH_LONG).show();
+                    return true;
+                }
+            } catch (Exception ignored) {}
+        }
+        // Eğer mevcut başlatıcı özel olarak bulunamazsa genel uygulama ayarlarını aç
+        openRamSettings(activity);
+        Toast.makeText(activity, "Mevcut başlatıcınızı seçip 'Varsayılanları Temizle' butonuna basınız.", Toast.LENGTH_LONG).show();
+        return true;
+    }
+
+    /**
+     * Sistem Ana Ekran Ayarları sayfalarını sırayla açmayı dener.
+     */
+    public static boolean openHomeSettings(Context context) {
+        if (context == null) return false;
+        if (launchSafely(context, new Intent(Settings.ACTION_HOME_SETTINGS))) return true;
+        if (launchSafely(context, new Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS))) return true;
+        openSystemSettings(context);
+        return false;
+    }
+
+    /**
+     * Kullanıcıya Saf Ekran'ı varsayılan başlatıcı yapması için uygun akıllı sistem yönlendirmesini uygular.
      */
     public static void promptSetDefaultLauncher(Activity activity) {
         if (activity == null) return;
@@ -273,7 +394,16 @@ public final class IntentUtils {
             return;
         }
 
-        // 1. Android 10+ (API 29+): RoleManager.ROLE_HOME
+        // 1. Android TV / Google TV Tespiti:
+        // TV'de RoleManager ekranı anında çöker/kapanır; bu yüzden doğrudan TV Chooser ve TV Ayarlarını deneriz
+        if (isTv(activity)) {
+            if (triggerHomeChooser(activity)) return;
+            if (openHomeSettings(activity)) return;
+            openCurrentLauncherDetails(activity);
+            return;
+        }
+
+        // 2. Mobil Android 10+ (API 29+): RoleManager.ROLE_HOME
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             try {
                 android.app.role.RoleManager roleManager = (android.app.role.RoleManager) activity.getSystemService(Context.ROLE_SERVICE);
@@ -290,22 +420,11 @@ public final class IntentUtils {
             } catch (Exception ignored) {}
         }
 
-        // 2. Android 7.0 - 9.0 (veya RoleManager desteklenmeyen ROM'lar): ACTION_HOME_SETTINGS
-        if (launchSafely(activity, new Intent(Settings.ACTION_HOME_SETTINGS))) return;
+        // 3. Android 7.0 - 9.0: ACTION_HOME_SETTINGS
+        if (openHomeSettings(activity)) return;
 
-        // 3. Android TV / AOSP Ayarları
-        if (launchSafely(activity, new Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS))) return;
-
-        // 4. Android 5.0 - 6.0 ve Genel Fallback: HOME Intent ile Sistem Seçicisini Tetikleme
-        try {
-            Intent homeIntent = new Intent(Intent.ACTION_MAIN);
-            homeIntent.addCategory(Intent.CATEGORY_HOME);
-            homeIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            Intent chooser = Intent.createChooser(homeIntent, "Varsayılan Başlatıcıyı Seçin");
-            chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            activity.startActivity(chooser);
-            return;
-        } catch (Exception ignored) {}
+        // 4. Android 5.0 - 6.0 ve Genel Fallback: HOME Intent ile Sistem Seçicisi
+        if (triggerHomeChooser(activity)) return;
 
         // 5. Genel Sistem Ayarları Fallback
         openSystemSettings(activity);

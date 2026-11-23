@@ -1,12 +1,12 @@
 {
   "appName": "Saf Ekran",
   "packageName": "com.safekran.launcher",
-  "versionCode": 43,
-  "versionName": "2.24.0",
+  "versionCode": 44,
+  "versionName": "2.24.1",
   "developer": "Vezir",
   "schemaVersion": 1,
   "createdDate": "2026-11-19",
-  "apkName": "SafEkran_v2.24.0_vc43.apk",
+  "apkName": "SafEkran_v2.24.1_vc44.apk",
   "history": [
     {
       "versionCode": 1,
@@ -265,6 +265,12 @@
       "versionName": "2.24.0",
       "date": "2026-11-23",
       "description": "Tam modüler mimari (UiUtils, IntentUtils), kod tabanı DRY sadeleştirmesi ve kapsamlı repo dokümantasyonu (v2.24.0)"
+    },
+    {
+      "versionCode": 44,
+      "versionName": "2.24.1",
+      "date": "2026-11-23",
+      "description": "Evrensel Varsayilan Baslatici Merkezi (Android 2.2 - 17 ve TV), WP Turnstile Cascade animasyonu ve Slider odak kilitleme motoru (v2.24.1)"
     }
   ]
 }
