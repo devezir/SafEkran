@@ -97,9 +97,7 @@ public final class TileContextMenuHelper {
                 if (hasMultipleApps) {
                     if (which == curIdx) {
                         for (AppInfo ai : hidden) {
-                            Tile nt = new Tile(TileType.APP, ai.label, 0, 0, 1, 1);
-                            nt.packageName = ai.packageName;
-                            nt.activityName = ai.activityName;
+                            Tile nt = Tile.fromAppInfo(ai);
                             if (iconCache != null) {
                                 iconCache.put(ai.packageName, ai.icon);
                             }
@@ -126,9 +124,7 @@ public final class TileContextMenuHelper {
 
                 int appIdx = which - curIdx;
                 AppInfo selected = hidden.get(appIdx);
-                Tile newTile = new Tile(TileType.APP, selected.label, 0, 0, 1, 1);
-                newTile.packageName = selected.packageName;
-                newTile.activityName = selected.activityName;
+                Tile newTile = Tile.fromAppInfo(selected);
                 if (iconCache != null) {
                     iconCache.put(selected.packageName, selected.icon);
                 }
@@ -341,7 +337,7 @@ public final class TileContextMenuHelper {
                     if (listener != null) listener.onSaveAndRefresh(tile.label + " alçaltıldı (" + tile.rowSpan + " satır).");
                 } else if (effectiveWhich == 5) {
                     int idx = config.tiles.indexOf(tile);
-                    Tile spacer = new Tile(TileType.SPACER, "Boşluk", 0, 0, 1, 1);
+                    Tile spacer = Tile.createDefault(TileType.SPACER);
                     insertTileAt(config, spacer, tile);
                     if (listener != null) listener.onSaveAndRefresh("Boşluk eklendi. Kumandayla üzerine gelerek boyutlandırabilirsiniz.");
                 } else if (effectiveWhich == 6) {

@@ -1,12 +1,12 @@
 {
   "appName": "Saf Ekran",
   "packageName": "com.safekran.launcher",
-  "versionCode": 49,
-  "versionName": "2.27.0",
+  "versionCode": 50,
+  "versionName": "2.28.0",
   "developer": "Vezir",
   "schemaVersion": 1,
   "createdDate": "2026-11-19",
-  "apkName": "SafEkran_v2.27.0_vc49.apk",
+  "apkName": "SafEkran_v2.28.0_vc50.apk",
   "history": [
     {
       "versionCode": 1,
@@ -301,6 +301,12 @@
       "versionName": "2.27.0",
       "date": "2026-11-23",
       "description": "Refactor: Sifir tekrar mimarisi, TileVisitor kalibi ve merkezi I/O & Intent tekillestirmesi (v2.27.0)"
+    },
+    {
+      "versionCode": 50,
+      "versionName": "2.28.0",
+      "date": "2026-11-23",
+      "description": "Refactor: Kutu fabrikasi, simetrik 2D navigasyon ve diyalog bilesenleri DRY mimarisi (v2.28.0)"
     }
   ]
 }

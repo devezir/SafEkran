@@ -232,11 +232,10 @@ public class MainActivity extends Activity {
                 swapTilePositions(selectedMovingTile, tile);
                 UiUtils.showToast(this, selectedMovingTile.label + " ile " + tile.label + " yer değiştirdi.");
             }
-            selectedMovingTile = null;
+            finishTileMove(null);
             WorkspaceStorage.saveWorkspace(this, config);
             workspaceView.rebuildViews();
             setupTileClickListeners();
-            updateRemoteTitleWithSelected();
             return;
         }
 
@@ -263,22 +262,12 @@ public class MainActivity extends Activity {
                 setupTileClickListeners();
                 break;
             case DATE:
-                IntentUtils.openCalendarApp(this);
-                break;
             case BATTERY:
-                IntentUtils.openBatterySettings(this);
-                break;
             case RAM:
-                IntentUtils.openRamSettings(this);
-                break;
             case STORAGE:
-                IntentUtils.openStorageSettings(this);
-                break;
             case NETWORK:
-                IntentUtils.openNetworkSettings(this);
-                break;
             case BLUETOOTH:
-                IntentUtils.openBluetoothSettings(this);
+                IntentUtils.openStatusTileSettings(this, tile.type);
                 break;
             case SPACER:
                 onTileLongClicked(tile);
@@ -622,13 +611,19 @@ public class MainActivity extends Activity {
         dispatchKeyEvent(up);
     }
 
+    private void finishTileMove(String toastMsg) {
+        selectedMovingTile = null;
+        updateRemoteTitleWithSelected();
+        if (toastMsg != null) {
+            UiUtils.showToast(this, toastMsg);
+        }
+    }
+
     private boolean handleTileMovement(int keyCode) {
         if (selectedMovingTile == null) return false;
 
         if (keyCode == KeyEvent.KEYCODE_BACK) {
-            selectedMovingTile = null;
-            updateRemoteTitleWithSelected();
-            UiUtils.showToast(this, "Taşıma işlemi iptal edildi.");
+            finishTileMove("Taşıma işlemi iptal edildi.");
             return true;
         }
 
@@ -646,9 +641,7 @@ public class MainActivity extends Activity {
             moveTileInStream(selectedMovingTile, 1);
             return true;
         } else if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
-            selectedMovingTile = null;
-            updateRemoteTitleWithSelected();
-            UiUtils.showToast(this, "Kutu konumu bırakıldı.");
+            finishTileMove("Kutu konumu bırakıldı.");
             return true;
         }
         return false;

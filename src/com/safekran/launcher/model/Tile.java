@@ -81,6 +81,73 @@ public class Tile {
         }
     }
 
+    /**
+     * Verilen TileType için standart boyut ve etiketli varsayılan kutu örneği üretir.
+     */
+    public static Tile createDefault(TileType type) {
+        if (type == null) return null;
+        switch (type) {
+            case CLOCK:
+                return new Tile(TileType.CLOCK, "Saat", 0, 0, 2, 1);
+            case DATE:
+                return new Tile(TileType.DATE, "Tarih", 0, 0, 2, 1);
+            case BATTERY:
+                return new Tile(TileType.BATTERY, "Pil", 0, 0, 1, 1);
+            case RAM:
+                return new Tile(TileType.RAM, "RAM", 0, 0, 1, 1);
+            case STORAGE:
+                return new Tile(TileType.STORAGE, "Depolama", 0, 0, 1, 1);
+            case NETWORK:
+                return new Tile(TileType.NETWORK, "Ağ", 0, 0, 1, 1);
+            case BLUETOOTH:
+                return new Tile(TileType.BLUETOOTH, "Bluetooth", 0, 0, 1, 1);
+            case COLOR_RED: {
+                Tile r = new Tile(TileType.COLOR_RED, "🔴 Kırmızı Tuş", 0, 0, 1, 1);
+                r.actionType = "NONE";
+                return r;
+            }
+            case COLOR_GREEN: {
+                Tile g = new Tile(TileType.COLOR_GREEN, "🟢 Gizlenenler", 0, 0, 1, 1);
+                g.actionType = "HIDDEN_APPS";
+                return g;
+            }
+            case COLOR_YELLOW: {
+                Tile y = new Tile(TileType.COLOR_YELLOW, "🟡 Tema", 0, 0, 1, 1);
+                y.actionType = "THEME_TOGGLE";
+                return y;
+            }
+            case COLOR_BLUE: {
+                Tile b = new Tile(TileType.COLOR_BLUE, "🔵 Ayarlar", 0, 0, 1, 1);
+                b.actionType = "LAUNCHER_SETTINGS";
+                return b;
+            }
+            case LAUNCHER_SETTINGS:
+                return new Tile(TileType.LAUNCHER_SETTINGS, "Başlatıcı Ayarları", 0, 0, 1, 1);
+            case SYSTEM_SETTINGS:
+                return new Tile(TileType.SYSTEM_SETTINGS, "Sistem Ayarları", 0, 0, 1, 1);
+            case SPACER:
+                return new Tile(TileType.SPACER, "Boşluk", 0, 0, 1, 1);
+            default:
+                return new Tile(type, type.name(), 0, 0, 1, 1);
+        }
+    }
+
+    /**
+     * Uygulama bilgilerinden 1x1 standart uygulama kutusu üretir.
+     */
+    public static Tile fromApp(String label, String packageName, String activityName) {
+        Tile t = new Tile(TileType.APP, label, 0, 0, 1, 1);
+        t.packageName = packageName;
+        t.activityName = activityName;
+        t.actionType = "APP";
+        return t;
+    }
+
+    public static Tile fromAppInfo(com.safekran.launcher.data.AppInfo ai) {
+        if (ai == null) return null;
+        return fromApp(ai.label, ai.packageName, ai.activityName);
+    }
+
     public JSONObject toJson() throws JSONException {
         JSONObject obj = new JSONObject();
         obj.put("id", id);

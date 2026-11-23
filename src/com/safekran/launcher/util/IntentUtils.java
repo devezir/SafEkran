@@ -151,6 +151,36 @@ public final class IntentUtils {
     }
 
     /**
+     * Durum ve bilgi kutularının (Pil, RAM, Depolama, Ağ, Bluetooth, Takvim) sistem ayarlarını açar.
+     */
+    public static void openStatusTileSettings(Context context, com.safekran.launcher.model.TileType type) {
+        if (type == null) return;
+        switch (type) {
+            case BATTERY:
+                openBatterySettings(context);
+                break;
+            case RAM:
+                openRamSettings(context);
+                break;
+            case STORAGE:
+                openStorageSettings(context);
+                break;
+            case NETWORK:
+                openNetworkSettings(context);
+                break;
+            case BLUETOOTH:
+                openBluetoothSettings(context);
+                break;
+            case DATE:
+                openCalendarApp(context);
+                break;
+            default:
+                openSystemSettings(context);
+                break;
+        }
+    }
+
+    /**
      * Saat / Alarm uygulamasını veya ayarlarını açar.
      */
     public static void openClockApp(Context context) {

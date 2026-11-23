@@ -673,102 +673,85 @@ public class WorkspaceView extends ViewGroup {
         if (validTiles.isEmpty()) return;
 
         TileView targetTile = null;
-
         if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
-            TileView nextInRow = null;
-            TileView nextWrap = null;
-            for (TileView tv : validTiles) {
-                Tile t = tv.getTile();
-                if (t.row == curTile.row && t.col > curTile.col) {
-                    if (nextInRow == null || t.col < nextInRow.getTile().col) {
-                        nextInRow = tv;
-                    }
-                } else if (t.row > curTile.row) {
-                    if (nextWrap == null || t.row < nextWrap.getTile().row ||
-                            (t.row == nextWrap.getTile().row && t.col < nextWrap.getTile().col)) {
-                        nextWrap = tv;
-                    }
-                }
-            }
-            targetTile = (nextInRow != null) ? nextInRow : nextWrap;
-
+            targetTile = findHorizontalTarget(validTiles, curTile, true);
         } else if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
-            TileView prevInRow = null;
-            TileView prevWrap = null;
-            for (TileView tv : validTiles) {
-                Tile t = tv.getTile();
-                if (t.row == curTile.row && t.col < curTile.col) {
-                    if (prevInRow == null || t.col > prevInRow.getTile().col) {
-                        prevInRow = tv;
-                    }
-                } else if (t.row < curTile.row) {
-                    if (prevWrap == null || t.row > prevWrap.getTile().row ||
-                            (t.row == prevWrap.getTile().row && t.col > prevWrap.getTile().col)) {
-                        prevWrap = tv;
-                    }
-                }
-            }
-            targetTile = (prevInRow != null) ? prevInRow : prevWrap;
-
+            targetTile = findHorizontalTarget(validTiles, curTile, false);
         } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
-            int curBottomRow = curTile.row + curTile.rowSpan - 1;
-            int minDeltaRow = Integer.MAX_VALUE;
-            for (TileView tv : validTiles) {
-                Tile t = tv.getTile();
-                if (t.row > curBottomRow) {
-                    int dRow = t.row - curBottomRow;
-                    if (dRow < minDeltaRow) {
-                        minDeltaRow = dRow;
-                    }
-                }
-            }
-            if (minDeltaRow != Integer.MAX_VALUE) {
-                int targetRow = curBottomRow + minDeltaRow;
-                int minColDist = Integer.MAX_VALUE;
-                for (TileView tv : validTiles) {
-                    Tile t = tv.getTile();
-                    if (t.row == targetRow) {
-                        int dist = Math.abs(t.col - curTile.col);
-                        if (dist < minColDist) {
-                            minColDist = dist;
-                            targetTile = tv;
-                        }
-                    }
-                }
-            }
-
+            targetTile = findVerticalTarget(validTiles, curTile, true);
         } else if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-            int minDeltaRow = Integer.MAX_VALUE;
-            for (TileView tv : validTiles) {
-                Tile t = tv.getTile();
-                int tBottomRow = t.row + t.rowSpan - 1;
-                if (tBottomRow < curTile.row) {
-                    int dRow = curTile.row - tBottomRow;
-                    if (dRow < minDeltaRow) {
-                        minDeltaRow = dRow;
-                    }
-                }
-            }
-            if (minDeltaRow != Integer.MAX_VALUE) {
-                int targetBottomRow = curTile.row - minDeltaRow;
-                int minColDist = Integer.MAX_VALUE;
-                for (TileView tv : validTiles) {
-                    Tile t = tv.getTile();
-                    int tBottomRow = t.row + t.rowSpan - 1;
-                    if (tBottomRow == targetBottomRow) {
-                        int dist = Math.abs(t.col - curTile.col);
-                        if (dist < minColDist) {
-                            minColDist = dist;
-                            targetTile = tv;
-                        }
-                    }
-                }
-            }
+            targetTile = findVerticalTarget(validTiles, curTile, false);
         }
 
         if (targetTile != null) {
             setTvSelectedTile(targetTile);
         }
+    }
+
+    private TileView findHorizontalTarget(java.util.List<TileView> validTiles, Tile curTile, boolean isRight) {
+        TileView sameRowTarget = null;
+        TileView wrapTarget = null;
+
+        for (TileView tv : validTiles) {
+            Tile t = tv.getTile();
+            if (t.row == curTile.row) {
+                if (isRight && t.col > curTile.col) {
+                    if (sameRowTarget == null || t.col < sameRowTarget.getTile().col) {
+                        sameRowTarget = tv;
+                    }
+                } else if (!isRight && t.col < curTile.col) {
+                    if (sameRowTarget == null || t.col > sameRowTarget.getTile().col) {
+                        sameRowTarget = tv;
+                    }
+                }
+            } else if (isRight && t.row > curTile.row) {
+                if (wrapTarget == null || t.row < wrapTarget.getTile().row ||
+                        (t.row == wrapTarget.getTile().row && t.col < wrapTarget.getTile().col)) {
+                    wrapTarget = tv;
+                }
+            } else if (!isRight && t.row < curTile.row) {
+                if (wrapTarget == null || t.row > wrapTarget.getTile().row ||
+                        (t.row == wrapTarget.getTile().row && t.col > wrapTarget.getTile().col)) {
+                    wrapTarget = tv;
+                }
+            }
+        }
+        return (sameRowTarget != null) ? sameRowTarget : wrapTarget;
+    }
+
+    private TileView findVerticalTarget(java.util.List<TileView> validTiles, Tile curTile, boolean isDown) {
+        int curRefRow = isDown ? (curTile.row + curTile.rowSpan - 1) : curTile.row;
+        int minDeltaRow = Integer.MAX_VALUE;
+
+        // 1. En yakın hedef satır mesafesini bul
+        for (TileView tv : validTiles) {
+            Tile t = tv.getTile();
+            int tRefRow = isDown ? t.row : (t.row + t.rowSpan - 1);
+            int dRow = isDown ? (tRefRow - curRefRow) : (curRefRow - tRefRow);
+            if (dRow > 0 && dRow < minDeltaRow) {
+                minDeltaRow = dRow;
+            }
+        }
+
+        if (minDeltaRow == Integer.MAX_VALUE) return null;
+
+        int targetRefRow = isDown ? (curRefRow + minDeltaRow) : (curRefRow - minDeltaRow);
+        TileView bestTile = null;
+        int minColDist = Integer.MAX_VALUE;
+
+        // 2. O satırdaki sütun mesafesi en yakın kutuyu seç
+        for (TileView tv : validTiles) {
+            Tile t = tv.getTile();
+            int tRefRow = isDown ? t.row : (t.row + t.rowSpan - 1);
+            if (tRefRow == targetRefRow) {
+                int dist = Math.abs(t.col - curTile.col);
+                if (dist < minColDist) {
+                    minColDist = dist;
+                    bestTile = tv;
+                }
+            }
+        }
+        return bestTile;
     }
 
     private void initOrResetVelocityTracker() {

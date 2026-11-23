@@ -46,64 +46,39 @@ public final class DefaultLauncherHubDialog {
         layout.addView(descView);
 
         // 1. Otomatik Sistem Seçicisi (Tüm Cihazlar & TV)
-        Button b1 = UiUtils.createOptionButton(activity,
-                "🚀 1. Otomatik Sistem Seçicisi (Tüm Cihazlar & TV)",
+        addHubOption(layout, activity, "🚀 1. Otomatik Sistem Seçicisi (Tüm Cihazlar & TV)",
                 "Evrensel Android seçicisini açar (Android 2.2 - 17)",
-                UiUtils.COLOR_BLUE_HEADER, sScale);
-        b1.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) {
-                IntentUtils.triggerHomeChooser(activity);
-            }
-        });
-        layout.addView(b1);
+                UiUtils.COLOR_BLUE_HEADER, sScale, new Runnable() {
+                    @Override public void run() { IntentUtils.triggerHomeChooser(activity); }
+                });
 
         // 2. Android TV & Google TV Özel Çözümü (Önerilen)
-        Button b2 = UiUtils.createOptionButton(activity,
-                "📺 2. Android TV & Google TV Çözümü (Önerilen)",
+        addHubOption(layout, activity, "📺 2. Android TV & Google TV Çözümü (Önerilen)",
                 "Kilitli TV'lerde mevcut başlatıcının varsayılanını temizleme sayfası",
-                UiUtils.COLOR_TEAL, sScale);
-        b2.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) {
-                IntentUtils.openCurrentLauncherDetails(activity);
-            }
-        });
-        layout.addView(b2);
+                UiUtils.COLOR_TEAL, sScale, new Runnable() {
+                    @Override public void run() { IntentUtils.openCurrentLauncherDetails(activity); }
+                });
 
         // 3. Google Resmi Onay Penceresi (Android 10 - 17)
-        Button b3 = UiUtils.createOptionButton(activity,
-                "📱 3. Google Resmi Onay Penceresi (RoleManager)",
+        addHubOption(layout, activity, "📱 3. Google Resmi Onay Penceresi (RoleManager)",
                 "Mobil telefonlar ve AOSP tabletler için resmi onay penceresi",
-                UiUtils.COLOR_PURPLE, sScale);
-        b3.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) {
-                IntentUtils.triggerRoleManagerHome(activity);
-            }
-        });
-        layout.addView(b3);
+                UiUtils.COLOR_PURPLE, sScale, new Runnable() {
+                    @Override public void run() { IntentUtils.triggerRoleManagerHome(activity); }
+                });
 
         // 4. Sistem Ana Ekran Ayarları Sayfası
-        Button b4 = UiUtils.createOptionButton(activity,
-                "⚙️ 4. Sistem Ana Ekran Ayarları Sayfası",
+        addHubOption(layout, activity, "⚙️ 4. Sistem Ana Ekran Ayarları Sayfası",
                 "Cihazın kendi Ayarlar -> Varsayılan Uygulamalar / Ana Ekran menüsü",
-                UiUtils.COLOR_SLATE, sScale);
-        b4.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) {
-                IntentUtils.openHomeSettings(activity);
-            }
-        });
-        layout.addView(b4);
+                UiUtils.COLOR_SLATE, sScale, new Runnable() {
+                    @Override public void run() { IntentUtils.openHomeSettings(activity); }
+                });
 
         // 5. Xiaomi / HyperOS / MIUI Özel Sayfası
-        Button b5 = UiUtils.createOptionButton(activity,
-                "🟠 5. Xiaomi / HyperOS / MIUI Özel Sayfası",
+        addHubOption(layout, activity, "🟠 5. Xiaomi / HyperOS / MIUI Özel Sayfası",
                 "Xiaomi cihazların gizlediği 'Varsayılan Başlatıcı' ayarını açar",
-                UiUtils.COLOR_ORANGE, sScale);
-        b5.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) {
-                IntentUtils.openXiaomiDefaultAppsSettings(activity);
-            }
-        });
-        layout.addView(b5);
+                UiUtils.COLOR_ORANGE, sScale, new Runnable() {
+                    @Override public void run() { IntentUtils.openXiaomiDefaultAppsSettings(activity); }
+                });
 
         // Alt Bilgi Kartı
         TextView tipView = new TextView(activity);
@@ -118,5 +93,17 @@ public final class DefaultLauncherHubDialog {
         builder.setNegativeButton("Kapat", null);
         AlertDialog d = builder.create();
         d.show();
+    }
+
+    private static void addHubOption(LinearLayout layout, Activity activity,
+                                     String title, String subtitle, int bgColor, float sScale,
+                                     final Runnable action) {
+        Button btn = UiUtils.createOptionButton(activity, title, subtitle, bgColor, sScale);
+        btn.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                if (action != null) action.run();
+            }
+        });
+        layout.addView(btn);
     }
 }

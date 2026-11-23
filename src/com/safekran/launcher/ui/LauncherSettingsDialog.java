@@ -364,37 +364,25 @@ public final class LauncherSettingsDialog {
         updateButtonGroupHighlight(themeRow, config.themeMode);
         secTheme.addView(themeRow);
 
-        CheckBox cbAnim = new CheckBox(activity);
-        cbAnim.setText("✨ Açılış Animasyonu (Windows Phone Süzülme)");
-        cbAnim.setTextColor(UiUtils.COLOR_CYAN_LIGHT);
-        cbAnim.setTextSize(Math.round(12 * sScale));
-        cbAnim.setChecked(config.animationEnabled);
-        UiUtils.setupTvFocusCheckBox(cbAnim);
-        cbAnim.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                config.animationEnabled = isChecked;
-                if (isChecked && workspaceView != null) {
-                    workspaceView.playTurnstileAnimation();
-                }
-            }
-        });
-        secTheme.addView(cbAnim);
+        addAccordionCheckBox(activity, secTheme, "✨ Açılış Animasyonu (Windows Phone Süzülme)",
+                UiUtils.COLOR_CYAN_LIGHT, config.animationEnabled, sScale, new CompoundButton.OnCheckedChangeListener() {
+                    @Override public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                        config.animationEnabled = isChecked;
+                        if (isChecked && workspaceView != null) {
+                            workspaceView.playTurnstileAnimation();
+                        }
+                    }
+                });
 
         // 5. Telefonda Kumanda Testi
         LinearLayout secRemote = addAccordionSection(activity, layout, allSections, "5. TELEFONDA KUMANDA TESTİ", false, sScale);
-        CheckBox cbRemote = new CheckBox(activity);
-        cbRemote.setText("🕹️ Sanal TV Kumandası (Ekranda Test Pedi)");
-        cbRemote.setTextColor(UiUtils.COLOR_CYAN_LIGHT);
-        cbRemote.setTextSize(Math.round(12 * sScale));
-        cbRemote.setChecked(config.virtualRemoteEnabled);
-        UiUtils.setupTvFocusCheckBox(cbRemote);
-        cbRemote.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                config.virtualRemoteEnabled = isChecked;
-                if (listener != null) listener.onVirtualRemoteToggled(isChecked);
-            }
-        });
-        secRemote.addView(cbRemote);
+        addAccordionCheckBox(activity, secRemote, "🕹️ Sanal TV Kumandası (Ekranda Test Pedi)",
+                UiUtils.COLOR_CYAN_LIGHT, config.virtualRemoteEnabled, sScale, new CompoundButton.OnCheckedChangeListener() {
+                    @Override public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                        config.virtualRemoteEnabled = isChecked;
+                        if (listener != null) listener.onVirtualRemoteToggled(isChecked);
+                    }
+                });
 
         // 6. Gizlenen ve Özel Kutular
         LinearLayout secHidden = addAccordionSection(activity, layout, allSections, "6. GİZLENEN VE ÖZEL KUTULAR", false, sScale);
@@ -413,19 +401,12 @@ public final class LauncherSettingsDialog {
 
         // 7. Düzen İşlemleri
         LinearLayout secLayoutOps = addAccordionSection(activity, layout, allSections, "7. DÜZEN İŞLEMLERİ", false, sScale);
-
-        CheckBox cbLock = new CheckBox(activity);
-        cbLock.setText("🔒 Düzeni Kilitle (Taşıma ve Silmeyi Engelle)");
-        cbLock.setTextColor(UiUtils.COLOR_AMBER);
-        cbLock.setTextSize(Math.round(12 * sScale));
-        cbLock.setChecked(config.isLayoutLocked);
-        UiUtils.setupTvFocusCheckBox(cbLock);
-        cbLock.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                config.isLayoutLocked = isChecked;
-            }
-        });
-        secLayoutOps.addView(cbLock);
+        addAccordionCheckBox(activity, secLayoutOps, "🔒 Düzeni Kilitle (Taşıma ve Silmeyi Engelle)",
+                UiUtils.COLOR_AMBER, config.isLayoutLocked, sScale, new CompoundButton.OnCheckedChangeListener() {
+                    @Override public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                        config.isLayoutLocked = isChecked;
+                    }
+                });
 
         Button addSpacerBtn = new Button(activity);
         addSpacerBtn.setText("➕ Yeni Boşluk (Spacer) Ekle");
@@ -439,7 +420,7 @@ public final class LauncherSettingsDialog {
         addSpacerBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Tile spacer = new Tile(TileType.SPACER, "Boşluk", 0, 0, 1, 1);
+                Tile spacer = Tile.createDefault(TileType.SPACER);
                 config.tiles.add(spacer);
                 WorkspaceStorage.saveWorkspace(activity, config);
                 workspaceView.rebuildViews();
@@ -738,14 +719,31 @@ public final class LauncherSettingsDialog {
         layout.addView(seekBar);
     }
 
-    private static void addStyleButton(final Activity activity, final LinearLayout row, String text,
-                                       final String style, float sScale,
-                                       final WorkspaceConfig config, final WorkspaceView workspaceView,
-                                       final LauncherSettingsListener listener) {
+    private static CheckBox addAccordionCheckBox(Activity activity, LinearLayout container,
+                                                 String text, int textColor, boolean initialChecked,
+                                                 float sScale, CompoundButton.OnCheckedChangeListener listener) {
+        CheckBox cb = new CheckBox(activity);
+        cb.setText(text);
+        cb.setTextColor(textColor);
+        cb.setTextSize(Math.round(12 * sScale));
+        cb.setChecked(initialChecked);
+        UiUtils.setupTvFocusCheckBox(cb);
+        if (listener != null) cb.setOnCheckedChangeListener(listener);
+        container.addView(cb);
+        return cb;
+    }
+
+    private interface ConfigOptionCallback {
+        void onSelect();
+    }
+
+    private static void addConfigOptionButton(final Activity activity, final LinearLayout row, String text,
+                                              final String tag, float textSizeSp, float sScale,
+                                              final ConfigOptionCallback callback, final String toastMsg) {
         Button btn = new Button(activity);
         btn.setText(text);
-        btn.setTag(style);
-        btn.setTextSize(Math.round(10 * sScale));
+        btn.setTag(tag);
+        btn.setTextSize(Math.round(textSizeSp * sScale));
         int padH = (int) (UiUtils.dpToPx(activity, 4) * Math.min(1.3f, sScale));
         int padV = (int) (UiUtils.dpToPx(activity, 6) * Math.min(1.3f, sScale));
         btn.setPadding(padH, padV, padH, padV);
@@ -756,42 +754,40 @@ public final class LauncherSettingsDialog {
         btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                config.tileStyle = style;
-                updateButtonGroupHighlight(row, style);
-                workspaceView.rebuildViews();
-                if (listener != null) listener.onRefreshViewsAndListeners();
-                UiUtils.showToast(activity, "Çerçeve Stili: " + style);
+                callback.onSelect();
+                updateButtonGroupHighlight(row, tag);
+                UiUtils.showToast(activity, toastMsg);
             }
         });
         row.addView(btn);
+    }
+
+    private static void addStyleButton(final Activity activity, final LinearLayout row, String text,
+                                       final String style, float sScale,
+                                       final WorkspaceConfig config, final WorkspaceView workspaceView,
+                                       final LauncherSettingsListener listener) {
+        addConfigOptionButton(activity, row, text, style, 10f, sScale, new ConfigOptionCallback() {
+            @Override
+            public void onSelect() {
+                config.tileStyle = style;
+                workspaceView.rebuildViews();
+                if (listener != null) listener.onRefreshViewsAndListeners();
+            }
+        }, "Çerçeve Stili: " + style);
     }
 
     private static void addThemeButton(final Activity activity, final LinearLayout row, String text,
                                        final String mode, float sScale,
                                        final WorkspaceConfig config, final WorkspaceView workspaceView,
                                        final LauncherSettingsListener listener) {
-        Button btn = new Button(activity);
-        btn.setText(text);
-        btn.setTag(mode);
-        btn.setTextSize(Math.round(11 * sScale));
-        int padH = (int) (UiUtils.dpToPx(activity, 4) * Math.min(1.3f, sScale));
-        int padV = (int) (UiUtils.dpToPx(activity, 6) * Math.min(1.3f, sScale));
-        btn.setPadding(padH, padV, padH, padV);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-        params.setMargins(UiUtils.dpToPx(activity, 2), UiUtils.dpToPx(activity, 2),
-                UiUtils.dpToPx(activity, 2), UiUtils.dpToPx(activity, 4));
-        btn.setLayoutParams(params);
-        btn.setOnClickListener(new View.OnClickListener() {
+        addConfigOptionButton(activity, row, text, mode, 11f, sScale, new ConfigOptionCallback() {
             @Override
-            public void onClick(View v) {
+            public void onSelect() {
                 config.themeMode = mode;
-                updateButtonGroupHighlight(row, mode);
                 workspaceView.rebuildViews();
                 if (listener != null) listener.onRefreshViewsAndListeners();
-                UiUtils.showToast(activity, "Tema: " + mode);
             }
-        });
-        row.addView(btn);
+        }, "Tema: " + mode);
     }
 
     private static void updateButtonGroupHighlight(LinearLayout row, String selectedTag) {

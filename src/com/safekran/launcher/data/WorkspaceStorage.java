@@ -85,12 +85,16 @@ public class WorkspaceStorage {
             }
             if (insertIndex < 0) insertIndex = Math.min(6, config.tiles.size());
 
-            if (!config.hasTileType(TileType.BATTERY)) { config.tiles.add(insertIndex, new Tile(TileType.BATTERY, "Pil", 0, 0, 1, 1)); migrated = true; }
-            if (!config.hasTileType(TileType.RAM)) { config.tiles.add(insertIndex, new Tile(TileType.RAM, "RAM", 0, 0, 1, 1)); migrated = true; }
-            if (!config.hasTileType(TileType.STORAGE)) { config.tiles.add(insertIndex, new Tile(TileType.STORAGE, "Depolama", 0, 0, 1, 1)); migrated = true; }
-            if (!config.hasTileType(TileType.NETWORK)) { config.tiles.add(insertIndex, new Tile(TileType.NETWORK, "Ağ", 0, 0, 1, 1)); migrated = true; }
-            if (!config.hasTileType(TileType.BLUETOOTH)) { config.tiles.add(insertIndex, new Tile(TileType.BLUETOOTH, "Bluetooth", 0, 0, 1, 1)); migrated = true; }
-            if (!config.hasTileType(TileType.LAUNCHER_SETTINGS)) { config.tiles.add(insertIndex, new Tile(TileType.LAUNCHER_SETTINGS, "Başlatıcı Ayarları", 0, 0, 1, 1)); migrated = true; }
+            TileType[] migrationTypes = new TileType[]{
+                    TileType.BATTERY, TileType.RAM, TileType.STORAGE,
+                    TileType.NETWORK, TileType.BLUETOOTH, TileType.LAUNCHER_SETTINGS
+            };
+            for (TileType type : migrationTypes) {
+                if (!config.hasTileType(type)) {
+                    config.tiles.add(insertIndex, Tile.createDefault(type));
+                    migrated = true;
+                }
+            }
 
             if (config.schemaVersion < 7) {
                 config.schemaVersion = 7;
