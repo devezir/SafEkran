@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/S%C3%BCr%C3%BCm-v2.24.1-00E5FF?style=flat-square" alt="Sürüm" />
+  <img src="https://img.shields.io/badge/S%C3%BCr%C3%BCm-v2.24.2-00E5FF?style=flat-square" alt="Sürüm" />
   <img src="https://img.shields.io/badge/APK%20Boyutu-166.5%20KB-2E7D32?style=flat-square" alt="APK Boyutu" />
   <img src="https://img.shields.io/badge/Android-5.0%2B%20(API%2021%2B)-FF6F00?style=flat-square" alt="Android Sürümü" />
   <img src="https://img.shields.io/badge/Ba%C4%9F%C4%B1ml%C4%B1l%C4%B1k-SIFIR%20(Pure%20SDK)-blueviolet?style=flat-square" alt="Bağımlılık" />

@@ -18,6 +18,8 @@ import android.os.BatteryManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.SystemClock;
 import android.provider.AlarmClock;
 import android.provider.CalendarContract;
@@ -93,6 +95,8 @@ public class MainActivity extends Activity {
 
     // Başlatıcı Ayarları penceresinin tekil örneği (Çift açılmayı engeller)
     private AlertDialog launcherSettingsDialog = null;
+    private final Handler settingsScaleHandler = new Handler(Looper.getMainLooper());
+    private boolean isTrackingScaleTouch = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -168,6 +172,8 @@ public class MainActivity extends Activity {
     @Override
     protected void onPause() {
         super.onPause();
+        settingsScaleHandler.removeCallbacksAndMessages(null);
+        isTrackingScaleTouch = false;
         unregisterBatteryReceiver();
     }
 
@@ -1118,8 +1124,15 @@ public class MainActivity extends Activity {
     }
 
     private void openLauncherSettingsDialog(final boolean keepSliderFocus) {
-        if (launcherSettingsDialog != null && launcherSettingsDialog.isShowing()) {
-            return;
+        if (launcherSettingsDialog != null) {
+            if (launcherSettingsDialog.isShowing()) {
+                return;
+            }
+            try {
+                launcherSettingsDialog.setOnDismissListener(null);
+                launcherSettingsDialog.dismiss();
+            } catch (Exception ignored) {}
+            launcherSettingsDialog = null;
         }
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
 
@@ -1212,17 +1225,23 @@ public class MainActivity extends Activity {
         scaleRow.addView(plusBtn);
         layout.addView(scaleRow);
 
-        final android.os.Handler scaleHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+        settingsScaleHandler.removeCallbacksAndMessages(null);
         final Runnable applyScaleRunnable = new Runnable() {
             @Override
             public void run() {
+                if (isTrackingScaleTouch) {
+                    return;
+                }
                 int step = scaleSeekBar.getProgress();
                 float newScale = (85 + step * 5) / 100f;
                 if (Math.abs(config.settingsUiScale - newScale) > 0.01f) {
                     config.settingsUiScale = newScale;
                     WorkspaceStorage.saveWorkspace(MainActivity.this, config);
                     if (launcherSettingsDialog != null) {
-                        launcherSettingsDialog.dismiss();
+                        launcherSettingsDialog.setOnDismissListener(null);
+                        try {
+                            launcherSettingsDialog.dismiss();
+                        } catch (Exception ignored) {}
                         launcherSettingsDialog = null;
                     }
                     openLauncherSettingsDialog(true);
@@ -1238,16 +1257,16 @@ public class MainActivity extends Activity {
                         int cur = scaleSeekBar.getProgress();
                         if (cur < 33) {
                             scaleSeekBar.setProgress(cur + 1);
-                            scaleHandler.removeCallbacks(applyScaleRunnable);
-                            scaleHandler.postDelayed(applyScaleRunnable, 350);
+                            settingsScaleHandler.removeCallbacks(applyScaleRunnable);
+                            settingsScaleHandler.postDelayed(applyScaleRunnable, 400);
                         }
                         return true;
                     } else if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
                         int cur = scaleSeekBar.getProgress();
                         if (cur > 0) {
                             scaleSeekBar.setProgress(cur - 1);
-                            scaleHandler.removeCallbacks(applyScaleRunnable);
-                            scaleHandler.postDelayed(applyScaleRunnable, 350);
+                            settingsScaleHandler.removeCallbacks(applyScaleRunnable);
+                            settingsScaleHandler.postDelayed(applyScaleRunnable, 400);
                         }
                         return true;
                     }
@@ -1261,21 +1280,23 @@ public class MainActivity extends Activity {
             public void onProgressChanged(SeekBar sb, int progress, boolean fromUser) {
                 int pct = 85 + progress * 5;
                 scaleValText.setText("%" + pct);
-                if (fromUser) {
-                    scaleHandler.removeCallbacks(applyScaleRunnable);
-                    scaleHandler.postDelayed(applyScaleRunnable, 400);
+                if (fromUser && !isTrackingScaleTouch) {
+                    settingsScaleHandler.removeCallbacks(applyScaleRunnable);
+                    settingsScaleHandler.postDelayed(applyScaleRunnable, 400);
                 }
             }
 
             @Override
             public void onStartTrackingTouch(SeekBar sb) {
-                scaleHandler.removeCallbacks(applyScaleRunnable);
+                isTrackingScaleTouch = true;
+                settingsScaleHandler.removeCallbacks(applyScaleRunnable);
             }
 
             @Override
             public void onStopTrackingTouch(SeekBar sb) {
-                scaleHandler.removeCallbacks(applyScaleRunnable);
-                scaleHandler.post(applyScaleRunnable);
+                isTrackingScaleTouch = false;
+                settingsScaleHandler.removeCallbacks(applyScaleRunnable);
+                settingsScaleHandler.postDelayed(applyScaleRunnable, 150);
             }
         });
 
@@ -1285,8 +1306,8 @@ public class MainActivity extends Activity {
                 int cur = scaleSeekBar.getProgress();
                 if (cur > 0) {
                     scaleSeekBar.setProgress(cur - 1);
-                    scaleHandler.removeCallbacks(applyScaleRunnable);
-                    scaleHandler.post(applyScaleRunnable);
+                    settingsScaleHandler.removeCallbacks(applyScaleRunnable);
+                    settingsScaleHandler.postDelayed(applyScaleRunnable, 400);
                 }
             }
         });
@@ -1297,8 +1318,8 @@ public class MainActivity extends Activity {
                 int cur = scaleSeekBar.getProgress();
                 if (cur < 33) {
                     scaleSeekBar.setProgress(cur + 1);
-                    scaleHandler.removeCallbacks(applyScaleRunnable);
-                    scaleHandler.post(applyScaleRunnable);
+                    settingsScaleHandler.removeCallbacks(applyScaleRunnable);
+                    settingsScaleHandler.postDelayed(applyScaleRunnable, 400);
                 }
             }
         });
@@ -1568,6 +1589,7 @@ public class MainActivity extends Activity {
         saveBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                settingsScaleHandler.removeCallbacksAndMessages(null);
                 WorkspaceStorage.saveWorkspace(MainActivity.this, config);
                 workspaceView.rebuildViews();
                 setupTileClickListeners();
@@ -1578,6 +1600,7 @@ public class MainActivity extends Activity {
         backupBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                settingsScaleHandler.removeCallbacksAndMessages(null);
                 dialog.dismiss();
                 openBackupRestoreDialog();
             }
@@ -1586,6 +1609,7 @@ public class MainActivity extends Activity {
         resetBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                settingsScaleHandler.removeCallbacksAndMessages(null);
                 dialog.dismiss();
                 config = WorkspaceStorage.generateDefaultWorkspace(MainActivity.this);
                 workspaceView.setConfig(config, iconCache);
@@ -1597,8 +1621,12 @@ public class MainActivity extends Activity {
         dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
             @Override
             public void onDismiss(DialogInterface d) {
-                launcherSettingsDialog = null;
-                setupTileClickListeners();
+                settingsScaleHandler.removeCallbacksAndMessages(null);
+                isTrackingScaleTouch = false;
+                if (launcherSettingsDialog == d) {
+                    launcherSettingsDialog = null;
+                    setupTileClickListeners();
+                }
             }
         });
 
@@ -1631,14 +1659,16 @@ public class MainActivity extends Activity {
         }
 
         if (keepSliderFocus) {
-            scaleSeekBar.post(new Runnable() {
+            scaleSeekBar.postDelayed(new Runnable() {
                 @Override
                 public void run() {
-                    scaleSeekBar.setFocusable(true);
-                    scaleSeekBar.setFocusableInTouchMode(true);
-                    scaleSeekBar.requestFocus();
+                    if (scaleSeekBar != null) {
+                        scaleSeekBar.setFocusable(true);
+                        scaleSeekBar.setFocusableInTouchMode(true);
+                        scaleSeekBar.requestFocus();
+                    }
                 }
-            });
+            }, 50);
         }
     }
 
