@@ -1,12 +1,12 @@
 {
   "appName": "Saf Ekran",
   "packageName": "com.safekran.launcher",
-  "versionCode": 46,
-  "versionName": "2.24.3",
+  "versionCode": 47,
+  "versionName": "2.25.0",
   "developer": "Vezir",
   "schemaVersion": 1,
   "createdDate": "2026-11-19",
-  "apkName": "SafEkran_v2.24.3_vc46.apk",
+  "apkName": "SafEkran_v2.25.0_vc47.apk",
   "history": [
     {
       "versionCode": 1,
@@ -283,6 +283,12 @@
       "versionName": "2.24.3",
       "date": "2026-11-23",
       "description": "Fix: Kutu tasimada otomatik ekran takibi, slider eksi-arti butonlari ve esnek baslatici butonu (v2.24.3)"
+    },
+    {
+      "versionCode": 47,
+      "versionName": "2.25.0",
+      "date": "2026-11-23",
+      "description": "Refactor: Tam moduler mimari, DRY tekillestirmesi ve bilesen ayrimi (v2.25.0)"
     }
   ]
 }

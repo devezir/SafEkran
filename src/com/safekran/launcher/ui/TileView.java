@@ -33,6 +33,7 @@ import com.safekran.launcher.R;
 import com.safekran.launcher.model.Tile;
 import com.safekran.launcher.model.TileType;
 import com.safekran.launcher.model.WorkspaceConfig;
+import com.safekran.launcher.util.SystemInfoHelper;
 import com.safekran.launcher.util.UiUtils;
 
 import java.io.File;
@@ -374,23 +375,8 @@ public class TileView extends FrameLayout {
 
     public void updateBatteryData() {
         if (infoPrimaryView == null || infoSecondaryView == null) return;
-        int level = -1, scale = -1, status = -1, plugged = -1;
-        boolean isPresent = true;
-        try {
-            IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
-            Intent batteryStatus = getContext().registerReceiver(null, ifilter);
-            if (batteryStatus != null) {
-                level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
-                scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
-                status = batteryStatus.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
-                isPresent = batteryStatus.getBooleanExtra(BatteryManager.EXTRA_PRESENT, true);
-                plugged = batteryStatus.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
-            }
-        } catch (Exception ignored) {}
-        boolean isCharging = (status == BatteryManager.BATTERY_STATUS_CHARGING ||
-                status == BatteryManager.BATTERY_STATUS_FULL);
-        int pct = (level >= 0 && scale > 0) ? Math.round((level / (float) scale) * 100) : 100;
-        applyBatteryDisplay(pct, isCharging, isPresent, plugged);
+        SystemInfoHelper.BatteryState bs = SystemInfoHelper.getBatteryState(getContext());
+        applyBatteryDisplay(bs.percent, bs.isCharging, bs.isPresent, bs.plugged);
     }
 
     public void updateBatteryData(int pct, boolean isCharging) {
@@ -404,41 +390,14 @@ public class TileView extends FrameLayout {
 
     private void updateRamData() {
         if (infoPrimaryView == null || infoSecondaryView == null) return;
-        int usedPct = 0;
-        double usedGb = 0, totalGb = 0;
-        try {
-            ActivityManager am = (ActivityManager) getContext().getSystemService(Context.ACTIVITY_SERVICE);
-            ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
-            if (am != null) {
-                am.getMemoryInfo(mi);
-                long totalMem = mi.totalMem;
-                long availMem = mi.availMem;
-                long usedMem = totalMem - availMem;
-                usedPct = (totalMem > 0) ? (int) Math.round((usedMem / (double) totalMem) * 100) : 0;
-                usedGb = usedMem / (1024.0 * 1024.0 * 1024.0);
-                totalGb = totalMem / (1024.0 * 1024.0 * 1024.0);
-            }
-        } catch (Exception ignored) {}
-        setInfoPrimary("RAM: %" + usedPct, usedPct > 85 ? Color.parseColor("#E53935") : getTextColor());
-        setInfoSecondary(String.format(java.util.Locale.US, "%.1f / %.1f GB", usedGb, totalGb));
+        SystemInfoHelper.RamState rs = SystemInfoHelper.getRamState(getContext());
+        setInfoPrimary("RAM: %" + rs.usedPercent, rs.usedPercent > 85 ? UiUtils.COLOR_RED_ALERT : getTextColor());
+        setInfoSecondary(String.format(java.util.Locale.US, "%.1f / %.1f GB", rs.usedGb, rs.totalGb));
     }
 
     private void updateStorageData() {
         if (infoPrimaryView == null) return;
-        long freeGb = 0;
-        try {
-            File path = Environment.getDataDirectory();
-            StatFs stat = new StatFs(path.getPath());
-            long blockSize, availableBlocks;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-                blockSize = stat.getBlockSizeLong();
-                availableBlocks = stat.getAvailableBlocksLong();
-            } else {
-                blockSize = stat.getBlockSize();
-                availableBlocks = stat.getAvailableBlocks();
-            }
-            freeGb = (availableBlocks * blockSize) / (1024L * 1024L * 1024L);
-        } catch (Exception ignored) {}
+        long freeGb = SystemInfoHelper.getFreeStorageGb();
         setInfoPrimary(freeGb + " GB Boş", getTextColor());
         setInfoSecondary("Depolama");
     }
@@ -469,42 +428,9 @@ public class TileView extends FrameLayout {
 
     private void updateNetworkData() {
         if (infoPrimaryView == null || infoSecondaryView == null) return;
-        try {
-            ConnectivityManager cm = (ConnectivityManager) getContext().getSystemService(Context.CONNECTIVITY_SERVICE);
-            NetworkInfo activeNetwork = (cm != null) ? cm.getActiveNetworkInfo() : null;
-            if (activeNetwork != null && activeNetwork.isConnected()) {
-                if (activeNetwork.getType() == ConnectivityManager.TYPE_WIFI) {
-                    WifiManager wm = (WifiManager) getContext().getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-                    WifiInfo wi = (wm != null) ? wm.getConnectionInfo() : null;
-                    int levelPct = 100;
-                    String ipStr = "Wi-Fi Bağlı";
-                    if (wi != null) {
-                        levelPct = WifiManager.calculateSignalLevel(wi.getRssi(), 100);
-                        int ip = wi.getIpAddress();
-                        if (ip != 0) {
-                            ipStr = String.format(java.util.Locale.US, "%d.%d.%d.%d", (ip & 0xff), (ip >> 8 & 0xff), (ip >> 16 & 0xff), (ip >> 24 & 0xff));
-                        }
-                    }
-                    setInfoPrimary("📶 Wi-Fi: %" + levelPct, getTextColor());
-                    setInfoSecondary(ipStr);
-                } else if (activeNetwork.getType() == 9 /* TYPE_ETHERNET */) {
-                    setInfoPrimary("🌐 Ethernet", getTextColor());
-                    setInfoSecondary("Kablolu Bağlı");
-                } else if (activeNetwork.getType() == ConnectivityManager.TYPE_MOBILE) {
-                    setInfoPrimary("📶 Mobil Veri", getTextColor());
-                    setInfoSecondary(activeNetwork.getSubtypeName() != null ? activeNetwork.getSubtypeName() : "Bağlı");
-                } else {
-                    setInfoPrimary("🌐 Bağlı", getTextColor());
-                    setInfoSecondary("İnternet Aktif");
-                }
-            } else {
-                setInfoPrimary("❌ İnternet Yok", Color.parseColor("#E53935"));
-                setInfoSecondary("Bağlantı Kesildi");
-            }
-        } catch (Exception e) {
-            setInfoPrimary("Ağ Durumu", getTextColor());
-            setInfoSecondary("Ayarlar");
-        }
+        SystemInfoHelper.StatusDisplay disp = SystemInfoHelper.getNetworkDisplay(getContext(), getTextColor());
+        setInfoPrimary(disp.primary, disp.color);
+        setInfoSecondary(disp.secondary);
     }
 
     private void initNetworkTile(Context context) {
@@ -519,39 +445,9 @@ public class TileView extends FrameLayout {
 
     private void updateBluetoothData() {
         if (infoPrimaryView == null || infoSecondaryView == null) return;
-        try {
-            android.bluetooth.BluetoothAdapter ba = android.bluetooth.BluetoothAdapter.getDefaultAdapter();
-            if (ba == null) {
-                setInfoPrimary("Bluetooth Yok", isLightMode() ? Color.parseColor("#888888") : Color.parseColor("#666666"));
-                setInfoSecondary("Donanım Yok");
-            } else if (!ba.isEnabled()) {
-                setInfoPrimary("Bluetooth", isLightMode() ? Color.parseColor("#888888") : Color.parseColor("#777777"));
-                setInfoSecondary("Kapalı");
-            } else {
-                String deviceText = "Bağlı Cihaz Yok";
-                try {
-                    java.util.Set<android.bluetooth.BluetoothDevice> bonded = ba.getBondedDevices();
-                    if (bonded != null && !bonded.isEmpty()) {
-                        for (android.bluetooth.BluetoothDevice dev : bonded) {
-                            int a2dp = ba.getProfileConnectionState(android.bluetooth.BluetoothProfile.A2DP);
-                            int headset = ba.getProfileConnectionState(android.bluetooth.BluetoothProfile.HEADSET);
-                            if (a2dp == android.bluetooth.BluetoothProfile.STATE_CONNECTED || headset == android.bluetooth.BluetoothProfile.STATE_CONNECTED) {
-                                deviceText = dev.getName() != null ? dev.getName() : "Bağlı";
-                                break;
-                            }
-                        }
-                        if ("Bağlı Cihaz Yok".equals(deviceText)) {
-                            deviceText = bonded.size() + " Eşleşmiş Cihaz";
-                        }
-                    }
-                } catch (Exception ignored) {}
-                setInfoPrimary("🔵 Bluetooth", Color.parseColor("#29B6F6"));
-                setInfoSecondary(deviceText);
-            }
-        } catch (Exception e) {
-            setInfoPrimary("Bluetooth", getTextColor());
-            setInfoSecondary("Ayarlar");
-        }
+        SystemInfoHelper.StatusDisplay disp = SystemInfoHelper.getBluetoothDisplay(getContext(), isLightMode(), getTextColor());
+        setInfoPrimary(disp.primary, disp.color);
+        setInfoSecondary(disp.secondary);
     }
 
     private void initActionOrAppTile(Context context, Drawable appIcon) {

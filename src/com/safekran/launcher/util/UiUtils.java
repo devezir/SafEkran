@@ -12,6 +12,7 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.SeekBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 /**
  * Saf Ekran - Merkezi Arayüz ve Görsel Yardımcı Metodları
@@ -21,9 +22,24 @@ public final class UiUtils {
 
     public static final int COLOR_TV_CYAN_STROKE = Color.parseColor("#00E5FF");
     public static final int COLOR_FOCUS_DARK = Color.parseColor("#37474F");
+    public static final int COLOR_CYAN_LIGHT = Color.parseColor("#80D8FF");
+    public static final int COLOR_BLUE_LIGHT = Color.parseColor("#29B6F6");
+    public static final int COLOR_RED_ALERT = Color.parseColor("#E53935");
+    public static final int COLOR_GREEN_SUCCESS = Color.parseColor("#4CAF50");
+    public static final int COLOR_TEXT_LIGHT_GRAY = Color.parseColor("#CFD8DC");
 
     private UiUtils() {
         // Yardımcı sınıf, örneklenemez
+    }
+
+    public static void showToast(Context context, String message) {
+        if (context == null || TextUtils.isEmpty(message)) return;
+        Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
+    }
+
+    public static void showToastLong(Context context, String message) {
+        if (context == null || TextUtils.isEmpty(message)) return;
+        Toast.makeText(context, message, Toast.LENGTH_LONG).show();
     }
 
     public static int dpToPx(Context context, float dp) {
